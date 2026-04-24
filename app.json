@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "tagebuch",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -18,7 +17,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#111111"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.tagebuch.app"
     },
     "plugins": [
@@ -30,6 +28,13 @@
           "faceIDPermission": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bac5672a-3f9a-4f24-9af4-c585530c0fde"
+      }
+    },
+    "owner": "der_olaf"
   }
 }
