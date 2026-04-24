@@ -1,10 +1,17 @@
 import { Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { initDb } from '../db/schema';
 
 export default function RootLayout() {
-  useEffect(() => { initDb(); }, []);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    initDb().then(() => setReady(true));
+  }, []);
+
+  if (!ready) return <View style={{ flex: 1, backgroundColor: '#111111' }} />;
 
   return (
     <>

@@ -9,6 +9,11 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   return _db;
 }
 
+export async function getDbPath(): Promise<string> {
+  const db = await getDb();
+  return db.databasePath;
+}
+
 export async function initDb(): Promise<void> {
   const db = await getDb();
   await db.execAsync(`

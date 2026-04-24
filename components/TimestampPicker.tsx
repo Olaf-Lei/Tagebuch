@@ -17,7 +17,9 @@ function toInputValue(ts: number): string {
 }
 
 function fromInputValue(s: string): number | null {
-  const d = new Date(s);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
   return isNaN(d.getTime()) ? null : d.getTime();
 }
 
