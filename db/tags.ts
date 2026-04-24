@@ -18,6 +18,16 @@ export async function upsertTag(name: string): Promise<number> {
   return row!.id;
 }
 
+export async function renameTag(id: number, name: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(`UPDATE tags SET name = ? WHERE id = ?`, [name.trim().toLowerCase(), id]);
+}
+
+export async function deleteTag(id: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(`DELETE FROM tags WHERE id = ?`, [id]);
+}
+
 export async function searchTags(query: string): Promise<Tag[]> {
   const db = await getDb();
   return db.getAllAsync<Tag>(

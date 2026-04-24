@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Pressable,
   StyleSheet, Text, TextInput, View,
@@ -10,26 +10,23 @@ import { EntryCard } from '../components/EntryCard';
 import { colors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
-import { useEffect } from 'react';
+import { useTags } from '../hooks/useTags';
 
 export default function IndexScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [selectedTag, setSelectedTag] = useState<number | undefined>();
   const [categories, setCategories] = useState<Category[]>([]);
+  const allTags = useTags();
 
   useEffect(() => { getCategories().then(setCategories); }, []);
 
-  const { entries, loading } = useEntries({ search, categoryId: selectedCategory });
+  const { entries, loading, reload } = useEntries({ search, categoryId: selectedCategory, tagId: selectedTag });
 
-  const toggleCategory = (ids: number[]) => {
-    setSelectedCategory(ids[ids.length - 1]);
-  };
+  useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
-  const filterCategories = categories.map((c) => ({
-    ...c,
-    name: c.name,
-  }));
+  const filterCategories = categories.map((c) => ({ ...c }));
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -53,6 +50,18 @@ export default function IndexScreen() {
           }}
         />
       </View>
+      {allTags.length > 0 && (
+        <View style={styles.tagBar}>
+          <CategoryPicker
+            categories={[{ id: 0, name: 'Alle Tags' }, ...allTags]}
+            selected={selectedTag ? [selectedTag] : [0]}
+            onChange={(ids) => {
+              const last = ids[ids.length - 1];
+              setSelectedTag(last === 0 ? undefined : last);
+            }}
+          />
+        </View>
+      )}
       {loading ? (
         <ActivityIndicator style={styles.loader} color={colors.accent} />
       ) : (
@@ -87,7 +96,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
   },
-  categoryBar: { paddingHorizontal: 14, paddingVertical: 10 },
+  categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
+  tagBar: { paddingHorizontal: 14, paddingBottom: 6 },
   list: { paddingHorizontal: 14, paddingBottom: 100 },
   loader: { flex: 1 },
   empty: {

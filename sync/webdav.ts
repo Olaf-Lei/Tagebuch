@@ -1,10 +1,10 @@
 import {
-  documentDirectory,
   getInfoAsync,
   uploadAsync,
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
+import { getDbPath } from '../db/schema';
 
 const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
@@ -53,7 +53,8 @@ export async function syncNow(): Promise<void> {
     throw new Error('Nextcloud nicht konfiguriert.');
   }
 
-  const dbPath = `${documentDirectory}SQLite/tagebuch.db`;
+  const rawPath = await getDbPath();
+  const dbPath = rawPath.startsWith('file://') ? rawPath : `file://${rawPath}`;
   const info = await getInfoAsync(dbPath);
   if (!info.exists) throw new Error('Datenbank nicht gefunden.');
 

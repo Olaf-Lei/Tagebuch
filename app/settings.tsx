@@ -9,6 +9,7 @@ import {
   createCategory, deleteCategory, getCategories,
   renameCategory, type Category,
 } from '../db/categories';
+import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, type WebDavConfig } from '../sync/webdav';
 
 export default function SettingsScreen() {
@@ -17,12 +18,17 @@ export default function SettingsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
 
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [editingTagId, setEditingTagId] = useState<number | null>(null);
+  const [editingTagName, setEditingTagName] = useState('');
+
   const [config, setConfig] = useState<Partial<WebDavConfig>>({});
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     getCategories().then(setCategories);
+    getTags().then(setTags);
     loadConfig().then(setConfig);
     getLastSync().then(setLastSync);
   }, []);
@@ -46,13 +52,32 @@ export default function SettingsScreen() {
     getCategories().then(setCategories);
   };
 
-  const confirmDelete = (cat: Category) => {
+  const confirmCatDelete = (cat: Category) => {
     Alert.alert(`„${cat.name}" löschen?`, 'Die Kategorie wird aus allen Einträgen entfernt.', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen', style: 'destructive', onPress: async () => {
           await deleteCategory(cat.id);
           getCategories().then(setCategories);
+        },
+      },
+    ]);
+  };
+
+  const confirmTagRename = async () => {
+    if (!editingTagId || !editingTagName.trim()) return;
+    await renameTag(editingTagId, editingTagName.trim());
+    setEditingTagId(null);
+    getTags().then(setTags);
+  };
+
+  const confirmTagDelete = (tag: Tag) => {
+    Alert.alert(`„#${tag.name}" löschen?`, 'Der Tag wird aus allen Einträgen entfernt.', [
+      { text: 'Abbrechen', style: 'cancel' },
+      {
+        text: 'Löschen', style: 'destructive', onPress: async () => {
+          await deleteTag(tag.id);
+          getTags().then(setTags);
         },
       },
     ]);
@@ -115,7 +140,7 @@ export default function SettingsScreen() {
                   <Pressable style={styles.catAction} onPress={() => startRename(cat)}>
                     <Text style={styles.mutedText}>✎</Text>
                   </Pressable>
-                  <Pressable style={styles.catAction} onPress={() => confirmDelete(cat)}>
+                  <Pressable style={styles.catAction} onPress={() => confirmCatDelete(cat)}>
                     <Text style={styles.dangerText}>✕</Text>
                   </Pressable>
                 </>
@@ -136,6 +161,45 @@ export default function SettingsScreen() {
               <Text style={styles.addButtonText}>＋</Text>
             </Pressable>
           </View>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <>
+              <Text style={styles.section}>Tags</Text>
+              {tags.map((tag) => (
+                <View key={tag.id} style={styles.catRow}>
+                  {editingTagId === tag.id ? (
+                    <>
+                      <TextInput
+                        style={styles.catInput}
+                        value={editingTagName}
+                        onChangeText={setEditingTagName}
+                        onSubmitEditing={confirmTagRename}
+                        autoFocus
+                        autoCapitalize="none"
+                      />
+                      <Pressable style={styles.catAction} onPress={confirmTagRename}>
+                        <Text style={styles.accentText}>OK</Text>
+                      </Pressable>
+                      <Pressable style={styles.catAction} onPress={() => setEditingTagId(null)}>
+                        <Text style={styles.mutedText}>✕</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.catName}>#{tag.name}</Text>
+                      <Pressable style={styles.catAction} onPress={() => { setEditingTagId(tag.id); setEditingTagName(tag.name); }}>
+                        <Text style={styles.mutedText}>✎</Text>
+                      </Pressable>
+                      <Pressable style={styles.catAction} onPress={() => confirmTagDelete(tag)}>
+                        <Text style={styles.dangerText}>✕</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+              ))}
+            </>
+          )}
 
           {/* Nextcloud */}
           <Text style={styles.section}>Nextcloud</Text>
