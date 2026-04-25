@@ -4,12 +4,16 @@
 Mobile-first Android-App zum schnellen Erfassen persönlicher Log-Einträge. Keine Public Cloud, keine Drittdienste. Alles läuft lokal oder auf dem eigenen NAS (Nextcloud).
 
 ## Stack
-- Expo (React Native) mit TypeScript
+- Expo SDK 55 (React Native 0.83) mit TypeScript
 - Expo Router für Navigation
 - expo-sqlite für lokale Datenbank
-- expo-secure-store für Zugangsdaten
-- WebDAV-Sync auf Nextcloud (manuell auslösbar)
-- EAS Build für APK
+- expo-secure-store für Zugangsdaten und Schlüssel
+- expo-local-authentication für Biometrie-Lock
+- expo-crypto für SHA-256 und Zufallsbytes
+- expo-location für GPS + Reverse Geocoding
+- crypto-js (AES) für DB-Verschlüsselung vor Upload
+- WebDAV-Sync auf Nextcloud (manuell + automatisch konfigurierbar)
+- EAS Build für Cloud-APK; lokal via Android Studio + `eas build --local`
 
 ## Kernprinzip der App
 Ein Eintrag = Zeitstempel + Freitext + Kategorien + Tags. Keine Formulare, keine Pflichtfelder außer Text. Schnelle Eingabe ist das wichtigste UX-Ziel: App öffnen → tippen → speichern in unter 5 Sekunden.
@@ -32,7 +36,12 @@ CREATE TABLE entries (
   timestamp INTEGER NOT NULL,      -- Unix-Zeit, vom User editierbar
   text TEXT NOT NULL,
   created_at INTEGER NOT NULL,     -- gesetzt beim Anlegen, nie ändern
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  mood INTEGER,                    -- 1–5, nullable
+  health INTEGER,                  -- 1–5, nullable
+  latitude REAL,
+  longitude REAL,
+  location_name TEXT
 );
 
 CREATE TABLE entry_categories (
@@ -46,31 +55,44 @@ CREATE TABLE entry_tags (
   tag_id INTEGER REFERENCES tags(id),
   PRIMARY KEY (entry_id, tag_id)
 );
-
-INSERT INTO categories (name) VALUES
-  ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
 ```
+
+Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — idempotent, sicher bei Updates.
 
 ## Projektstruktur
 
 ```
 /app
-  index.tsx           -- Eintragsliste (Startscreen)
-  new.tsx             -- Neuer Eintrag
-  entry/[id].tsx      -- Eintrag bearbeiten
-  settings.tsx        -- Einstellungen
+  index.tsx             -- Eintragsliste (Startscreen)
+  new.tsx               -- Neuer Eintrag
+  entry/[id].tsx        -- Eintrag bearbeiten
+  settings.tsx          -- Einstellungen
+  stats.tsx             -- Statistiken
 /components
   EntryCard.tsx
   TagInput.tsx
-  CategoryPicker.tsx
+  DropdownPicker.tsx    -- Material Exposed Dropdown (single + multi)
+  QualifierPicker.tsx   -- Emoji-Reihe für Laune/Befinden
   TimestampPicker.tsx
+  qualifiers.ts         -- MOOD_EMOJIS, HEALTH_EMOJIS, emojiForLevel()
+  theme.ts              -- useColors(), Dark/Light Palette
+/contexts
+  BiometricContext.tsx  -- Lock-Screen als Overlay (App-State bleibt erhalten)
+  ThemeContext.tsx
 /db
-  schema.ts           -- SQL-Definitionen + Migrationen
-  entries.ts          -- CRUD Entries
-  tags.ts             -- CRUD Tags (upsert bei Neueingabe)
-  categories.ts       -- CRUD Categories
+  schema.ts             -- SQL-Definitionen + Migrationen + closeDb()
+  entries.ts            -- CRUD Entries (inkl. mood/health/geo)
+  tags.ts               -- CRUD Tags (upsert bei Neueingabe)
+  categories.ts         -- CRUD Categories
+  stats.ts              -- Aggregierte Statistiken
 /sync
-  webdav.ts           -- Nextcloud WebDAV Sync
+  webdav.ts             -- Nextcloud WebDAV Sync + Restore
+  backgroundSync.ts     -- Konfigurierbares Auto-Sync-Intervall
+/utils
+  auth.ts               -- SHA-256 Passwort-Hashing (SecureStore)
+  crypto.ts             -- AES-Verschlüsselung der DB-Datei
+  location.ts           -- GPS + Reverse Geocoding → Stadtname
+  export.ts             -- JSON- und CSV-Export
 /hooks
   useEntries.ts
   useTags.ts
@@ -80,59 +102,97 @@ INSERT INTO categories (name) VALUES
 - Kein Raw-SQL in Komponenten – immer über `/db`-Funktionen
 - Tags per upsert anlegen (entstehen automatisch beim ersten Gebrauch)
 - `timestamp` ist User-Zeit (editierbar), `created_at` ist Systemzeit (immutable, nie überschreiben)
-- Nextcloud-Passwort in `expo-secure-store`, nie in AsyncStorage
+- Alle Secrets (Nextcloud-Passwort, Enc-Key, Lock-Passwort-Hash) in `expo-secure-store`, nie in AsyncStorage
 - Kein State-Management-Framework – useState + Context reicht
-- Dark Mode bevorzugt
-- Eine Hand bedienbar, große Tipp-Targets
+- Dark Mode bevorzugt, Navy/Gold Farbschema (`bg:#0F1B2D`, `accent:#C9A84C`)
+- Eine Hand bedienbar, Mindest-Touch-Target 48px (Material Design)
+- Speichern-Button immer im Stack-Header (sichtbar über Tastatur)
+- Lock-Screen als absolutes Overlay rendern – nie die children unmounten
 
 ## Screens
 
 ### index.tsx – Eintragsliste
 - Chronologisch, neueste oben
-- Kompakte Karten: Timestamp, Text-Preview, Kategorie-Badges, Tags
-- Filterbar nach Kategorie und/oder Tag
+- Kompakte Karten: Timestamp, Text-Preview, Laune/Befinden-Emojis, Kategorie-Badges, Tags, Standort
+- Segmented Control für Zeitfilter (Heute / Woche / Monat / Alles)
+- Multi-Select Dropdowns für Kategorie- und Tag-Filter
 - Volltextsuche
-- FAB (Floating Action Button) → new.tsx
+- FAB → new.tsx
 
-### new.tsx – Neuer Eintrag
+### new.tsx / entry/[id].tsx – Eintrag erstellen/bearbeiten
 - Timestamp: auto = jetzt, per Tap editierbar
 - Freitext (mehrzeilig, Autofokus beim Öffnen)
-- Kategorien: Mehrfachwahl (Chips)
-- Tags: Freitexteingabe mit Autocomplete aus bestehenden Tags
-- Speichern-Button prominent
-
-### entry/[id].tsx – Bearbeiten
-- Gleiche UI wie new.tsx, vorausgefüllt
-- Löschen mit Bestätigung
+- QualifierPicker: Laune (😞→😄) und Befinden (🤒→💪), je 5 Emoji-Stufen
+- Standort-Pill: tippt GPS, zeigt Stadtname, Tap zum Entfernen
+- Kategorien: Multi-Select Dropdown
+- Tags: Freitexteingabe mit Autocomplete
+- Löschen mit Bestätigung (nur edit)
 
 ### settings.tsx – Einstellungen
-- Kategorien verwalten (hinzufügen, umbenennen)
-- Nextcloud: URL, Benutzername, Passwort
-- Sync-Button + letzter Sync-Zeitstempel
-- Placeholder: Verschlüsselung (nicht aktiv in v1)
+- Kategorien und Tags verwalten (hinzufügen, umbenennen, löschen)
+- Nextcloud: URL, Benutzername, Passwort, Pfad
+- Sync-Button + Restore-Button + letzter Sync-Zeitstempel
+- Auto-Sync: Aus / 15 Min / 1 Std / 6 Std / 24 Std
+- Darstellung: Dark/Light Toggle
+- Biometrie-Lock: aktivieren/deaktivieren, Passwort ändern, **Passwort-Reset per Biometrie**
+- Verschlüsselung: AES vor Upload, Schlüssel zurücksetzen
+- Export: JSON / CSV
+- Über die App
 
-## Sync
-- Manuell über Button in Settings
-- Überträgt die SQLite-Datei per WebDAV in ein konfigurierbares Verzeichnis auf Nextcloud
-- Keine automatische Hintergrundsynchronisation in v1
-- Fehler klar anzeigen (falsche URL, falsches Passwort etc.)
+### stats.tsx – Statistiken
+- Anzahl Einträge gesamt / diesen Monat
+- Ø Laune und Ø Befinden (nur wenn Daten vorhanden)
 
-## Nicht in v1
-- Verschlüsselung (Architektur muss es später ermöglichen)
-- Automatischer Hintergrundsync
-- Auswertungen oder Diagramme
-- iOS
-- Bilder oder Anhänge
-- Biometrie / Passwortschutz
+## Sicherheit & Lock
 
-## Entwicklungsreihenfolge
-1. Expo-Projekt initialisieren (Expo Router, TypeScript)
-2. SQLite-Schema anlegen inkl. Seed-Kategorien
-3. CRUD-Funktionen in `/db`
-4. Screen: Eintragsliste
-5. Screen: Neuer Eintrag
-6. Screen: Eintrag bearbeiten
-7. Suche + Filter
-8. Screen: Settings + Kategorienverwaltung
-9. WebDAV-Sync
-10. APK-Build via EAS
+### Biometrie-Lock (BiometricContext)
+- Sperrt beim App-Start (wenn aktiviert) und nach 15 Sekunden im Hintergrund
+- **15s Grace Period**: System-Dialoge (Standort-Permission etc.) triggern keinen Lock
+- Lock-Screen als `absoluteFillObject`-Overlay – App-State (offene Formulare) bleibt erhalten
+- Zwei Modi: Biometrie (`authenticateAsync`) und Passwort-Fallback (TextInput)
+- Passwort-Reset ohne altes Passwort: erst Biometrie-Bestätigung, dann neues Passwort setzen
+
+### Passwort (utils/auth.ts)
+- SHA-256 via `expo-crypto.digestStringAsync`
+- Gespeichert als Hash in SecureStore (`lock_password_hash`)
+
+### Verschlüsselung (utils/crypto.ts)
+- AES (crypto-js) verschlüsselt die SQLite-Datei vor dem Upload
+- Schlüssel: 32 zufällige Bytes als Hex-String in SecureStore (`enc_key`)
+- Pfade müssen `file://`-Prefix haben (expo-file-system/legacy Anforderung)
+- Entschlüsselung beim Restore: `decryptToPath()` → DB ersetzen → `initDb()`
+
+## Sync (sync/webdav.ts)
+- Upload: DB-Datei (ggf. verschlüsselt als `.db.enc`) per WebDAV PUT
+- Restore: Download → DB schließen (`closeDb()`) → ersetzen → WAL/SHM löschen → `initDb()`
+- Auto-Sync via `backgroundSync.ts` mit konfigurierbarem Intervall
+- Fehler werden als Alert angezeigt
+
+## Build-Umgebung
+
+### Cloud (EAS)
+```bash
+eas build --platform android --profile preview --non-interactive
+```
+
+### Lokal
+```bash
+source ~/.bashrc   # lädt JAVA_HOME, ANDROID_HOME
+eas build --local --platform android --profile preview
+# oder direkt auf angeschlossenes Gerät:
+npx expo prebuild  # einmalig → generiert android/
+npx expo run:android
+```
+
+Installiertes Tooling:
+- Android Studio 2024.3.2 → `/opt/android-studio`
+- Java (JBR 21) → `/opt/android-studio/jbr`
+- Android SDK → `/opt/android-sdk`
+- build-tools 35.0.0, platform-tools 37.0, platforms;android-35
+- `studio` Symlink → `/usr/local/bin/studio`
+
+## Noch offen / Nächste Schritte
+- Recovery Code für "weder Biometrie noch Passwort" Szenario
+- iOS-Support (nicht geplant)
+- Bilder/Anhänge (nicht geplant)
+- Auswertungen/Diagramme (optional)
