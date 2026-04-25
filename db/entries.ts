@@ -6,6 +6,8 @@ export interface Entry {
   text: string;
   created_at: number;
   updated_at: number;
+  mood: number | null;
+  health: number | null;
   categories: string[];
   tags: string[];
 }
@@ -15,6 +17,8 @@ export interface EntryInput {
   text: string;
   categoryIds: number[];
   tagIds: number[];
+  mood?: number | null;
+  health?: number | null;
 }
 
 export async function getEntryDatesInMonth(year: number, month: number): Promise<number[]> {
@@ -38,7 +42,7 @@ export async function getEntries(opts?: {
   const db = await getDb();
 
   let query = `
-    SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at
+    SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at, e.mood, e.health
     FROM entries e
   `;
   const joins: string[] = [];
@@ -92,7 +96,7 @@ export async function getEntries(opts?: {
 export async function getEntry(id: number): Promise<Entry | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<Omit<Entry, 'categories' | 'tags'>>(
-    `SELECT id, timestamp, text, created_at, updated_at FROM entries WHERE id = ?`,
+    `SELECT id, timestamp, text, created_at, updated_at, mood, health FROM entries WHERE id = ?`,
     [id]
   );
   if (!row) return null;
@@ -116,8 +120,8 @@ export async function createEntry(input: EntryInput): Promise<number> {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    `INSERT INTO entries (timestamp, text, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-    [input.timestamp, input.text, now, now]
+    `INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health) VALUES (?, ?, ?, ?, ?, ?)`,
+    [input.timestamp, input.text, now, now, input.mood ?? null, input.health ?? null]
   );
   const id = result.lastInsertRowId;
   await setEntryRelations(id, input.categoryIds, input.tagIds);
@@ -128,8 +132,8 @@ export async function updateEntry(id: number, input: EntryInput): Promise<void> 
   const db = await getDb();
   const now = Date.now();
   await db.runAsync(
-    `UPDATE entries SET timestamp = ?, text = ?, updated_at = ? WHERE id = ?`,
-    [input.timestamp, input.text, now, id]
+    `UPDATE entries SET timestamp = ?, text = ?, updated_at = ?, mood = ?, health = ? WHERE id = ?`,
+    [input.timestamp, input.text, now, input.mood ?? null, input.health ?? null, id]
   );
   await db.runAsync(`DELETE FROM entry_categories WHERE entry_id = ?`, [id]);
   await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [id]);

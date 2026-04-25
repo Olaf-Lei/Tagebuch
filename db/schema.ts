@@ -63,4 +63,8 @@ export async function initDb(): Promise<void> {
     INSERT OR IGNORE INTO categories (name) VALUES
       ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
   `);
+
+  // Migration: add qualifier columns if not present
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN mood INTEGER;'); } catch {}
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN health INTEGER;'); } catch {}
 }

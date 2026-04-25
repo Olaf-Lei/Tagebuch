@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HEALTH_EMOJIS, MOOD_EMOJIS, emojiForLevel } from '../components/qualifiers';
 import { useColors } from '../components/theme';
 import { getStats, type Stats } from '../db/stats';
 
@@ -144,6 +145,22 @@ export default function StatsScreen() {
             <Text style={styles.cardLabel}>Tage{'\n'}Rekord</Text>
           </View>
         </View>
+        {(stats.avgMood !== null || stats.avgHealth !== null) && (
+          <View style={styles.cardRow}>
+            {stats.avgMood !== null && (
+              <View style={styles.card}>
+                <Text style={styles.cardNum}>{emojiForLevel(MOOD_EMOJIS, Math.round(stats.avgMood))}</Text>
+                <Text style={styles.cardLabel}>Ø Laune{'\n'}({stats.avgMood.toFixed(1)})</Text>
+              </View>
+            )}
+            {stats.avgHealth !== null && (
+              <View style={styles.card}>
+                <Text style={styles.cardNum}>{emojiForLevel(HEALTH_EMOJIS, Math.round(stats.avgHealth))}</Text>
+                <Text style={styles.cardLabel}>Ø Befinden{'\n'}({stats.avgHealth.toFixed(1)})</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Heatmap */}
         <View>

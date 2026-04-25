@@ -6,8 +6,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryPicker } from '../components/CategoryPicker';
+import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
 import { TimestampPicker } from '../components/TimestampPicker';
+import { HEALTH_EMOJIS, MOOD_EMOJIS } from '../components/qualifiers';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { createEntry } from '../db/entries';
@@ -36,6 +38,8 @@ export default function NewEntryScreen() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
+  const [mood, setMood] = useState<number | null>(null);
+  const [health, setHealth] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,6 +55,8 @@ export default function NewEntryScreen() {
       text: text.trim(),
       categoryIds: selectedCategoryIds,
       tagIds: selectedTagIds,
+      mood,
+      health,
     });
     router.back();
   };
@@ -87,6 +93,9 @@ export default function NewEntryScreen() {
             multiline
             textAlignVertical="top"
           />
+
+          <QualifierPicker label="Laune" emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
+          <QualifierPicker label="Befinden" emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
 
           <Text style={styles.label}>Kategorien</Text>
           <CategoryPicker
