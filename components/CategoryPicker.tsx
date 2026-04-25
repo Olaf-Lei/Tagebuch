@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Category } from '../db/categories';
-import { colors } from './theme';
+import { useColors } from './theme';
 
 interface Props {
   categories: Category[];
@@ -10,10 +10,17 @@ interface Props {
 }
 
 export function CategoryPicker({ categories, selected, onChange }: Props) {
+  const c = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+    wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+    chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+    chipText: { fontSize: 14, color: c.muted },
+    chipTextActive: { color: '#fff', fontWeight: '600' },
+  }), [c]);
+
   const toggle = (id: number) => {
-    onChange(
-      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]
-    );
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   };
 
   return (
@@ -26,26 +33,10 @@ export function CategoryPicker({ categories, selected, onChange }: Props) {
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => toggle(cat.id)}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>
-              {cat.name}
-            </Text>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{cat.name}</Text>
           </Pressable>
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { fontSize: 14, color: colors.muted },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
-});

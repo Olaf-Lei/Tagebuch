@@ -3,7 +3,33 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
+
+function AppShell() {
+  const { mode } = useTheme();
+  const c = mode === 'dark' ? darkColors : lightColors;
+
+  return (
+    <>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: c.surface },
+          headerTintColor: c.text,
+          headerTitleStyle: { fontWeight: '600' },
+          contentStyle: { backgroundColor: c.bg },
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: 'Tagebuch' }} />
+        <Stack.Screen name="new" options={{ title: 'Neuer Eintrag', presentation: 'modal' }} />
+        <Stack.Screen name="entry/[id]" options={{ title: 'Eintrag' }} />
+        <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
+      </Stack>
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -16,20 +42,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: '#111111' },
-          headerTintColor: '#e8e8e8',
-          headerTitleStyle: { fontWeight: '600' },
-          contentStyle: { backgroundColor: '#111111' },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: 'Tagebuch' }} />
-        <Stack.Screen name="new" options={{ title: 'Neuer Eintrag', presentation: 'modal' }} />
-        <Stack.Screen name="entry/[id]" options={{ title: 'Eintrag' }} />
-        <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
-      </Stack>
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Entry } from '../db/entries';
-import { colors } from './theme';
+import { useColors } from './theme';
 
 interface Props {
   entry: Entry;
@@ -18,6 +18,18 @@ function formatDate(ts: number): string {
 
 export function EntryCard({ entry }: Props) {
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+    card: { backgroundColor: c.surface, borderRadius: 12, padding: 14, marginBottom: 10, gap: 6 },
+    pressed: { opacity: 0.75 },
+    timestamp: { fontSize: 12, color: c.muted },
+    preview: { fontSize: 15, color: c.text, lineHeight: 21 },
+    badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+    categoryBadge: { backgroundColor: c.accent + '33', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+    categoryText: { fontSize: 12, color: c.accent },
+    tagBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+    tagText: { fontSize: 12, color: c.muted },
+  }), [c]);
 
   return (
     <Pressable
@@ -28,9 +40,9 @@ export function EntryCard({ entry }: Props) {
       <Text style={styles.preview} numberOfLines={3}>{entry.text}</Text>
       {(entry.categories.length > 0 || entry.tags.length > 0) && (
         <View style={styles.badges}>
-          {entry.categories.map((c) => (
-            <View key={c} style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{c}</Text>
+          {entry.categories.map((cat) => (
+            <View key={cat} style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{cat}</Text>
             </View>
           ))}
           {entry.tags.map((t) => (
@@ -43,31 +55,3 @@ export function EntryCard({ entry }: Props) {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    gap: 6,
-  },
-  pressed: { opacity: 0.75 },
-  timestamp: { fontSize: 12, color: colors.muted },
-  preview: { fontSize: 15, color: colors.text, lineHeight: 21 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-  categoryBadge: {
-    backgroundColor: colors.accent + '33',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  categoryText: { fontSize: 12, color: colors.accent },
-  tagBadge: {
-    backgroundColor: colors.border,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: { fontSize: 12, color: colors.muted },
-});
