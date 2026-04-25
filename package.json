@@ -1,12 +1,18 @@
 {
   "name": "tagebuch",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "bump": "node scripts/bump.js patch",
+    "bump:patch": "node scripts/bump.js patch",
+    "bump:minor": "node scripts/bump.js minor",
+    "bump:major": "node scripts/bump.js major",
+    "build": "npm run bump:patch && eas build --platform android --profile preview --non-interactive --message \"v$(node -p \"require('./package.json').version\")\"",
+    "build:minor": "npm run bump:minor && eas build --platform android --profile preview --non-interactive --message \"v$(node -p \"require('./package.json').version\")\""
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "^9.1.0",
