@@ -203,7 +203,7 @@ export default function SettingsScreen() {
 
           {/* Nextcloud */}
           <Text style={styles.section}>Nextcloud</Text>
-          <Text style={styles.fieldLabel}>URL (z. B. https://cloud.example.com)</Text>
+          <Text style={styles.fieldLabel}>Nextcloud-URL (z. B. https://cloud.example.com)</Text>
           <TextInput
             style={styles.field}
             value={config.url ?? ''}
