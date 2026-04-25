@@ -15,10 +15,13 @@ import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, type WebDavConfig } from '../sync/webdav';
 import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
+import { useBiometric } from '../contexts/BiometricContext';
+import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey } from '../utils/crypto';
 
 export default function SettingsScreen() {
   const c = useColors();
   const { mode, toggle } = useTheme();
+  const { enabled: bioEnabled, available: bioAvailable, setEnabled: setBioEnabled } = useBiometric();
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
@@ -70,6 +73,9 @@ export default function SettingsScreen() {
       backgroundColor: c.surface, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12,
     },
     themeLabel: { fontSize: 15, color: c.text },
+    warnText: { fontSize: 12, color: c.muted, marginTop: 2 },
+    resetBtn: { borderWidth: 1, borderColor: c.danger, borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 4 },
+    resetBtnText: { color: c.danger, fontSize: 14 },
   }), [c]);
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -85,6 +91,7 @@ export default function SettingsScreen() {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
+  const [encEnabled, setEncEnabledState] = useState(false);
 
   const SYNC_INTERVALS = [
     { label: 'Aus', value: 0 },
@@ -100,6 +107,7 @@ export default function SettingsScreen() {
     loadConfig().then(setConfig);
     getLastSync().then(setLastSync);
     getAutoSyncInterval().then(setAutoSyncIntervalState);
+    isEncryptionEnabled().then(setEncEnabledState);
   }, []);
 
   const addCategory = async () => {
@@ -361,11 +369,56 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Placeholder encryption */}
-          <Text style={styles.section}>Verschlüsselung</Text>
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderText}>Nicht aktiv in v1</Text>
+          {/* Biometrie */}
+          <Text style={styles.section}>Biometrie</Text>
+          <View style={styles.themeRow}>
+            <Text style={[styles.themeLabel, !bioAvailable && { color: c.muted }]}>
+              Biometrie-Lock
+            </Text>
+            <Switch
+              value={bioEnabled}
+              onValueChange={setBioEnabled}
+              disabled={!bioAvailable}
+              trackColor={{ false: c.border, true: c.accent }}
+              thumbColor="#fff"
+            />
           </View>
+          {!bioAvailable && (
+            <Text style={styles.warnText}>Kein Fingerabdruck oder Gesichtserkennung eingerichtet.</Text>
+          )}
+
+          {/* Verschlüsselung */}
+          <Text style={styles.section}>Verschlüsselung</Text>
+          <View style={styles.themeRow}>
+            <Text style={styles.themeLabel}>Verschlüsselung vor Upload</Text>
+            <Switch
+              value={encEnabled}
+              onValueChange={async (v) => {
+                await setEncryptionEnabled(v);
+                setEncEnabledState(v);
+              }}
+              trackColor={{ false: c.border, true: c.accent }}
+              thumbColor="#fff"
+            />
+          </View>
+          <Text style={styles.warnText}>
+            Verschlüsselte Backups können nur auf diesem Gerät wiederhergestellt werden.
+          </Text>
+          {encEnabled && (
+            <Pressable
+              style={styles.resetBtn}
+              onPress={() => Alert.alert(
+                'Schlüssel zurücksetzen?',
+                'Bestehende Backups auf Nextcloud können danach nicht mehr entschlüsselt werden.',
+                [
+                  { text: 'Abbrechen', style: 'cancel' },
+                  { text: 'Zurücksetzen', style: 'destructive', onPress: () => resetEncryptionKey() },
+                ],
+              )}
+            >
+              <Text style={styles.resetBtnText}>Schlüssel zurücksetzen</Text>
+            </Pressable>
+          )}
 
           {/* Export */}
           <Text style={styles.section}>Export</Text>
@@ -384,7 +437,7 @@ export default function SettingsScreen() {
             <Text style={styles.aboutTitle}>Tagebuch</Text>
             <Text style={styles.aboutLine}>Version {Constants.expoConfig?.version ?? '–'}</Text>
             <Text style={styles.aboutLine}>Lokale Daten · Kein Cloud-Zwang</Text>
-            <Text style={styles.aboutLine}>Gebaut mit Expo SDK 55</Text>
+            <Text style={styles.aboutLine}>v2 Beta · Gebaut mit Expo SDK 55</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

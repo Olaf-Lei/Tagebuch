@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { BiometricProvider } from '../contexts/BiometricContext';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
@@ -46,7 +47,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppShell />
+        <BiometricProvider>
+          <AppShell />
+        </BiometricProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
