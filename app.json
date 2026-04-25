@@ -33,7 +33,13 @@
           "faceIDPermission": false
         }
       ],
-      "expo-local-authentication"
+      "expo-local-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Wird für Geotagging von Einträgen verwendet."
+        }
+      ]
     ],
     "extra": {
       "router": {},

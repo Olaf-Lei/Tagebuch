@@ -33,6 +33,8 @@ export function EntryCard({ entry }: Props) {
     categoryText: { fontSize: 12, color: c.accent },
     tagBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     tagText: { fontSize: 12, color: c.muted },
+    locationBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+    locationText: { fontSize: 12, color: c.muted },
   }), [c]);
 
   return (
@@ -62,6 +64,11 @@ export function EntryCard({ entry }: Props) {
               <Text style={styles.tagText}>#{t}</Text>
             </View>
           ))}
+          {entry.locationName && (
+            <View style={styles.locationBadge}>
+              <Text style={styles.locationText}>📍 {entry.locationName}</Text>
+            </View>
+          )}
         </View>
       )}
     </Pressable>

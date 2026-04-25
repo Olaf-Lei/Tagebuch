@@ -64,7 +64,10 @@ export async function initDb(): Promise<void> {
       ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
   `);
 
-  // Migration: add qualifier columns if not present
+  // Migration: add qualifier and geo columns if not present
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN mood INTEGER;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN health INTEGER;'); } catch {}
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN latitude REAL;'); } catch {}
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN longitude REAL;'); } catch {}
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN location_name TEXT;'); } catch {}
 }
