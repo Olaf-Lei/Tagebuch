@@ -42,7 +42,7 @@ export default function RootLayout() {
     initDb().then(() => setReady(true));
   }, []);
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: '#111111' }} />;
+  if (!ready) return <View style={{ flex: 1, backgroundColor: '#0F1B2D' }} />;
 
   return (
     <SafeAreaProvider>

@@ -12,12 +12,12 @@ export interface Colors {
 }
 
 export const darkColors: Colors = {
-  bg: '#111111',
-  surface: '#1e1e1e',
-  border: '#2e2e2e',
-  text: '#e8e8e8',
-  muted: '#888888',
-  accent: '#4a9eff',
+  bg: '#0F1B2D',
+  surface: '#1A2D47',
+  border: '#2A3F5A',
+  text: '#FFFFFF',
+  muted: '#8A9BB0',
+  accent: '#C9A84C',
   danger: '#e05555',
 };
 
@@ -27,7 +27,7 @@ export const lightColors: Colors = {
   border: '#d1d1d6',
   text: '#1a1a1a',
   muted: '#8e8e93',
-  accent: '#0066cc',
+  accent: '#B8943E',
   danger: '#cc3333',
 };
 
