@@ -96,9 +96,14 @@ export default function IndexScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
         headerRight: () => (
-          <Pressable onPress={() => router.push('/calendar')} style={{ paddingHorizontal: 14, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 20, color: c.accent }}>📅</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row' }}>
+            <Pressable onPress={() => router.push('/stats')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 19, color: c.accent }}>📊</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/calendar')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 19, color: c.accent }}>📅</Text>
+            </Pressable>
+          </View>
         ),
       }} />
       <View style={styles.filterBar}>
