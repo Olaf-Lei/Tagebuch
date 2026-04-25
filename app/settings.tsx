@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -12,7 +13,7 @@ import {
   renameCategory, type Category,
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
-import { loadConfig, saveConfig, getLastSync, syncNow, type WebDavConfig } from '../sync/webdav';
+import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
 import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
 import { useBiometric } from '../contexts/BiometricContext';
@@ -22,6 +23,7 @@ export default function SettingsScreen() {
   const c = useColors();
   const { mode, toggle } = useTheme();
   const { enabled: bioEnabled, available: bioAvailable, setEnabled: setBioEnabled } = useBiometric();
+  const router = useRouter();
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
@@ -90,6 +92,7 @@ export default function SettingsScreen() {
   const [config, setConfig] = useState<Partial<WebDavConfig>>({});
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
   const [encEnabled, setEncEnabledState] = useState(false);
 
@@ -177,6 +180,31 @@ export default function SettingsScreen() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleRestore = () => {
+    Alert.alert(
+      'Aus Nextcloud wiederherstellen?',
+      'Alle lokalen Daten werden durch das Backup ersetzt.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Wiederherstellen', style: 'destructive', onPress: async () => {
+            setRestoring(true);
+            try {
+              await restoreNow();
+              Alert.alert('Wiederhergestellt', 'Daten wurden aus dem Backup geladen.', [
+                { text: 'OK', onPress: () => router.replace('/') },
+              ]);
+            } catch (e: any) {
+              Alert.alert('Fehler', e.message ?? 'Wiederherstellung fehlgeschlagen.');
+            } finally {
+              setRestoring(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const saveNextcloud = async () => {
@@ -327,10 +355,16 @@ export default function SettingsScreen() {
           </Pressable>
 
           <View style={styles.syncRow}>
-            <Pressable style={styles.syncButton} onPress={handleSync} disabled={syncing}>
+            <Pressable style={styles.syncButton} onPress={handleSync} disabled={syncing || restoring}>
               {syncing
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={styles.syncText}>Jetzt synchronisieren</Text>
+              }
+            </Pressable>
+            <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring}>
+              {restoring
+                ? <ActivityIndicator color={c.accent} />
+                : <Text style={styles.saveText}>Aus Nextcloud wiederherstellen</Text>
               }
             </Pressable>
             {lastSync && (

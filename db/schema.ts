@@ -14,6 +14,13 @@ export async function getDbPath(): Promise<string> {
   return db.databasePath;
 }
 
+export async function closeDb(): Promise<void> {
+  if (_db) {
+    await _db.closeAsync();
+    _db = null;
+  }
+}
+
 export async function initDb(): Promise<void> {
   const db = await getDb();
   await db.execAsync(`

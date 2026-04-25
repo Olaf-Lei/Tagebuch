@@ -1,12 +1,15 @@
 import {
   getInfoAsync,
   uploadAsync,
+  downloadAsync,
+  copyAsync,
   deleteAsync,
+  cacheDirectory,
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
-import { getDbPath } from '../db/schema';
-import { isEncryptionEnabled, encryptDbToTemp } from '../utils/crypto';
+import { getDbPath, closeDb, initDb } from '../db/schema';
+import { isEncryptionEnabled, encryptDbToTemp, decryptToPath } from '../utils/crypto';
 
 const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
@@ -106,4 +109,56 @@ export async function syncNow(): Promise<void> {
     minute: '2-digit',
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
+}
+
+export async function restoreNow(): Promise<void> {
+  const config = await loadConfig();
+  if (!config.url || !config.username || !config.password) {
+    throw new Error('Nextcloud nicht konfiguriert.');
+  }
+
+  const encrypted = await isEncryptionEnabled();
+  const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
+  const base = config.url.replace(/\/$/, '');
+  const remotePath = (config.path ?? '/Tagebuch/').replace(/\/$/, '') + '/' + remoteFilename;
+  const downloadUrl = base.includes('/remote.php/dav') || base.includes('/webdav')
+    ? `${base}${remotePath}`
+    : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${remotePath}`;
+
+  const credentials = btoa(`${config.username}:${config.password}`);
+  const tempPath = (cacheDirectory ?? '') + 'tagebuch_restore.tmp';
+
+  const dlResult = await downloadAsync(downloadUrl, tempPath, {
+    headers: { Authorization: `Basic ${credentials}` },
+  });
+
+  if (dlResult.status >= 400) {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+    const msg =
+      dlResult.status === 401
+        ? 'Authentifizierung fehlgeschlagen.'
+        : dlResult.status === 404
+          ? 'Kein Backup gefunden. Zuerst synchronisieren.'
+          : `Fehler ${dlResult.status}: Download fehlgeschlagen.`;
+    throw new Error(msg);
+  }
+
+  const rawDbPath = await getDbPath();
+  await closeDb();
+
+  try {
+    if (encrypted) {
+      await decryptToPath(tempPath, rawDbPath);
+    } else {
+      await deleteAsync(`file://${rawDbPath}`, { idempotent: true });
+      await copyAsync({ from: tempPath, to: `file://${rawDbPath}` });
+    }
+    // Remove stale WAL/SHM files
+    await deleteAsync(`file://${rawDbPath}-wal`, { idempotent: true }).catch(() => {});
+    await deleteAsync(`file://${rawDbPath}-shm`, { idempotent: true }).catch(() => {});
+  } finally {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+  }
+
+  await initDb();
 }
