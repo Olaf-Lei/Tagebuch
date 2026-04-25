@@ -34,8 +34,8 @@ export async function getEntryDatesInMonth(year: number, month: number): Promise
 
 export async function getEntries(opts?: {
   search?: string;
-  categoryId?: number;
-  tagId?: number;
+  categoryIds?: number[];
+  tagIds?: number[];
   startTime?: number;
   endTime?: number;
 }): Promise<Entry[]> {
@@ -49,13 +49,15 @@ export async function getEntries(opts?: {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
-  if (opts?.categoryId) {
-    joins.push(`JOIN entry_categories ec ON e.id = ec.entry_id AND ec.category_id = ?`);
-    params.push(opts.categoryId);
+  if (opts?.categoryIds?.length) {
+    const placeholders = opts.categoryIds.map(() => '?').join(',');
+    joins.push(`JOIN entry_categories ec ON e.id = ec.entry_id AND ec.category_id IN (${placeholders})`);
+    params.push(...opts.categoryIds);
   }
-  if (opts?.tagId) {
-    joins.push(`JOIN entry_tags et ON e.id = et.entry_id AND et.tag_id = ?`);
-    params.push(opts.tagId);
+  if (opts?.tagIds?.length) {
+    const placeholders = opts.tagIds.map(() => '?').join(',');
+    joins.push(`JOIN entry_tags et ON e.id = et.entry_id AND et.tag_id IN (${placeholders})`);
+    params.push(...opts.tagIds);
   }
   if (opts?.search) {
     conditions.push(`e.text LIKE ?`);

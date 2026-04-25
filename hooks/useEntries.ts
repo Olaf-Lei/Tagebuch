@@ -3,8 +3,8 @@ import { getEntries, type Entry } from '../db/entries';
 
 interface Filters {
   search?: string;
-  categoryId?: number;
-  tagId?: number;
+  categoryIds?: number[];
+  tagIds?: number[];
   startTime?: number;
   endTime?: number;
 }
@@ -12,6 +12,9 @@ interface Filters {
 export function useEntries(filters: Filters = {}) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const catKey = filters.categoryIds?.join(',') ?? '';
+  const tagKey = filters.tagIds?.join(',') ?? '';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -21,7 +24,8 @@ export function useEntries(filters: Filters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters.search, filters.categoryId, filters.tagId, filters.startTime, filters.endTime]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search, catKey, tagKey, filters.startTime, filters.endTime]);
 
   useEffect(() => { load(); }, [load]);
 

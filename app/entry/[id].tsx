@@ -5,7 +5,7 @@ import {
   Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CategoryPicker } from '../../components/CategoryPicker';
+import { DropdownPicker } from '../../components/DropdownPicker';
 import { QualifierPicker } from '../../components/QualifierPicker';
 import { TagInput } from '../../components/TagInput';
 import { TimestampPicker } from '../../components/TimestampPicker';
@@ -143,10 +143,12 @@ export default function EditEntryScreen() {
           <QualifierPicker label="Befinden" emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
 
           <Text style={styles.label}>Kategorien</Text>
-          <CategoryPicker
-            categories={categories}
+          <DropdownPicker
+            options={categories}
             selected={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
+            placeholder="Kategorien wählen…"
+            multi
           />
 
           <Text style={styles.label}>Tags</Text>
