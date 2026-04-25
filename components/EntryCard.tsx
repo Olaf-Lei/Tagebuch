@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Entry } from '../db/entries';
+import { HEALTH_EMOJIS, MOOD_EMOJIS, emojiForLevel } from './qualifiers';
 import { useColors } from './theme';
 
 interface Props {
@@ -22,7 +23,10 @@ export function EntryCard({ entry }: Props) {
   const styles = useMemo(() => StyleSheet.create({
     card: { backgroundColor: c.surface, borderRadius: 12, padding: 14, marginBottom: 10, gap: 6 },
     pressed: { opacity: 0.75 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     timestamp: { fontSize: 12, color: c.muted },
+    qualifiers: { flexDirection: 'row', gap: 4 },
+    qualifierEmoji: { fontSize: 15 },
     preview: { fontSize: 15, color: c.text, lineHeight: 21 },
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
     categoryBadge: { backgroundColor: c.accent + '33', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
@@ -36,7 +40,15 @@ export function EntryCard({ entry }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={() => router.push(`/entry/${entry.id}`)}
     >
-      <Text style={styles.timestamp}>{formatDate(entry.timestamp)}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.timestamp}>{formatDate(entry.timestamp)}</Text>
+        {(entry.mood || entry.health) ? (
+          <View style={styles.qualifiers}>
+            {entry.mood ? <Text style={styles.qualifierEmoji}>{emojiForLevel(MOOD_EMOJIS, entry.mood)}</Text> : null}
+            {entry.health ? <Text style={styles.qualifierEmoji}>{emojiForLevel(HEALTH_EMOJIS, entry.health)}</Text> : null}
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.preview} numberOfLines={3}>{entry.text}</Text>
       {(entry.categories.length > 0 || entry.tags.length > 0) && (
         <View style={styles.badges}>

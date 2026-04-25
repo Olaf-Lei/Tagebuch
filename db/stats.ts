@@ -9,6 +9,8 @@ export interface Stats {
   activeDays: number;
   currentStreak: number;
   longestStreak: number;
+  avgMood: number | null;
+  avgHealth: number | null;
   perDay: DayCount[];
   perMonth: MonthCount[];
   perCategory: NameCount[];
@@ -88,5 +90,17 @@ export async function getStats(): Promise<Stats> {
      GROUP BY t.id ORDER BY count DESC LIMIT 5`
   );
 
-  return { total, activeDays, currentStreak, longestStreak, perDay, perMonth, perCategory, perTag };
+  const avgMoodRow = await db.getFirstAsync<{ avg: number | null }>(
+    `SELECT AVG(mood) as avg FROM entries WHERE mood IS NOT NULL`
+  );
+  const avgHealthRow = await db.getFirstAsync<{ avg: number | null }>(
+    `SELECT AVG(health) as avg FROM entries WHERE health IS NOT NULL`
+  );
+
+  return {
+    total, activeDays, currentStreak, longestStreak,
+    avgMood: avgMoodRow?.avg ?? null,
+    avgHealth: avgHealthRow?.avg ?? null,
+    perDay, perMonth, perCategory, perTag,
+  };
 }
