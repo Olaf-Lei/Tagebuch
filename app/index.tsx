@@ -4,7 +4,7 @@ import {
   ActivityIndicator, FlatList, Pressable,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { EntryCard } from '../components/EntryCard';
 import { useColors } from '../components/theme';
@@ -15,6 +15,8 @@ import { useTags } from '../hooks/useTags';
 export default function IndexScreen() {
   const router = useRouter();
   const c = useColors();
+  const { bottom: bottomInset } = useSafeAreaInsets();
+  const fabBottom = Math.max(bottomInset, 16) + 12;
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     filterBar: { paddingHorizontal: 14, paddingTop: 10 },
@@ -28,18 +30,18 @@ export default function IndexScreen() {
     loader: { flex: 1 },
     empty: { textAlign: 'center', marginTop: 80, color: c.muted, fontSize: 15 },
     fab: {
-      position: 'absolute', bottom: 28, right: 20, width: 60, height: 60,
+      position: 'absolute', bottom: fabBottom, right: 20, width: 60, height: 60,
       borderRadius: 30, backgroundColor: c.accent, alignItems: 'center',
       justifyContent: 'center', elevation: 6,
     },
     fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
     settingsBtn: {
-      position: 'absolute', bottom: 32, left: 20, width: 52, height: 52,
+      position: 'absolute', bottom: fabBottom + 4, left: 20, width: 52, height: 52,
       borderRadius: 26, backgroundColor: c.surface, borderWidth: 1,
       borderColor: c.border, alignItems: 'center', justifyContent: 'center',
     },
     settingsText: { fontSize: 22, color: c.muted },
-  }), [c]);
+  }), [c, fabBottom]);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
