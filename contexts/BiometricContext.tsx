@@ -100,7 +100,7 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32 },
+  container: { ...StyleSheet.absoluteFillObject, zIndex: 9999, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32 },
   icon: { fontSize: 56 },
   title: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
   btn: { borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14, width: '100%', alignItems: 'center' },
@@ -165,7 +165,8 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <BiometricContext.Provider value={{ enabled, available, setEnabled }}>
-      {locked ? <LockScreen onUnlock={() => setLocked(false)} /> : children}
+      {children}
+      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
     </BiometricContext.Provider>
   );
 }
