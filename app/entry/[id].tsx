@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView,
   Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryPicker } from '../../components/CategoryPicker';
 import { TagInput } from '../../components/TagInput';
 import { TimestampPicker } from '../../components/TimestampPicker';
-import { colors } from '../../components/theme';
+import { useColors } from '../../components/theme';
 import { getCategories, type Category } from '../../db/categories';
 import { deleteEntry, getEntry, updateEntry } from '../../db/entries';
 import { getTags } from '../../db/tags';
@@ -16,6 +16,24 @@ import { getTags } from '../../db/tags';
 export default function EditEntryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.bg },
+    flex: { flex: 1 },
+    loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg },
+    content: { padding: 16, gap: 12, paddingBottom: 20 },
+    textInput: {
+      backgroundColor: c.surface, borderRadius: 10, padding: 14,
+      fontSize: 16, color: c.text, minHeight: 180, lineHeight: 24,
+    },
+    label: { fontSize: 13, color: c.muted, marginTop: 4 },
+    deleteButton: { marginTop: 20, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: c.danger, alignItems: 'center' },
+    deleteText: { color: c.danger, fontSize: 15 },
+    footer: { padding: 14, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.bg },
+    saveButton: { backgroundColor: c.accent, borderRadius: 12, padding: 16, alignItems: 'center' },
+    saveDisabled: { opacity: 0.4 },
+    saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  }), [c]);
 
   const [loading, setLoading] = useState(true);
   const [timestamp, setTimestamp] = useState(Date.now());
@@ -78,7 +96,7 @@ export default function EditEntryScreen() {
   if (loading) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={c.accent} />
       </View>
     );
   }
@@ -103,7 +121,7 @@ export default function EditEntryScreen() {
             multiline
             textAlignVertical="top"
             placeholder="Eintrag…"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={c.muted}
           />
 
           <Text style={styles.label}>Kategorien</Text>
@@ -142,42 +160,3 @@ export default function EditEntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
-  loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 20 },
-  textInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    color: colors.text,
-    minHeight: 180,
-    lineHeight: 24,
-  },
-  label: { fontSize: 13, color: colors.muted, marginTop: 4 },
-  deleteButton: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    alignItems: 'center',
-  },
-  deleteText: { color: colors.danger, fontSize: 15 },
-  footer: {
-    padding: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  saveButton: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  saveDisabled: { opacity: 0.4 },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});

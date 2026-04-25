@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Pressable,
   StyleSheet, Text, TextInput, View,
@@ -7,13 +7,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { EntryCard } from '../components/EntryCard';
-import { colors } from '../components/theme';
+import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 
 export default function IndexScreen() {
   const router = useRouter();
+  const c = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.bg },
+    filterBar: { paddingHorizontal: 14, paddingTop: 10 },
+    searchInput: {
+      backgroundColor: c.surface, borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: c.text,
+    },
+    categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
+    tagBar: { paddingHorizontal: 14, paddingBottom: 6 },
+    list: { paddingHorizontal: 14, paddingBottom: 100 },
+    loader: { flex: 1 },
+    empty: { textAlign: 'center', marginTop: 80, color: c.muted, fontSize: 15 },
+    fab: {
+      position: 'absolute', bottom: 28, right: 20, width: 60, height: 60,
+      borderRadius: 30, backgroundColor: c.accent, alignItems: 'center',
+      justifyContent: 'center', elevation: 6,
+    },
+    fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
+    settingsBtn: {
+      position: 'absolute', bottom: 32, left: 20, width: 52, height: 52,
+      borderRadius: 26, backgroundColor: c.surface, borderWidth: 1,
+      borderColor: c.border, alignItems: 'center', justifyContent: 'center',
+    },
+    settingsText: { fontSize: 22, color: c.muted },
+  }), [c]);
+
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [selectedTag, setSelectedTag] = useState<number | undefined>();
@@ -26,7 +53,7 @@ export default function IndexScreen() {
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
-  const filterCategories = categories.map((c) => ({ ...c }));
+  const filterCategories = categories.map((cat) => ({ ...cat }));
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -36,7 +63,7 @@ export default function IndexScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Suchen…"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={c.muted}
           clearButtonMode="while-editing"
         />
       </View>
@@ -63,7 +90,7 @@ export default function IndexScreen() {
         </View>
       )}
       {loading ? (
-        <ActivityIndicator style={styles.loader} color={colors.accent} />
+        <ActivityIndicator style={styles.loader} color={c.accent} />
       ) : (
         <FlatList
           data={entries}
@@ -85,52 +112,3 @@ export default function IndexScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  filterBar: { paddingHorizontal: 14, paddingTop: 10 },
-  searchInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.text,
-  },
-  categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
-  tagBar: { paddingHorizontal: 14, paddingBottom: 6 },
-  list: { paddingHorizontal: 14, paddingBottom: 100 },
-  loader: { flex: 1 },
-  empty: {
-    textAlign: 'center',
-    marginTop: 80,
-    color: colors.muted,
-    fontSize: 15,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-  },
-  fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
-  settingsBtn: {
-    position: 'absolute',
-    bottom: 32,
-    left: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsText: { fontSize: 22, color: colors.muted },
-});
