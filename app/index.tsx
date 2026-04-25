@@ -25,7 +25,13 @@ export default function IndexScreen() {
       paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: c.text,
     },
     categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
-    tagBar: { paddingHorizontal: 14, paddingBottom: 6 },
+    tagBar: { paddingHorizontal: 14, paddingBottom: 4 },
+    dateBar: { paddingHorizontal: 14, paddingBottom: 6 },
+    dateChip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+    dateChipActive: { backgroundColor: c.accent, borderColor: c.accent },
+    dateChipText: { fontSize: 13, color: c.muted },
+    dateChipTextActive: { color: '#fff', fontWeight: '600' },
+    dateRow: { flexDirection: 'row', gap: 8 },
     list: { paddingHorizontal: 14, paddingBottom: 100 },
     loader: { flex: 1 },
     empty: { textAlign: 'center', marginTop: 80, color: c.muted, fontSize: 15 },
@@ -43,15 +49,44 @@ export default function IndexScreen() {
     settingsText: { fontSize: 22, color: c.muted },
   }), [c, fabBottom]);
 
+  type DateRange = 'all' | 'today' | 'week' | 'month';
+  const DATE_RANGES: { key: DateRange; label: string }[] = [
+    { key: 'all', label: 'Alles' },
+    { key: 'today', label: 'Heute' },
+    { key: 'week', label: 'Woche' },
+    { key: 'month', label: 'Monat' },
+  ];
+
+  function dateRangeTimes(range: DateRange): { startTime?: number; endTime?: number } {
+    const now = new Date();
+    if (range === 'today') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      return { startTime: start };
+    }
+    if (range === 'week') {
+      const dow = (now.getDay() + 6) % 7; // Mon=0
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow).getTime();
+      return { startTime: start };
+    }
+    if (range === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      return { startTime: start };
+    }
+    return {};
+  }
+
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [selectedTag, setSelectedTag] = useState<number | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const allTags = useTags();
 
   useEffect(() => { getCategories().then(setCategories); }, []);
 
-  const { entries, loading, reload } = useEntries({ search, categoryId: selectedCategory, tagId: selectedTag });
+  const { entries, loading, reload } = useEntries({
+    search, categoryId: selectedCategory, tagId: selectedTag, ...dateRangeTimes(dateRange),
+  });
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -98,6 +133,21 @@ export default function IndexScreen() {
           />
         </View>
       )}
+      <View style={styles.dateBar}>
+        <View style={styles.dateRow}>
+          {DATE_RANGES.map(({ key, label }) => (
+            <Pressable
+              key={key}
+              style={[styles.dateChip, dateRange === key && styles.dateChipActive]}
+              onPress={() => setDateRange(key)}
+            >
+              <Text style={[styles.dateChipText, dateRange === key && styles.dateChipTextActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
       {loading ? (
         <ActivityIndicator style={styles.loader} color={c.accent} />
       ) : (

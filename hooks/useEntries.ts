@@ -5,6 +5,8 @@ interface Filters {
   search?: string;
   categoryId?: number;
   tagId?: number;
+  startTime?: number;
+  endTime?: number;
 }
 
 export function useEntries(filters: Filters = {}) {
@@ -19,7 +21,7 @@ export function useEntries(filters: Filters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters.search, filters.categoryId, filters.tagId]);
+  }, [filters.search, filters.categoryId, filters.tagId, filters.startTime, filters.endTime]);
 
   useEffect(() => { load(); }, [load]);
 
