@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
 import { useBiometric } from '../contexts/BiometricContext';
 import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey } from '../utils/crypto';
+import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword } from '../utils/auth';
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -78,6 +79,16 @@ export default function SettingsScreen() {
     warnText: { fontSize: 12, color: c.muted, marginTop: 2 },
     resetBtn: { borderWidth: 1, borderColor: c.danger, borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 4 },
     resetBtnText: { color: c.danger, fontSize: 14 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
+    modalBox: { backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 12 },
+    modalTitle: { fontSize: 17, fontWeight: '700', color: c.text },
+    modalInput: { backgroundColor: c.bg, borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.text },
+    modalError: { fontSize: 13, color: c.danger },
+    modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    modalBtn: { flex: 1, backgroundColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
+    modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    modalCancel: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 13, alignItems: 'center' },
+    modalCancelText: { color: c.muted, fontSize: 15 },
   }), [c]);
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -95,6 +106,13 @@ export default function SettingsScreen() {
   const [restoring, setRestoring] = useState(false);
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
   const [encEnabled, setEncEnabledState] = useState(false);
+
+  // Password modal: 'set' = first setup, 'change' = change existing
+  const [pwModal, setPwModal] = useState<'set' | 'change' | null>(null);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
 
   const SYNC_INTERVALS = [
     { label: 'Aus', value: 0 },
@@ -161,6 +179,36 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const handleBioToggle = async (v: boolean) => {
+    if (v) {
+      const hasPw = await hasFallbackPassword();
+      if (!hasPw) {
+        // Must set password first
+        setPwModal('set');
+        return;
+      }
+    }
+    await setBioEnabled(v);
+  };
+
+  const closePwModal = () => {
+    setPwModal(null);
+    setPwCurrent(''); setPwNew(''); setPwConfirm(''); setPwError('');
+  };
+
+  const handleSavePassword = async () => {
+    if (pwNew.length < 4) { setPwError('Mindestens 4 Zeichen'); return; }
+    if (pwNew !== pwConfirm) { setPwError('Passwörter stimmen nicht überein'); return; }
+    if (pwModal === 'change') {
+      const ok = await checkFallbackPassword(pwCurrent);
+      if (!ok) { setPwError('Aktuelles Passwort falsch'); return; }
+    }
+    await setFallbackPassword(pwNew);
+    if (pwModal === 'set') await setBioEnabled(true);
+    closePwModal();
+    Alert.alert('Passwort gespeichert');
   };
 
   const handleExport = (format: 'json' | 'csv') => {
@@ -411,7 +459,7 @@ export default function SettingsScreen() {
             </Text>
             <Switch
               value={bioEnabled}
-              onValueChange={setBioEnabled}
+              onValueChange={handleBioToggle}
               disabled={!bioAvailable}
               trackColor={{ false: c.border, true: c.accent }}
               thumbColor="#fff"
@@ -419,6 +467,11 @@ export default function SettingsScreen() {
           </View>
           {!bioAvailable && (
             <Text style={styles.warnText}>Kein Fingerabdruck oder Gesichtserkennung eingerichtet.</Text>
+          )}
+          {bioEnabled && (
+            <Pressable style={styles.saveButton} onPress={() => setPwModal('change')}>
+              <Text style={styles.saveText}>Passwort ändern</Text>
+            </Pressable>
           )}
 
           {/* Verschlüsselung */}
@@ -475,6 +528,54 @@ export default function SettingsScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Password modal */}
+      <Modal visible={pwModal !== null} transparent animationType="fade" onRequestClose={closePwModal}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              {pwModal === 'set' ? 'Fallback-Passwort festlegen' : 'Passwort ändern'}
+            </Text>
+            {pwModal === 'change' && (
+              <TextInput
+                style={styles.modalInput}
+                value={pwCurrent}
+                onChangeText={(v) => { setPwCurrent(v); setPwError(''); }}
+                placeholder="Aktuelles Passwort"
+                placeholderTextColor={c.muted}
+                secureTextEntry
+              />
+            )}
+            <TextInput
+              style={styles.modalInput}
+              value={pwNew}
+              onChangeText={(v) => { setPwNew(v); setPwError(''); }}
+              placeholder="Neues Passwort (min. 4 Zeichen)"
+              placeholderTextColor={c.muted}
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={pwConfirm}
+              onChangeText={(v) => { setPwConfirm(v); setPwError(''); }}
+              placeholder="Passwort wiederholen"
+              placeholderTextColor={c.muted}
+              secureTextEntry
+              onSubmitEditing={handleSavePassword}
+              returnKeyType="done"
+            />
+            {!!pwError && <Text style={styles.modalError}>{pwError}</Text>}
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={closePwModal}>
+                <Text style={styles.modalCancelText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtn} onPress={handleSavePassword}>
+                <Text style={styles.modalBtnText}>Speichern</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
