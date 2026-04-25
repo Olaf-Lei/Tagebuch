@@ -40,16 +40,19 @@ export async function resetEncryptionKey(): Promise<void> {
 // Decrypts an encrypted file and writes the result to targetPath.
 export async function decryptToPath(encPath: string, targetPath: string): Promise<void> {
   const key = await getOrCreateKey();
-  const encrypted = await readAsStringAsync(encPath, { encoding: EncodingType.UTF8 });
+  const encUri = encPath.startsWith('file://') ? encPath : `file://${encPath}`;
+  const outUri = targetPath.startsWith('file://') ? targetPath : `file://${targetPath}`;
+  const encrypted = await readAsStringAsync(encUri, { encoding: EncodingType.UTF8 });
   const decrypted = CryptoJS.AES.decrypt(encrypted, key);
   const base64 = decrypted.toString(CryptoJS.enc.Base64);
-  await writeAsStringAsync(targetPath, base64, { encoding: EncodingType.Base64 });
+  await writeAsStringAsync(outUri, base64, { encoding: EncodingType.Base64 });
 }
 
 // Returns path to encrypted temp file. Caller must delete after upload.
 export async function encryptDbToTemp(dbPath: string): Promise<string> {
   const key = await getOrCreateKey();
-  const base64 = await readAsStringAsync(dbPath, { encoding: EncodingType.Base64 });
+  const uri = dbPath.startsWith('file://') ? dbPath : `file://${dbPath}`;
+  const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
   const wordArray = CryptoJS.enc.Base64.parse(base64);
   const encrypted = CryptoJS.AES.encrypt(wordArray, key).toString();
   const tempPath = cacheDirectory + 'tagebuch_upload.enc';
