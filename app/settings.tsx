@@ -39,7 +39,7 @@ export default function SettingsScreen() {
     },
     catName: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8 },
     catInput: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8, borderBottomWidth: 1, borderColor: c.accent },
-    catAction: { padding: 8 },
+    catAction: { padding: 13, margin: -5 },
     accentText: { color: c.accent, fontSize: 14 },
     mutedText: { color: c.muted, fontSize: 16 },
     dangerText: { color: c.danger, fontSize: 16 },

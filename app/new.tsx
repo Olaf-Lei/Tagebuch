@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Platform, Pressable,
@@ -24,10 +24,8 @@ export default function NewEntryScreen() {
       fontSize: 16, color: c.text, minHeight: 180, lineHeight: 24,
     },
     label: { fontSize: 13, color: c.muted, marginTop: 4 },
-    footer: { padding: 14, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.bg },
-    saveButton: { backgroundColor: c.accent, borderRadius: 12, padding: 16, alignItems: 'center' },
-    saveDisabled: { opacity: 0.4 },
-    saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    headerSave: { paddingHorizontal: 16, paddingVertical: 10 },
+    headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
 
   const inputRef = useRef<TextInput>(null);
@@ -59,6 +57,15 @@ export default function NewEntryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      <Stack.Screen options={{
+        headerRight: () => (
+          <Pressable style={styles.headerSave} onPress={save} disabled={!text.trim() || saving}>
+            <Text style={[styles.headerSaveText, { color: text.trim() && !saving ? c.accent : c.muted }]}>
+              Speichern
+            </Text>
+          </Pressable>
+        ),
+      }} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -98,16 +105,6 @@ export default function NewEntryScreen() {
             }}
           />
         </ScrollView>
-
-        <View style={styles.footer}>
-          <Pressable
-            style={[styles.saveButton, (!text.trim() || saving) && styles.saveDisabled]}
-            onPress={save}
-            disabled={!text.trim() || saving}
-          >
-            <Text style={styles.saveText}>Speichern</Text>
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
