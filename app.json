@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#111111"
       },
-      "package": "com.tagebuch.app"
+      "package": "com.tagebuch.app",
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",
@@ -31,7 +32,8 @@
         {
           "faceIDPermission": false
         }
-      ]
+      ],
+      "expo-local-authentication"
     ],
     "extra": {
       "router": {},

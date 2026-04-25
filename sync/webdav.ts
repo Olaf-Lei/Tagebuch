@@ -1,10 +1,12 @@
 import {
   getInfoAsync,
   uploadAsync,
+  deleteAsync,
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import { getDbPath } from '../db/schema';
+import { isEncryptionEnabled, encryptDbToTemp } from '../utils/crypto';
 
 const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
@@ -58,16 +60,24 @@ export async function syncNow(): Promise<void> {
   const info = await getInfoAsync(dbPath);
   if (!info.exists) throw new Error('Datenbank nicht gefunden.');
 
+  const encrypted = await isEncryptionEnabled();
+  const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
   const base = config.url.replace(/\/$/, '');
-  const remotePath = (config.path ?? '/Tagebuch/').replace(/\/$/, '') + '/tagebuch.db';
-  // Auto-construct Nextcloud WebDAV URL if user entered only the base URL
+  const remotePath = (config.path ?? '/Tagebuch/').replace(/\/$/, '') + '/' + remoteFilename;
   const uploadUrl = base.includes('/remote.php/dav') || base.includes('/webdav')
     ? `${base}${remotePath}`
     : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${remotePath}`;
 
+  let uploadPath = dbPath;
+  let tempPath: string | null = null;
+  if (encrypted) {
+    tempPath = await encryptDbToTemp(rawPath);
+    uploadPath = tempPath.startsWith('file://') ? tempPath : `file://${tempPath}`;
+  }
+
   const credentials = btoa(`${config.username}:${config.password}`);
 
-  const result = await uploadAsync(uploadUrl, dbPath, {
+  const result = await uploadAsync(uploadUrl, uploadPath, {
     httpMethod: 'PUT',
     uploadType: FileSystemUploadType.BINARY_CONTENT,
     headers: {
@@ -75,6 +85,8 @@ export async function syncNow(): Promise<void> {
       'Content-Type': 'application/octet-stream',
     },
   });
+
+  if (tempPath) await deleteAsync(`file://${tempPath}`, { idempotent: true }).catch(() => {});
 
   if (result.status >= 400) {
     const msg =
