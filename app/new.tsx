@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, Pressable,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
 import { TimestampPicker } from '../components/TimestampPicker';
 import { HEALTH_EMOJIS, MOOD_EMOJIS } from '../components/qualifiers';
+import { captureLocation, type GeoTag } from '../utils/location';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { createEntry } from '../db/entries';
@@ -26,6 +27,14 @@ export default function NewEntryScreen() {
       fontSize: 16, color: c.text, minHeight: 180, lineHeight: 24,
     },
     label: { fontSize: 13, color: c.muted, marginTop: 4 },
+    locationBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8,
+      borderRadius: 20, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
+    },
+    locationBtnActive: { borderColor: c.accent },
+    locationBtnText: { fontSize: 13, color: c.muted },
+    locationBtnTextActive: { color: c.accent },
     headerSave: { paddingHorizontal: 16, paddingVertical: 10 },
     headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
@@ -40,6 +49,8 @@ export default function NewEntryScreen() {
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
   const [mood, setMood] = useState<number | null>(null);
   const [health, setHealth] = useState<number | null>(null);
+  const [geoTag, setGeoTag] = useState<GeoTag | null>(null);
+  const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -57,6 +68,9 @@ export default function NewEntryScreen() {
       tagIds: selectedTagIds,
       mood,
       health,
+      latitude: geoTag?.latitude ?? null,
+      longitude: geoTag?.longitude ?? null,
+      locationName: geoTag?.locationName ?? null,
     });
     router.back();
   };
@@ -96,6 +110,24 @@ export default function NewEntryScreen() {
 
           <QualifierPicker label="Laune" emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
           <QualifierPicker label="Befinden" emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
+          <Pressable
+            style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
+            onPress={async () => {
+              if (geoTag) { setGeoTag(null); return; }
+              setLocating(true);
+              const tag = await captureLocation();
+              if (tag) setGeoTag(tag);
+              setLocating(false);
+            }}
+            disabled={locating}
+          >
+            {locating
+              ? <ActivityIndicator size="small" color={c.accent} />
+              : <Text style={[styles.locationBtnText, geoTag && styles.locationBtnTextActive]}>
+                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : '📍 Standort hinzufügen'}
+                </Text>
+            }
+          </Pressable>
 
           <Text style={styles.label}>Kategorien</Text>
           <DropdownPicker

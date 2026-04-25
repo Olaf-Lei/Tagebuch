@@ -8,6 +8,9 @@ export interface Entry {
   updated_at: number;
   mood: number | null;
   health: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationName: string | null;
   categories: string[];
   tags: string[];
 }
@@ -19,6 +22,9 @@ export interface EntryInput {
   tagIds: number[];
   mood?: number | null;
   health?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationName?: string | null;
 }
 
 export async function getEntryDatesInMonth(year: number, month: number): Promise<number[]> {
@@ -42,7 +48,8 @@ export async function getEntries(opts?: {
   const db = await getDb();
 
   let query = `
-    SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at, e.mood, e.health
+    SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at,
+      e.mood, e.health, e.latitude, e.longitude, e.location_name as locationName
     FROM entries e
   `;
   const joins: string[] = [];
@@ -98,7 +105,8 @@ export async function getEntries(opts?: {
 export async function getEntry(id: number): Promise<Entry | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<Omit<Entry, 'categories' | 'tags'>>(
-    `SELECT id, timestamp, text, created_at, updated_at, mood, health FROM entries WHERE id = ?`,
+    `SELECT id, timestamp, text, created_at, updated_at, mood, health,
+      latitude, longitude, location_name as locationName FROM entries WHERE id = ?`,
     [id]
   );
   if (!row) return null;
@@ -122,8 +130,11 @@ export async function createEntry(input: EntryInput): Promise<number> {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    `INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health) VALUES (?, ?, ?, ?, ?, ?)`,
-    [input.timestamp, input.text, now, now, input.mood ?? null, input.health ?? null]
+    `INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health, latitude, longitude, location_name)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [input.timestamp, input.text, now, now,
+     input.mood ?? null, input.health ?? null,
+     input.latitude ?? null, input.longitude ?? null, input.locationName ?? null]
   );
   const id = result.lastInsertRowId;
   await setEntryRelations(id, input.categoryIds, input.tagIds);
@@ -134,8 +145,11 @@ export async function updateEntry(id: number, input: EntryInput): Promise<void> 
   const db = await getDb();
   const now = Date.now();
   await db.runAsync(
-    `UPDATE entries SET timestamp = ?, text = ?, updated_at = ?, mood = ?, health = ? WHERE id = ?`,
-    [input.timestamp, input.text, now, input.mood ?? null, input.health ?? null, id]
+    `UPDATE entries SET timestamp = ?, text = ?, updated_at = ?,
+     mood = ?, health = ?, latitude = ?, longitude = ?, location_name = ? WHERE id = ?`,
+    [input.timestamp, input.text, now,
+     input.mood ?? null, input.health ?? null,
+     input.latitude ?? null, input.longitude ?? null, input.locationName ?? null, id]
   );
   await db.runAsync(`DELETE FROM entry_categories WHERE entry_id = ?`, [id]);
   await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [id]);
