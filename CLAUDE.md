@@ -198,9 +198,13 @@ npm run build:minor    # bump:minor + EAS-Build
 source ~/.bashrc       # lädt JAVA_HOME, ANDROID_HOME
 npm run bump           # Version hochzählen + committen
 npx expo prebuild --platform android --clean   # generiert android/ (einmalig oder nach Abhängigkeitsänderungen)
+bash scripts/prepare-android.sh                # patcht Gradle-Settings (Heap, Daemon, Gradle 8.13)
 cd android && ./gradlew assembleRelease         # baut APK
 # APK liegt in: android/app/build/outputs/apk/release/app-release.apk
 ```
+
+Hinweis: `android/` ist gitigniert (von prebuild generiert). Nach jedem `prebuild --clean` muss
+`scripts/prepare-android.sh` ausgeführt werden, um die lokalen Build-Settings zu patchen.
 
 Installiertes Tooling:
 - Android Studio 2024.3.2 → `/opt/android-studio`
