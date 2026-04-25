@@ -168,26 +168,44 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 - Auto-Sync via `backgroundSync.ts` mit konfigurierbarem Intervall
 - Fehler werden als Alert angezeigt
 
+## Versionierung
+
+Semver: `major.minor.patch` in `package.json` und `app.json`. `versionCode` wird bei jedem Bump um 1 erhöht.
+
+```bash
+npm run bump           # patch  (z. B. 2.1.0 → 2.1.1)
+npm run bump:minor     # minor  (z. B. 2.1.0 → 2.2.0)
+npm run bump:major     # major  (z. B. 2.1.0 → 3.0.0)
+```
+
+Das Skript (`scripts/bump.js`) aktualisiert `package.json` + `app.json`, erstellt einen Git-Commit und setzt einen Tag (`v2.1.0`).
+
+**Vor jedem Build immer zuerst bump aufrufen.**
+
 ## Build-Umgebung
 
 ### Cloud (EAS)
 ```bash
-eas build --platform android --profile preview --non-interactive
+npm run bump           # Version hochzählen
+eas build --platform android --profile preview --non-interactive --message "v$(node -p "require('./package.json').version")"
+# Kurzform:
+npm run build          # bump:patch + EAS-Build in einem Schritt
+npm run build:minor    # bump:minor + EAS-Build
 ```
 
-### Lokal
+### Lokal (Android Studio)
 ```bash
-source ~/.bashrc   # lädt JAVA_HOME, ANDROID_HOME
-eas build --local --platform android --profile preview
-# oder direkt auf angeschlossenes Gerät:
-npx expo prebuild  # einmalig → generiert android/
-npx expo run:android
+source ~/.bashrc       # lädt JAVA_HOME, ANDROID_HOME
+npm run bump           # Version hochzählen + committen
+npx expo prebuild --platform android --clean   # generiert android/ (einmalig oder nach Abhängigkeitsänderungen)
+cd android && ./gradlew assembleRelease         # baut APK
+# APK liegt in: android/app/build/outputs/apk/release/app-release.apk
 ```
 
 Installiertes Tooling:
 - Android Studio 2024.3.2 → `/opt/android-studio`
-- Java (JBR 21) → `/opt/android-studio/jbr`
-- Android SDK → `/opt/android-sdk`
+- Java (JBR 21) → `/opt/android-studio/jbr`  (`JAVA_HOME` in `~/.bashrc`)
+- Android SDK → `/opt/android-sdk`  (`ANDROID_HOME` in `~/.bashrc`)
 - build-tools 35.0.0, platform-tools 37.0, platforms;android-35
 - `studio` Symlink → `/usr/local/bin/studio`
 
