@@ -37,6 +37,15 @@ export async function resetEncryptionKey(): Promise<void> {
   await SecureStore.setItemAsync(STORE_ENC_KEY, key);
 }
 
+// Decrypts an encrypted file and writes the result to targetPath.
+export async function decryptToPath(encPath: string, targetPath: string): Promise<void> {
+  const key = await getOrCreateKey();
+  const encrypted = await readAsStringAsync(encPath, { encoding: EncodingType.UTF8 });
+  const decrypted = CryptoJS.AES.decrypt(encrypted, key);
+  const base64 = decrypted.toString(CryptoJS.enc.Base64);
+  await writeAsStringAsync(targetPath, base64, { encoding: EncodingType.Base64 });
+}
+
 // Returns path to encrypted temp file. Caller must delete after upload.
 export async function encryptDbToTemp(dbPath: string): Promise<string> {
   const key = await getOrCreateKey();
