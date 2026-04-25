@@ -14,6 +14,7 @@ import {
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, type WebDavConfig } from '../sync/webdav';
 import { exportJSON, exportCSV } from '../utils/export';
+import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -53,6 +54,11 @@ export default function SettingsScreen() {
     lastSync: { fontSize: 12, color: c.muted, textAlign: 'center' },
     placeholder: { backgroundColor: c.surface, borderRadius: 8, padding: 14, alignItems: 'center' },
     placeholderText: { color: c.muted, fontSize: 14 },
+    intervalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    intervalChip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+    intervalChipActive: { backgroundColor: c.accent, borderColor: c.accent },
+    intervalChipText: { fontSize: 13, color: c.muted },
+    intervalChipTextActive: { color: '#fff', fontWeight: '600' },
     exportRow: { flexDirection: 'row', gap: 10 },
     exportBtn: { flex: 1, borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
     exportBtnText: { color: c.accent, fontSize: 14, fontWeight: '600' },
@@ -78,12 +84,22 @@ export default function SettingsScreen() {
   const [config, setConfig] = useState<Partial<WebDavConfig>>({});
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
+
+  const SYNC_INTERVALS = [
+    { label: 'Aus', value: 0 },
+    { label: '15 Min', value: 15 },
+    { label: '1 Std', value: 60 },
+    { label: '6 Std', value: 360 },
+    { label: '24 Std', value: 1440 },
+  ];
 
   useEffect(() => {
     getCategories().then(setCategories);
     getTags().then(setTags);
     loadConfig().then(setConfig);
     getLastSync().then(setLastSync);
+    getAutoSyncInterval().then(setAutoSyncIntervalState);
   }, []);
 
   const addCategory = async () => {
@@ -312,6 +328,25 @@ export default function SettingsScreen() {
             {lastSync && (
               <Text style={styles.lastSync}>Zuletzt: {lastSync}</Text>
             )}
+          </View>
+
+          {/* Auto-Sync */}
+          <Text style={styles.section}>Auto-Sync</Text>
+          <View style={styles.intervalRow}>
+            {SYNC_INTERVALS.map(({ label, value }) => (
+              <Pressable
+                key={value}
+                style={[styles.intervalChip, autoSyncInterval === value && styles.intervalChipActive]}
+                onPress={async () => {
+                  await setAutoSyncInterval(value);
+                  setAutoSyncIntervalState(value);
+                }}
+              >
+                <Text style={[styles.intervalChipText, autoSyncInterval === value && styles.intervalChipTextActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
 
           {/* Darstellung */}
