@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -107,8 +108,8 @@ export default function SettingsScreen() {
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
   const [encEnabled, setEncEnabledState] = useState(false);
 
-  // Password modal: 'set' = first setup, 'change' = change existing
-  const [pwModal, setPwModal] = useState<'set' | 'change' | null>(null);
+  // Password modal: 'set' = first setup, 'change' = change existing, 'reset' = biometric-verified reset
+  const [pwModal, setPwModal] = useState<'set' | 'change' | 'reset' | null>(null);
   const [pwCurrent, setPwCurrent] = useState('');
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
@@ -209,6 +210,18 @@ export default function SettingsScreen() {
     if (pwModal === 'set') await setBioEnabled(true);
     closePwModal();
     Alert.alert('Passwort gespeichert');
+  };
+
+  const handleBioReset = async () => {
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Passwort zurücksetzen – Identität bestätigen',
+      disableDeviceFallback: true,
+    });
+    if (result.success) {
+      setPwModal('reset');
+    } else {
+      Alert.alert('Abgebrochen', 'Biometrische Bestätigung fehlgeschlagen.');
+    }
   };
 
   const handleExport = (format: 'json' | 'csv') => {
@@ -469,9 +482,14 @@ export default function SettingsScreen() {
             <Text style={styles.warnText}>Kein Fingerabdruck oder Gesichtserkennung eingerichtet.</Text>
           )}
           {bioEnabled && (
-            <Pressable style={styles.saveButton} onPress={() => setPwModal('change')}>
-              <Text style={styles.saveText}>Passwort ändern</Text>
-            </Pressable>
+            <>
+              <Pressable style={styles.saveButton} onPress={() => setPwModal('change')}>
+                <Text style={styles.saveText}>Passwort ändern</Text>
+              </Pressable>
+              <Pressable style={styles.saveButton} onPress={handleBioReset}>
+                <Text style={styles.saveText}>Passwort vergessen? Per Biometrie zurücksetzen</Text>
+              </Pressable>
+            </>
           )}
 
           {/* Verschlüsselung */}
@@ -534,7 +552,9 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>
-              {pwModal === 'set' ? 'Fallback-Passwort festlegen' : 'Passwort ändern'}
+              {pwModal === 'set' ? 'Fallback-Passwort festlegen'
+                : pwModal === 'reset' ? 'Neues Passwort festlegen'
+                : 'Passwort ändern'}
             </Text>
             {pwModal === 'change' && (
               <TextInput
