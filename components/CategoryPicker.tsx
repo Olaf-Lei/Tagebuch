@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Category } from '../db/categories';
 import { colors } from './theme';
 
@@ -17,7 +17,7 @@ export function CategoryPicker({ categories, selected, onChange }: Props) {
   };
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
+    <View style={styles.wrap}>
       {categories.map((cat) => {
         const active = selected.includes(cat.id);
         return (
@@ -32,19 +32,18 @@ export function CategoryPicker({ categories, selected, onChange }: Props) {
           </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 0 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    marginRight: 8,
   },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipText: { fontSize: 14, color: colors.muted },

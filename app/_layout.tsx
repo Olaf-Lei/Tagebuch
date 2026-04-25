@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDb } from '../db/schema';
 
 export default function RootLayout() {
@@ -14,7 +15,7 @@ export default function RootLayout() {
   if (!ready) return <View style={{ flex: 1, backgroundColor: '#111111' }} />;
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -29,6 +30,6 @@ export default function RootLayout() {
         <Stack.Screen name="entry/[id]" options={{ title: 'Eintrag' }} />
         <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }
