@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -12,6 +13,7 @@ import {
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, type WebDavConfig } from '../sync/webdav';
+import { exportJSON, exportCSV } from '../utils/export';
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -51,6 +53,12 @@ export default function SettingsScreen() {
     lastSync: { fontSize: 12, color: c.muted, textAlign: 'center' },
     placeholder: { backgroundColor: c.surface, borderRadius: 8, padding: 14, alignItems: 'center' },
     placeholderText: { color: c.muted, fontSize: 14 },
+    exportRow: { flexDirection: 'row', gap: 10 },
+    exportBtn: { flex: 1, borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
+    exportBtnText: { color: c.accent, fontSize: 14, fontWeight: '600' },
+    aboutBlock: { backgroundColor: c.surface, borderRadius: 12, padding: 16, gap: 4 },
+    aboutTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    aboutLine: { fontSize: 13, color: c.muted },
     themeRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.surface, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12,
@@ -126,6 +134,11 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const handleExport = (format: 'json' | 'csv') => {
+    const fn = format === 'json' ? exportJSON : exportCSV;
+    fn().catch((e) => Alert.alert('Export fehlgeschlagen', e.message ?? String(e)));
   };
 
   const handleSync = async () => {
@@ -317,6 +330,26 @@ export default function SettingsScreen() {
           <Text style={styles.section}>Verschlüsselung</Text>
           <View style={styles.placeholder}>
             <Text style={styles.placeholderText}>Nicht aktiv in v1</Text>
+          </View>
+
+          {/* Export */}
+          <Text style={styles.section}>Export</Text>
+          <View style={styles.exportRow}>
+            <Pressable style={styles.exportBtn} onPress={() => handleExport('json')}>
+              <Text style={styles.exportBtnText}>JSON</Text>
+            </Pressable>
+            <Pressable style={styles.exportBtn} onPress={() => handleExport('csv')}>
+              <Text style={styles.exportBtnText}>CSV</Text>
+            </Pressable>
+          </View>
+
+          {/* About */}
+          <Text style={styles.section}>Über die App</Text>
+          <View style={styles.aboutBlock}>
+            <Text style={styles.aboutTitle}>Tagebuch</Text>
+            <Text style={styles.aboutLine}>Version {Constants.expoConfig?.version ?? '–'}</Text>
+            <Text style={styles.aboutLine}>Lokale Daten · Kein Cloud-Zwang</Text>
+            <Text style={styles.aboutLine}>Gebaut mit Expo SDK 55</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
