@@ -1,6 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   AppState, AppStateStatus, Pressable, StyleSheet,
   Text, TextInput, View,
@@ -128,12 +128,33 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const LOCK_DELAY_MS = 15_000;
+
   useEffect(() => {
     if (!enabled) return;
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (next === 'background' || next === 'inactive') setLocked(true);
+      if (next === 'background' || next === 'inactive') {
+        if (!lockTimer.current) {
+          lockTimer.current = setTimeout(() => {
+            setLocked(true);
+            lockTimer.current = null;
+          }, LOCK_DELAY_MS);
+        }
+      } else if (next === 'active') {
+        if (lockTimer.current) {
+          clearTimeout(lockTimer.current);
+          lockTimer.current = null;
+        }
+      }
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      if (lockTimer.current) {
+        clearTimeout(lockTimer.current);
+        lockTimer.current = null;
+      }
+    };
   }, [enabled]);
 
   const setEnabled = async (v: boolean) => {
