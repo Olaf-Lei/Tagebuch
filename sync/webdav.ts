@@ -60,7 +60,10 @@ export async function syncNow(): Promise<void> {
 
   const base = config.url.replace(/\/$/, '');
   const remotePath = (config.path ?? '/Tagebuch/').replace(/\/$/, '') + '/tagebuch.db';
-  const uploadUrl = `${base}${remotePath}`;
+  // Auto-construct Nextcloud WebDAV URL if user entered only the base URL
+  const uploadUrl = base.includes('/remote.php/dav') || base.includes('/webdav')
+    ? `${base}${remotePath}`
+    : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${remotePath}`;
 
   const credentials = btoa(`${config.username}:${config.password}`);
 
