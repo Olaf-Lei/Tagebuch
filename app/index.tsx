@@ -5,7 +5,7 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CategoryPicker } from '../components/CategoryPicker';
+import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
@@ -24,8 +24,7 @@ export default function IndexScreen() {
       backgroundColor: c.surface, borderRadius: 10,
       paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: c.text,
     },
-    categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
-    tagBar: { paddingHorizontal: 14, paddingBottom: 4 },
+    filterRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4, gap: 8 },
     dateBar: { paddingHorizontal: 14, paddingBottom: 6 },
     segmented: { flexDirection: 'row', backgroundColor: c.surface, borderRadius: 10, padding: 3 },
     segment: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 8 },
@@ -76,8 +75,8 @@ export default function IndexScreen() {
   }
 
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
-  const [selectedTag, setSelectedTag] = useState<number | undefined>();
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const allTags = useTags();
@@ -85,12 +84,13 @@ export default function IndexScreen() {
   useEffect(() => { getCategories().then(setCategories); }, []);
 
   const { entries, loading, reload } = useEntries({
-    search, categoryId: selectedCategory, tagId: selectedTag, ...dateRangeTimes(dateRange),
+    search,
+    categoryIds: selectedCategories.length ? selectedCategories : undefined,
+    tagIds: selectedTags.length ? selectedTags : undefined,
+    ...dateRangeTimes(dateRange),
   });
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
-
-  const filterCategories = categories.map((cat) => ({ ...cat }));
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -116,28 +116,24 @@ export default function IndexScreen() {
           clearButtonMode="while-editing"
         />
       </View>
-      <View style={styles.categoryBar}>
-        <CategoryPicker
-          categories={[{ id: 0, name: 'Alle' }, ...filterCategories]}
-          selected={selectedCategory ? [selectedCategory] : [0]}
-          onChange={(ids) => {
-            const last = ids[ids.length - 1];
-            setSelectedCategory(last === 0 ? undefined : last);
-          }}
+      <View style={styles.filterRow}>
+        <DropdownPicker
+          options={categories}
+          selected={selectedCategories}
+          onChange={setSelectedCategories}
+          placeholder="Kategorien"
+          multi
         />
-      </View>
-      {allTags.length > 0 && (
-        <View style={styles.tagBar}>
-          <CategoryPicker
-            categories={[{ id: 0, name: 'Alle Tags' }, ...allTags]}
-            selected={selectedTag ? [selectedTag] : [0]}
-            onChange={(ids) => {
-              const last = ids[ids.length - 1];
-              setSelectedTag(last === 0 ? undefined : last);
-            }}
+        {allTags.length > 0 && (
+          <DropdownPicker
+            options={allTags}
+            selected={selectedTags}
+            onChange={setSelectedTags}
+            placeholder="Tags"
+            multi
           />
-        </View>
-      )}
+        )}
+      </View>
       <View style={styles.dateBar}>
         <View style={styles.segmented}>
           {DATE_RANGES.map(({ key, label }) => (
