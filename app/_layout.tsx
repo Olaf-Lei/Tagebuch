@@ -27,6 +27,7 @@ function AppShell() {
         <Stack.Screen name="entry/[id]" options={{ title: 'Eintrag' }} />
         <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
         <Stack.Screen name="calendar" options={{ title: 'Kalender' }} />
+        <Stack.Screen name="stats" options={{ title: 'Statistiken' }} />
       </Stack>
     </>
   );
