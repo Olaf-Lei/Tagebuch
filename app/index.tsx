@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Pressable,
@@ -59,6 +59,13 @@ export default function IndexScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      <Stack.Screen options={{
+        headerRight: () => (
+          <Pressable onPress={() => router.push('/calendar')} style={{ paddingHorizontal: 14, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 20, color: c.accent }}>📅</Text>
+          </Pressable>
+        ),
+      }} />
       <View style={styles.filterBar}>
         <TextInput
           style={styles.searchInput}

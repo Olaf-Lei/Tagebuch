@@ -17,10 +17,23 @@ export interface EntryInput {
   tagIds: number[];
 }
 
+export async function getEntryDatesInMonth(year: number, month: number): Promise<number[]> {
+  const db = await getDb();
+  const start = new Date(year, month, 1).getTime();
+  const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
+  const rows = await db.getAllAsync<{ timestamp: number }>(
+    `SELECT timestamp FROM entries WHERE timestamp >= ? AND timestamp <= ?`,
+    [start, end]
+  );
+  return [...new Set(rows.map((r) => new Date(r.timestamp).getDate()))];
+}
+
 export async function getEntries(opts?: {
   search?: string;
   categoryId?: number;
   tagId?: number;
+  startTime?: number;
+  endTime?: number;
 }): Promise<Entry[]> {
   const db = await getDb();
 
@@ -28,21 +41,33 @@ export async function getEntries(opts?: {
     SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at
     FROM entries e
   `;
+  const joins: string[] = [];
+  const conditions: string[] = [];
   const params: (string | number)[] = [];
 
   if (opts?.categoryId) {
-    query += ` JOIN entry_categories ec ON e.id = ec.entry_id AND ec.category_id = ?`;
+    joins.push(`JOIN entry_categories ec ON e.id = ec.entry_id AND ec.category_id = ?`);
     params.push(opts.categoryId);
   }
   if (opts?.tagId) {
-    query += ` JOIN entry_tags et ON e.id = et.entry_id AND et.tag_id = ?`;
+    joins.push(`JOIN entry_tags et ON e.id = et.entry_id AND et.tag_id = ?`);
     params.push(opts.tagId);
   }
   if (opts?.search) {
-    query += ` WHERE e.text LIKE ?`;
+    conditions.push(`e.text LIKE ?`);
     params.push(`%${opts.search}%`);
   }
+  if (opts?.startTime !== undefined) {
+    conditions.push(`e.timestamp >= ?`);
+    params.push(opts.startTime);
+  }
+  if (opts?.endTime !== undefined) {
+    conditions.push(`e.timestamp <= ?`);
+    params.push(opts.endTime);
+  }
 
+  query += joins.map((j) => ` ${j}`).join('');
+  if (conditions.length > 0) query += ` WHERE ` + conditions.join(` AND `);
   query += ` ORDER BY e.timestamp DESC`;
 
   const rows = await db.getAllAsync<Omit<Entry, 'categories' | 'tags'>>(query, params);
