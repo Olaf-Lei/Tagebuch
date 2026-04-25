@@ -27,11 +27,11 @@ export default function IndexScreen() {
     categoryBar: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
     tagBar: { paddingHorizontal: 14, paddingBottom: 4 },
     dateBar: { paddingHorizontal: 14, paddingBottom: 6 },
-    dateChip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-    dateChipActive: { backgroundColor: c.accent, borderColor: c.accent },
-    dateChipText: { fontSize: 13, color: c.muted },
-    dateChipTextActive: { color: '#fff', fontWeight: '600' },
-    dateRow: { flexDirection: 'row', gap: 8 },
+    segmented: { flexDirection: 'row', backgroundColor: c.surface, borderRadius: 10, padding: 3 },
+    segment: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 8 },
+    segmentActive: { backgroundColor: c.accent },
+    segmentText: { fontSize: 13, color: c.muted },
+    segmentTextActive: { color: '#fff', fontWeight: '600' },
     list: { paddingHorizontal: 14, paddingBottom: 100 },
     loader: { flex: 1 },
     empty: { textAlign: 'center', marginTop: 80, color: c.muted, fontSize: 15 },
@@ -139,14 +139,14 @@ export default function IndexScreen() {
         </View>
       )}
       <View style={styles.dateBar}>
-        <View style={styles.dateRow}>
+        <View style={styles.segmented}>
           {DATE_RANGES.map(({ key, label }) => (
             <Pressable
               key={key}
-              style={[styles.dateChip, dateRange === key && styles.dateChipActive]}
+              style={[styles.segment, dateRange === key && styles.segmentActive]}
               onPress={() => setDateRange(key)}
             >
-              <Text style={[styles.dateChipText, dateRange === key && styles.dateChipTextActive]}>
+              <Text style={[styles.segmentText, dateRange === key && styles.segmentTextActive]}>
                 {label}
               </Text>
             </Pressable>
