@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Pressable,
+  ActivityIndicator, FlatList, Image, Pressable,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,6 +95,15 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
+        headerTitle: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Image
+              source={require('../assets/icon.png')}
+              style={{ width: 28, height: 28, borderRadius: 6 }}
+            />
+            <Text style={{ fontSize: 17, fontWeight: '600', color: c.text }}>Tagebuch</Text>
+          </View>
+        ),
         headerRight: () => (
           <View style={{ flexDirection: 'row' }}>
             <Pressable onPress={() => router.push('/stats')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>

@@ -1,35 +1,61 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 export type ThemeMode = 'dark' | 'light';
+export type ThemePreference = 'dark' | 'light' | 'system';
 
 interface ThemeContextValue {
   mode: ThemeMode;
-  toggle: () => void;
+  preference: ThemePreference;
+  setPreference: (p: ThemePreference) => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ mode: 'dark', toggle: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({
+  mode: 'dark',
+  preference: 'system',
+  setPreference: () => {},
+});
 
 const STORE_KEY = 'theme_mode';
 
+function resolveMode(pref: ThemePreference): ThemeMode {
+  if (pref === 'system') return Appearance.getColorScheme() === 'light' ? 'light' : 'dark';
+  return pref;
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>('dark');
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [mode, setMode] = useState<ThemeMode>(resolveMode('system'));
 
   useEffect(() => {
     SecureStore.getItemAsync(STORE_KEY).then((v) => {
-      if (v === 'light' || v === 'dark') setMode(v);
+      const pref: ThemePreference =
+        v === 'light' || v === 'dark' || v === 'system' ? v : 'system';
+      setPreferenceState(pref);
+      setMode(resolveMode(pref));
     });
   }, []);
 
-  const toggle = () => {
-    setMode((prev) => {
-      const next: ThemeMode = prev === 'dark' ? 'light' : 'dark';
-      SecureStore.setItemAsync(STORE_KEY, next);
-      return next;
+  useEffect(() => {
+    if (preference !== 'system') return;
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setMode(colorScheme === 'light' ? 'light' : 'dark');
     });
+    return () => sub.remove();
+  }, [preference]);
+
+  const setPreference = (p: ThemePreference) => {
+    setPreferenceState(p);
+    setMode(resolveMode(p));
+    SecureStore.setItemAsync(STORE_KEY, p);
   };
 
-  return <ThemeContext.Provider value={{ mode, toggle }}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={{ mode, preference, setPreference }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {
