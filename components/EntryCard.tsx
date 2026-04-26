@@ -7,6 +7,7 @@ import { useColors } from './theme';
 
 interface Props {
   entry: Entry;
+  highlight?: string;
 }
 
 function formatDate(ts: number): string {
@@ -17,7 +18,32 @@ function formatDate(ts: number): string {
   });
 }
 
-export function EntryCard({ entry }: Props) {
+function HighlightedText({
+  text, highlight, style, highlightStyle, numberOfLines,
+}: {
+  text: string;
+  highlight: string;
+  style: object;
+  highlightStyle: object;
+  numberOfLines?: number;
+}) {
+  if (!highlight.trim()) return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
+
+  const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {parts.map((part, i) =>
+        regex.test(part)
+          ? <Text key={i} style={highlightStyle}>{part}</Text>
+          : part
+      )}
+    </Text>
+  );
+}
+
+export function EntryCard({ entry, highlight }: Props) {
   const router = useRouter();
   const c = useColors();
   const styles = useMemo(() => StyleSheet.create({
@@ -28,6 +54,7 @@ export function EntryCard({ entry }: Props) {
     qualifiers: { flexDirection: 'row', gap: 4 },
     qualifierEmoji: { fontSize: 15 },
     preview: { fontSize: 15, color: c.text, lineHeight: 21 },
+    highlight: { backgroundColor: c.accent + '55', color: c.text, borderRadius: 2 },
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
     categoryBadge: { backgroundColor: c.accent + '33', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     categoryText: { fontSize: 12, color: c.accent },
@@ -51,7 +78,17 @@ export function EntryCard({ entry }: Props) {
           </View>
         ) : null}
       </View>
-      <Text style={styles.preview} numberOfLines={3}>{entry.text}</Text>
+      {highlight ? (
+        <HighlightedText
+          text={entry.text}
+          highlight={highlight}
+          style={styles.preview}
+          highlightStyle={styles.highlight}
+          numberOfLines={3}
+        />
+      ) : (
+        <Text style={styles.preview} numberOfLines={3}>{entry.text}</Text>
+      )}
       {(entry.categories.length > 0 || entry.tags.length > 0) && (
         <View style={styles.badges}>
           {entry.categories.map((cat) => (
