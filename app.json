@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "2.4.7",
+    "version": "2.4.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
         "backgroundColor": "#0F1B2D"
       },
       "package": "com.tagebuch.app",
-      "versionCode": 21
+      "versionCode": 22
     },
     "plugins": [
       "expo-router",
