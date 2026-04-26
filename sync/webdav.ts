@@ -105,7 +105,11 @@ async function _doSync(): Promise<void> {
   const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
   const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
 
-  const tempDownPath = (cacheDirectory ?? '') + 'tagebuch_merge.tmp';
+  // Temp-Dateien im DB-Verzeichnis ablegen — sqlite ATTACH braucht einen Pfad
+  // den die native SQLite-Schicht kennt (cacheDirectory ist nur im JS-Layer sichtbar)
+  const dbDir = rawDbPath.substring(0, rawDbPath.lastIndexOf('/') + 1);
+  const tempDownRaw = `${dbDir}tagebuch_merge.tmp`;
+  const tempDownPath = `file://${tempDownRaw}`;
   let remoteExists = false;
   let remoteIsEnc = false;
 
@@ -161,7 +165,7 @@ async function _doSync(): Promise<void> {
     let attached = false;
     const db = await getDb();
     try {
-      let mergeSourcePath = tempDownPath;
+      let attachPath = tempDownRaw;
 
       if (remoteIsEnc) {
         const key = await exportEncKey();
@@ -171,12 +175,13 @@ async function _doSync(): Promise<void> {
           await appendLog('error', msg);
           throw new Error(msg);
         }
-        decryptedTempPath = (cacheDirectory ?? '') + 'tagebuch_merge_dec.tmp';
+        const decryptedRaw = `${dbDir}tagebuch_merge_dec.tmp`;
+        decryptedTempPath = `file://${decryptedRaw}`;
         await decryptToPath(tempDownPath, decryptedTempPath);
-        mergeSourcePath = decryptedTempPath;
+        attachPath = decryptedRaw;
       }
 
-      const attachPath = mergeSourcePath.startsWith('file://') ? mergeSourcePath.slice(7) : mergeSourcePath;
+      await appendLog('info', `ATTACH: ${attachPath}`);
       await db.execAsync(`ATTACH DATABASE '${attachPath}' AS remote`);
       attached = true;
 
@@ -241,7 +246,6 @@ async function _doSync(): Promise<void> {
     }
   }
 
-  // ── Step 3: Upload merged local DB ────────────────────────────────────────
   const encrypted = await isEncryptionEnabled();
   const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
   const uploadUrl = buildUrl(remoteFilename);
