@@ -79,7 +79,7 @@ export default function EditEntryScreen() {
       }
       setCategories(cats);
 
-      const catIds = cats.filter((c) => entry.categories.includes(c.name)).map((c) => c.id);
+      const catIds = cats.filter((c) => entry.categories.some((ec) => ec.name === c.name)).map((c) => c.id);
       setSelectedCategoryIds(catIds);
 
       const matchedTags = allTags.filter((tag) => entry.tags.includes(tag.name));

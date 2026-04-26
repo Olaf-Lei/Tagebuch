@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import {
   createCategory, deleteCategory, getCategories,
-  renameCategory, type Category,
+  renameCategory, updateCategoryColor, CATEGORY_COLORS, type Category,
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
@@ -81,6 +81,7 @@ export default function SettingsScreen() {
       flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg,
       borderRadius: 8, paddingVertical: 4, paddingHorizontal: 12, gap: 4,
     },
+    colorSwatch: { width: 22, height: 22, borderRadius: 11 },
     catName: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8 },
     catInput: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8, borderBottomWidth: 1, borderColor: c.accent },
     catAction: { padding: 13, margin: -5 },
@@ -218,6 +219,13 @@ export default function SettingsScreen() {
     if (!editingId || !editingName.trim()) return;
     await renameCategory(editingId, editingName.trim());
     setEditingId(null);
+    getCategories().then(setCategories);
+  };
+
+  const cycleColor = async (cat: Category) => {
+    const idx = CATEGORY_COLORS.indexOf(cat.color ?? '');
+    const next = CATEGORY_COLORS[(idx + 1) % CATEGORY_COLORS.length];
+    await updateCategoryColor(cat.id, next);
     getCategories().then(setCategories);
   };
 
@@ -414,6 +422,7 @@ export default function SettingsScreen() {
                     </>
                   ) : (
                     <>
+                      <Pressable style={[styles.colorSwatch, { backgroundColor: cat.color ?? c.accent }]} onPress={() => cycleColor(cat)} />
                       <Text style={styles.catName}>{cat.name}</Text>
                       <Pressable style={styles.catAction} onPress={() => { setEditingId(cat.id); setEditingName(cat.name); }}><Text style={styles.mutedText}>✎</Text></Pressable>
                       <Pressable style={styles.catAction} onPress={() => confirmCatDelete(cat)}><Text style={styles.dangerText}>✕</Text></Pressable>

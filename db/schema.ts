@@ -70,4 +70,13 @@ export async function initDb(): Promise<void> {
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN latitude REAL;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN longitude REAL;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN location_name TEXT;'); } catch {}
+
+  // Migration: add color to categories
+  try { await db.execAsync('ALTER TABLE categories ADD COLUMN color TEXT;'); } catch {}
+  // Assign palette colors to existing colorless categories
+  const _palette = ['#C9A84C','#4C9DC9','#4CC984','#C94C6A','#9D4CC9','#C9844C','#4CC9C9','#C9504C','#84C94C','#C94C9D'];
+  const _colorless = await db.getAllAsync<{ id: number }>('SELECT id FROM categories WHERE color IS NULL ORDER BY id');
+  for (let _i = 0; _i < _colorless.length; _i++) {
+    await db.runAsync('UPDATE categories SET color = ? WHERE id = ?', [_palette[_i % _palette.length], _colorless[_i].id]);
+  }
 }

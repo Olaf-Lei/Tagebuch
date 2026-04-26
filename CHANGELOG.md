@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.7 — 2026-04-26
+- Farben für Kategorien: Auto-Vorgabe aus 10-Farben-Palette (Navy/Gold-kompatibel) beim Anlegen; Tap auf Farbkreis in Settings → Farbe weiterschalten; EntryCard-Badges und DropdownPicker zeigen individuelle Kategoriefarben; Statistik-Balkendiagramm nutzt Kategoriefarben; neue Spalte `color TEXT` in categories per Migration (idempotent, bestehende Kategorien bekommen automatisch Farben)
+
 ## v2.4.6 — 2026-04-26
 - Sync-Verhalten verbessert: `syncIfConfigured()` feuert bei App-Start, nach jedem gespeicherten/bearbeiteten Eintrag und wenn die App in den Hintergrund geht; zyklischer Foreground-Sync bleibt erhalten (AppState active + Interval-Check)
 

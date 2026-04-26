@@ -1,7 +1,7 @@
 import { getDb } from './schema';
 
 export interface DayCount { day: string; count: number; }
-export interface NameCount { name: string; count: number; }
+export interface NameCount { name: string; count: number; color?: string | null; }
 
 export type PeriodGroupBy = 'hour' | 'day' | 'week' | 'month';
 
@@ -103,7 +103,7 @@ export async function getStats(from: number, to: number, groupBy: PeriodGroupBy)
   );
 
   const perCategory = await db.getAllAsync<NameCount>(
-    `SELECT c.name, COUNT(*) as count FROM categories c
+    `SELECT c.name, c.color, COUNT(*) as count FROM categories c
      JOIN entry_categories ec ON c.id = ec.category_id
      JOIN entries e ON e.id = ec.entry_id
      WHERE e.timestamp >= ? AND e.timestamp <= ?

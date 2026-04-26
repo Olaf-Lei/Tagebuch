@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useColors } from './theme';
 
-interface Option { id: number; name: string }
+interface Option { id: number; name: string; color?: string | null; }
 
 interface Props {
   options: Option[];
@@ -103,7 +103,14 @@ export function DropdownPicker({ options, selected, onChange, placeholder, multi
                         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
                         onPress={() => toggle(opt.id)}
                       >
-                        <Text style={[styles.rowText, active && styles.rowTextActive]}>{opt.name}</Text>
+                        {opt.color ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: opt.color }} />
+                            <Text style={[styles.rowText, active && styles.rowTextActive, { flex: 1 }]}>{opt.name}</Text>
+                          </View>
+                        ) : (
+                          <Text style={[styles.rowText, active && styles.rowTextActive]}>{opt.name}</Text>
+                        )}
                         <View style={[styles.indicator, active && styles.indicatorActive]}>
                           {active && (
                             multi

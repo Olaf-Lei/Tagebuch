@@ -56,8 +56,7 @@ export function EntryCard({ entry, highlight }: Props) {
     preview: { fontSize: 15, color: c.text, lineHeight: 21 },
     highlight: { backgroundColor: c.accent + '55', color: c.text, borderRadius: 2 },
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-    categoryBadge: { backgroundColor: c.accent + '33', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-    categoryText: { fontSize: 12, color: c.accent },
+    categoryBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     tagBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     tagText: { fontSize: 12, color: c.muted },
     locationBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
@@ -91,11 +90,14 @@ export function EntryCard({ entry, highlight }: Props) {
       )}
       {(entry.categories.length > 0 || entry.tags.length > 0) && (
         <View style={styles.badges}>
-          {entry.categories.map((cat) => (
-            <View key={cat} style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{cat}</Text>
-            </View>
-          ))}
+          {entry.categories.map((cat) => {
+            const col = cat.color ?? c.accent;
+            return (
+              <View key={cat.name} style={[styles.categoryBadge, { backgroundColor: col + '33' }]}>
+                <Text style={{ fontSize: 12, color: col }}>{cat.name}</Text>
+              </View>
+            );
+          })}
           {entry.tags.map((t) => (
             <View key={t} style={styles.tagBadge}>
               <Text style={styles.tagText}>#{t}</Text>

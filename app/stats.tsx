@@ -267,14 +267,14 @@ function Heatmap({ perDay, from, to, c, labelLow, labelHigh }: {
 // ── Bar chart ─────────────────────────────────────────────────────────────────
 
 function BarChart({ items, c, labelWidth = 72 }: {
-  items: { label: string; count: number }[];
+  items: { label: string; count: number; color?: string | null }[];
   c: ReturnType<typeof useColors>;
   labelWidth?: number;
 }) {
   const max = Math.max(...items.map(i => i.count), 1);
   return (
     <View style={{ gap: 6 }}>
-      {items.map(({ label, count }) => (
+      {items.map(({ label, count, color }) => (
         <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text
             style={{ width: labelWidth, fontSize: 12, color: c.muted, textAlign: 'right' }}
@@ -282,7 +282,7 @@ function BarChart({ items, c, labelWidth = 72 }: {
             ellipsizeMode="tail"
           >{label}</Text>
           <View style={{ flex: 1, height: 14, backgroundColor: c.border, borderRadius: 7, overflow: 'hidden' }}>
-            <View style={{ width: `${(count / max) * 100}%`, height: '100%', backgroundColor: c.accent, borderRadius: 7 }} />
+            <View style={{ width: `${(count / max) * 100}%`, height: '100%', backgroundColor: color ?? c.accent, borderRadius: 7 }} />
           </View>
           <Text style={{ width: 28, fontSize: 12, color: c.muted }}>{count}</Text>
         </View>
@@ -400,7 +400,7 @@ export default function StatsScreen() {
     count: p.count,
   })) ?? [];
 
-  const catItems = stats?.perCategory.map(x => ({ label: x.name, count: x.count })) ?? [];
+  const catItems = stats?.perCategory.map(x => ({ label: x.name, count: x.count, color: x.color })) ?? [];
   const tagItems = stats?.perTag.map(x => ({ label: `#${x.name}`, count: x.count })) ?? [];
 
   return (

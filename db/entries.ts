@@ -1,5 +1,10 @@
 import { getDb } from './schema';
 
+export interface EntryCategory {
+  name: string;
+  color: string | null;
+}
+
 export interface Entry {
   id: number;
   timestamp: number;
@@ -11,7 +16,7 @@ export interface Entry {
   latitude: number | null;
   longitude: number | null;
   locationName: string | null;
-  categories: string[];
+  categories: EntryCategory[];
   tags: string[];
 }
 
@@ -86,8 +91,8 @@ export async function getEntries(opts?: {
   const rows = await db.getAllAsync<Omit<Entry, 'categories' | 'tags'>>(query, params);
 
   return Promise.all(rows.map(async (row) => {
-    const categories = await db.getAllAsync<{ name: string }>(
-      `SELECT c.name FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+    const categories = await db.getAllAsync<EntryCategory>(
+      `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
       [row.id]
     );
     const tags = await db.getAllAsync<{ name: string }>(
@@ -96,7 +101,7 @@ export async function getEntries(opts?: {
     );
     return {
       ...row,
-      categories: categories.map((c) => c.name),
+      categories,
       tags: tags.map((t) => t.name),
     };
   }));
@@ -111,8 +116,8 @@ export async function getEntry(id: number): Promise<Entry | null> {
   );
   if (!row) return null;
 
-  const categories = await db.getAllAsync<{ name: string }>(
-    `SELECT c.name FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+  const categories = await db.getAllAsync<EntryCategory>(
+    `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
     [id]
   );
   const tags = await db.getAllAsync<{ name: string }>(
@@ -121,7 +126,7 @@ export async function getEntry(id: number): Promise<Entry | null> {
   );
   return {
     ...row,
-    categories: categories.map((c) => c.name),
+    categories,
     tags: tags.map((t) => t.name),
   };
 }
