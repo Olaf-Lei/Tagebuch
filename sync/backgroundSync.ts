@@ -21,6 +21,19 @@ export async function getAutoSyncInterval(): Promise<number> {
   return v ? Number(v) : 0;
 }
 
+export async function ensureBackgroundSyncRegistered(): Promise<void> {
+  const intervalMin = await getAutoSyncInterval();
+  if (intervalMin === 0) return;
+  const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK);
+  if (!isRegistered) {
+    await BackgroundFetch.registerTaskAsync(SYNC_TASK, {
+      minimumInterval: intervalMin * 60,
+      stopOnTerminate: false,
+      startOnBoot: true,
+    });
+  }
+}
+
 export async function setAutoSyncInterval(minutes: number): Promise<void> {
   await SecureStore.setItemAsync(STORE_INTERVAL, String(minutes));
   const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK);

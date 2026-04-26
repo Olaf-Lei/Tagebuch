@@ -1,7 +1,7 @@
 import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
@@ -12,6 +12,8 @@ import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
 import { ensureReminderScheduled } from '../utils/notifications';
+import { syncNow, loadConfig, getLastSyncMs } from '../sync/webdav';
+import { getAutoSyncInterval, ensureBackgroundSyncRegistered } from '../sync/backgroundSync';
 
 function AppShell() {
   const { mode } = useTheme();
@@ -44,7 +46,25 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initDb().then(() => { setReady(true); ensureReminderScheduled(); });
+    initDb().then(() => {
+      setReady(true);
+      ensureReminderScheduled();
+      ensureBackgroundSyncRegistered().catch(() => {});
+    });
+
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (nextState !== 'active') return;
+      try {
+        const config = await loadConfig();
+        if (!config.url || !config.username || !config.password) return;
+        const intervalMin = await getAutoSyncInterval();
+        if (intervalMin === 0) return;
+        const lastMs = await getLastSyncMs();
+        if (lastMs !== null && Date.now() - lastMs < intervalMin * 60_000) return;
+        syncNow().catch(() => {});
+      } catch {}
+    });
+    return () => sub.remove();
   }, []);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: '#0F1B2D' }} />;

@@ -91,8 +91,17 @@ export const de = {
 
     subEncryption: 'Verschlüsselung',
     encryptionLabel: 'Verschlüsselung vor Upload',
-    encryptionWarn: 'Verschlüsselte Backups können nur auf diesem Gerät wiederhergestellt werden.',
+    encryptionWarn: 'Für Restore auf einem anderen Gerät: Schlüssel exportieren und dort importieren.',
     btnResetKey: 'Schlüssel zurücksetzen',
+    btnExportKey: 'Schlüssel exportieren',
+    btnImportKey: 'Schlüssel importieren',
+    exportKeyTitle: 'Verschlüsselungs-Schlüssel',
+    exportKeyHint: 'Kopiere diesen Schlüssel und importiere ihn auf Gerät 2 (Einstellungen → Sicherheit → Verschlüsselung → Schlüssel importieren). Teile ihn nur mit dir selbst.',
+    importKeyTitle: 'Schlüssel importieren',
+    importKeyHint: 'Füge den Schlüssel von Gerät 1 hier ein. Die Verschlüsselung wird automatisch aktiviert.',
+    importKeyPlaceholder: '64 Hex-Zeichen…',
+    importKeyError: 'Ungültiger Schlüssel (64 Hex-Zeichen erwartet).',
+    importKeySuccess: 'Schlüssel importiert. Verschlüsselung aktiviert.',
 
     reminderLabel: 'Tägliche Erinnerung',
     reminderTime: 'Uhrzeit',
