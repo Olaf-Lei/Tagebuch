@@ -3,7 +3,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
+  ActivityIndicator, Alert, Clipboard, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,11 +15,12 @@ import {
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
+import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
 import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
 import { useBiometric } from '../contexts/BiometricContext';
 import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey } from '../utils/crypto';
-import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword } from '../utils/auth';
+import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword, generateRecoveryCode, setRecoveryCode, hasRecoveryCode } from '../utils/auth';
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -72,6 +73,16 @@ export default function SettingsScreen() {
     aboutBlock: { backgroundColor: c.surface, borderRadius: 12, padding: 16, gap: 4 },
     aboutTitle: { fontSize: 16, fontWeight: '700', color: c.text },
     aboutLine: { fontSize: 13, color: c.muted },
+    recoveryCode: { fontSize: 28, fontWeight: '700', color: c.accent, textAlign: 'center', letterSpacing: 4, fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier', paddingVertical: 8 },
+    recoveryHint: { fontSize: 12, color: c.muted, textAlign: 'center' },
+    logBox: { backgroundColor: c.surface, borderRadius: 8, padding: 10, gap: 4 },
+    logEntry: { fontSize: 11, fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier', color: c.text },
+    logEntryError: { color: c.danger },
+    logEntryInfo: { color: c.muted },
+    logEmpty: { fontSize: 13, color: c.muted, textAlign: 'center', padding: 10 },
+    logActionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+    logActionBtn: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: 10, alignItems: 'center' },
+    logActionBtnText: { color: c.muted, fontSize: 13 },
     themeRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.surface, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12,
@@ -107,6 +118,10 @@ export default function SettingsScreen() {
   const [restoring, setRestoring] = useState(false);
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
   const [encEnabled, setEncEnabledState] = useState(false);
+  const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([]);
+  const [logExpanded, setLogExpanded] = useState(false);
+  const [recoveryCode, setRecoveryCodeState] = useState<string | null>(null);
+  const [hasRecovery, setHasRecovery] = useState(false);
 
   // Password modal: 'set' = first setup, 'change' = change existing, 'reset' = biometric-verified reset
   const [pwModal, setPwModal] = useState<'set' | 'change' | 'reset' | null>(null);
@@ -130,6 +145,8 @@ export default function SettingsScreen() {
     getLastSync().then(setLastSync);
     getAutoSyncInterval().then(setAutoSyncIntervalState);
     isEncryptionEnabled().then(setEncEnabledState);
+    getSyncLog().then(setSyncLog);
+    hasRecoveryCode().then(setHasRecovery);
   }, []);
 
   const addCategory = async () => {
@@ -224,9 +241,22 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleGenerateRecovery = async () => {
+    const code = await generateRecoveryCode();
+    await setRecoveryCode(code);
+    setHasRecovery(true);
+    setRecoveryCodeState(code);
+  };
+
   const handleExport = (format: 'json' | 'csv') => {
     const fn = format === 'json' ? exportJSON : exportCSV;
     fn().catch((e) => Alert.alert('Export fehlgeschlagen', e.message ?? String(e)));
+  };
+
+  const refreshLog = async () => {
+    const log = await getSyncLog();
+    setSyncLog(log);
+    setLogExpanded(true);
   };
 
   const handleSync = async () => {
@@ -240,6 +270,7 @@ export default function SettingsScreen() {
       Alert.alert('Sync fehlgeschlagen', e.message ?? 'Unbekannter Fehler');
     } finally {
       setSyncing(false);
+      await refreshLog();
     }
   };
 
@@ -254,10 +285,12 @@ export default function SettingsScreen() {
             setRestoring(true);
             try {
               await restoreNow();
+              await refreshLog();
               Alert.alert('Wiederhergestellt', 'Daten wurden aus dem Backup geladen.', [
                 { text: 'OK', onPress: () => router.replace('/') },
               ]);
             } catch (e: any) {
+              await refreshLog();
               Alert.alert('Fehler', e.message ?? 'Wiederherstellung fehlgeschlagen.');
             } finally {
               setRestoring(false);
@@ -489,6 +522,32 @@ export default function SettingsScreen() {
               <Pressable style={styles.saveButton} onPress={handleBioReset}>
                 <Text style={styles.saveText}>Passwort vergessen? Per Biometrie zurücksetzen</Text>
               </Pressable>
+              <Pressable
+                style={styles.saveButton}
+                onPress={() => Alert.alert(
+                  hasRecovery ? 'Recovery-Code ersetzen?' : 'Recovery-Code generieren',
+                  hasRecovery
+                    ? 'Der alte Code wird ungültig. Fortfahren?'
+                    : 'Generiert einen einmalig angezeigten Code, mit dem du die App entsperren kannst, wenn Biometrie und Passwort nicht funktionieren.',
+                  [
+                    { text: 'Abbrechen', style: 'cancel' },
+                    { text: hasRecovery ? 'Ersetzen' : 'Generieren', onPress: handleGenerateRecovery },
+                  ],
+                )}
+              >
+                <Text style={styles.saveText}>
+                  {hasRecovery ? 'Recovery-Code ersetzen' : 'Recovery-Code generieren'}
+                </Text>
+              </Pressable>
+              {recoveryCode && (
+                <View style={[styles.placeholder, { gap: 6 }]}>
+                  <Text style={styles.recoveryCode}>{recoveryCode}</Text>
+                  <Text style={styles.recoveryHint}>Notiere diesen Code — er wird nicht erneut angezeigt.</Text>
+                  <Pressable onPress={() => setRecoveryCodeState(null)}>
+                    <Text style={[styles.accentText, { textAlign: 'center', marginTop: 4 }]}>Verstanden, ausblenden</Text>
+                  </Pressable>
+                </View>
+              )}
             </>
           )}
 
@@ -535,6 +594,55 @@ export default function SettingsScreen() {
               <Text style={styles.exportBtnText}>CSV</Text>
             </Pressable>
           </View>
+
+          {/* Sync-Log */}
+          <Pressable onPress={() => setLogExpanded((v) => !v)}>
+            <Text style={styles.section}>Sync-Log {logExpanded ? '▲' : '▼'}</Text>
+          </Pressable>
+          {logExpanded && (
+            <>
+              <View style={styles.logBox}>
+                {syncLog.length === 0 ? (
+                  <Text style={styles.logEmpty}>Noch keine Einträge</Text>
+                ) : (
+                  syncLog.map((entry, i) => (
+                    <Text
+                      key={i}
+                      style={[
+                        styles.logEntry,
+                        entry.level === 'error' ? styles.logEntryError : styles.logEntryInfo,
+                      ]}
+                    >
+                      {entry.time.replace('T', ' ').slice(0, 19)}  {entry.level === 'error' ? '✕' : '·'}  {entry.message}
+                    </Text>
+                  ))
+                )}
+              </View>
+              <View style={styles.logActionRow}>
+                <Pressable
+                  style={styles.logActionBtn}
+                  onPress={() => {
+                    const text = syncLog
+                      .map((e) => `${e.time} [${e.level}] ${e.message}`)
+                      .join('\n');
+                    Clipboard.setString(text);
+                    Alert.alert('Kopiert', 'Log in die Zwischenablage kopiert.');
+                  }}
+                >
+                  <Text style={styles.logActionBtnText}>Kopieren</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.logActionBtn}
+                  onPress={async () => {
+                    await clearSyncLog();
+                    setSyncLog([]);
+                  }}
+                >
+                  <Text style={styles.logActionBtnText}>Leeren</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
 
           {/* About */}
           <Text style={styles.section}>Über die App</Text>

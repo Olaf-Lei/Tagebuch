@@ -2,11 +2,11 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
-  AppState, AppStateStatus, Pressable, StyleSheet,
-  Text, TextInput, View,
+  AppState, AppStateStatus, KeyboardAvoidingView, Platform,
+  Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useColors } from '../components/theme';
-import { checkFallbackPassword } from '../utils/auth';
+import { checkFallbackPassword, checkRecoveryCode } from '../utils/auth';
 
 const STORE_KEY = 'biometric_enabled';
 
@@ -26,28 +26,34 @@ export function useBiometric() {
   return useContext(BiometricContext);
 }
 
-type LockMode = 'bio' | 'password';
+type LockMode = 'bio' | 'password' | 'recovery';
 
-function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvailable: boolean }) {
   const c = useColors();
-  const [mode, setMode] = useState<LockMode>('bio');
+  const [mode, setMode] = useState<LockMode>(bioAvailable ? 'bio' : 'password');
   const [pw, setPw] = useState('');
+  const [recovery, setRecovery] = useState('');
   const [error, setError] = useState('');
 
   const tryBio = useCallback(async () => {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Tagebuch entsperren',
-      cancelLabel: 'Passwort verwenden',
+      cancelLabel: 'Abbrechen',
       disableDeviceFallback: true,
     });
     if (result.success) {
       onUnlock();
-    } else {
+    } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
       setMode('password');
     }
   }, [onUnlock]);
 
-  useEffect(() => { tryBio(); }, [tryBio]);
+  useEffect(() => {
+    if (mode === 'bio' && bioAvailable) {
+      const t = setTimeout(tryBio, 150);
+      return () => clearTimeout(t);
+    }
+  }, [mode, bioAvailable, tryBio]);
 
   const tryPassword = async () => {
     const ok = await checkFallbackPassword(pw);
@@ -59,56 +65,122 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     }
   };
 
-  return (
-    <View style={[s.container, { backgroundColor: c.bg }]}>
-      <Text style={s.icon}>🔒</Text>
-      <Text style={[s.title, { color: c.text }]}>Tagebuch gesperrt</Text>
+  const tryRecovery = async () => {
+    const ok = await checkRecoveryCode(recovery);
+    if (ok) {
+      onUnlock();
+    } else {
+      setError('Ungültiger Recovery-Code');
+      setRecovery('');
+    }
+  };
 
-      {mode === 'bio' ? (
-        <>
-          <Pressable style={[s.btn, { backgroundColor: c.accent }]} onPress={tryBio}>
-            <Text style={s.btnText}>Biometrie verwenden</Text>
-          </Pressable>
-          <Pressable onPress={() => setMode('password')}>
-            <Text style={[s.link, { color: c.muted }]}>Mit Passwort entsperren</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <TextInput
-            style={[s.input, { backgroundColor: c.surface, color: c.text, borderColor: error ? c.danger : c.border }]}
-            value={pw}
-            onChangeText={(v) => { setPw(v); setError(''); }}
-            placeholder="Passwort"
-            placeholderTextColor={c.muted}
-            secureTextEntry
-            autoFocus
-            onSubmitEditing={tryPassword}
-            returnKeyType="done"
-          />
-          {!!error && <Text style={[s.error, { color: c.danger }]}>{error}</Text>}
-          <Pressable style={[s.btn, { backgroundColor: c.accent }]} onPress={tryPassword}>
-            <Text style={s.btnText}>Entsperren</Text>
-          </Pressable>
-          <Pressable onPress={tryBio}>
-            <Text style={[s.link, { color: c.muted }]}>Biometrie verwenden</Text>
-          </Pressable>
-        </>
-      )}
+  const styles = StyleSheet.create({
+    outer: { ...StyleSheet.absoluteFillObject, zIndex: 9999, backgroundColor: c.bg },
+    header: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8 },
+    icon: { fontSize: 56 },
+    title: { fontSize: 20, fontWeight: '600', color: c.text },
+    body: { padding: 32, gap: 12 },
+    input: {
+      backgroundColor: c.surface, color: c.text, borderColor: error ? c.danger : c.border,
+      borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
+    },
+    btn: { backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+    btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    link: { color: c.muted, fontSize: 14, textAlign: 'center', paddingVertical: 4 },
+    error: { color: c.danger, fontSize: 13 },
+    linkRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 4 },
+  });
+
+  return (
+    <View style={styles.outer}>
+      <View style={styles.header}>
+        <Text style={styles.icon}>🔒</Text>
+        <Text style={styles.title}>Tagebuch gesperrt</Text>
+      </View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={styles.body}>
+          {mode === 'bio' && (
+            <>
+              <Pressable style={styles.btn} onPress={tryBio}>
+                <Text style={styles.btnText}>Biometrie verwenden</Text>
+              </Pressable>
+              <View style={styles.linkRow}>
+                <Pressable onPress={() => { setError(''); setMode('password'); }}>
+                  <Text style={styles.link}>Mit Passwort</Text>
+                </Pressable>
+                <Pressable onPress={() => { setError(''); setMode('recovery'); }}>
+                  <Text style={styles.link}>Recovery-Code</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {mode === 'password' && (
+            <>
+              <TextInput
+                style={styles.input}
+                value={pw}
+                onChangeText={(v) => { setPw(v); setError(''); }}
+                placeholder="Passwort"
+                placeholderTextColor={c.muted}
+                secureTextEntry
+                autoFocus
+                onSubmitEditing={tryPassword}
+                returnKeyType="done"
+              />
+              {!!error && <Text style={styles.error}>{error}</Text>}
+              <Pressable style={styles.btn} onPress={tryPassword}>
+                <Text style={styles.btnText}>Entsperren</Text>
+              </Pressable>
+              <View style={styles.linkRow}>
+                {bioAvailable && (
+                  <Pressable onPress={() => { setError(''); setMode('bio'); }}>
+                    <Text style={styles.link}>Biometrie</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => { setError(''); setMode('recovery'); }}>
+                  <Text style={styles.link}>Recovery-Code</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {mode === 'recovery' && (
+            <>
+              <TextInput
+                style={styles.input}
+                value={recovery}
+                onChangeText={(v) => { setRecovery(v.toUpperCase()); setError(''); }}
+                placeholder="XXXX-XXXX"
+                placeholderTextColor={c.muted}
+                autoCapitalize="characters"
+                autoFocus
+                onSubmitEditing={tryRecovery}
+                returnKeyType="done"
+              />
+              {!!error && <Text style={styles.error}>{error}</Text>}
+              <Pressable style={styles.btn} onPress={tryRecovery}>
+                <Text style={styles.btnText}>Entsperren</Text>
+              </Pressable>
+              <View style={styles.linkRow}>
+                {bioAvailable && (
+                  <Pressable onPress={() => { setError(''); setMode('bio'); }}>
+                    <Text style={styles.link}>Biometrie</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => { setError(''); setMode('password'); }}>
+                  <Text style={styles.link}>Passwort</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  container: { ...StyleSheet.absoluteFillObject, zIndex: 9999, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32 },
-  icon: { fontSize: 56 },
-  title: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
-  btn: { borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14, width: '100%', alignItems: 'center' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  link: { fontSize: 14, marginTop: 4 },
-  input: { width: '100%', borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  error: { fontSize: 13, alignSelf: 'flex-start' },
-});
 
 export function BiometricProvider({ children }: { children: React.ReactNode }) {
   const [enabled, setEnabledState] = useState(false);
@@ -166,7 +238,7 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
   return (
     <BiometricContext.Provider value={{ enabled, available, setEnabled }}>
       {children}
-      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+      {locked && <LockScreen onUnlock={() => setLocked(false)} bioAvailable={available} />}
     </BiometricContext.Provider>
   );
 }

@@ -10,6 +10,7 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import { getDbPath, closeDb, initDb } from '../db/schema';
 import { isEncryptionEnabled, encryptDbToTemp, decryptToPath } from '../utils/crypto';
+import { appendLog } from './syncLog';
 
 const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
@@ -53,15 +54,24 @@ export async function getLastSync(): Promise<string | null> {
 }
 
 export async function syncNow(): Promise<void> {
+  await appendLog('info', 'Sync gestartet');
   const config = await loadConfig();
   if (!config.url || !config.username || !config.password) {
-    throw new Error('Nextcloud nicht konfiguriert.');
+    const msg = 'Nextcloud nicht konfiguriert.';
+    await appendLog('error', msg);
+    throw new Error(msg);
   }
 
   const rawPath = await getDbPath();
   const dbPath = rawPath.startsWith('file://') ? rawPath : `file://${rawPath}`;
+  await appendLog('info', `DB-Pfad: ${dbPath}`);
+
   const info = await getInfoAsync(dbPath);
-  if (!info.exists) throw new Error('Datenbank nicht gefunden.');
+  if (!info.exists) {
+    const msg = 'Datenbank nicht gefunden.';
+    await appendLog('error', msg);
+    throw new Error(msg);
+  }
 
   const encrypted = await isEncryptionEnabled();
   const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
@@ -71,23 +81,42 @@ export async function syncNow(): Promise<void> {
     ? `${base}${remotePath}`
     : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${remotePath}`;
 
+  await appendLog('info', `Upload-URL: ${uploadUrl}`);
+  await appendLog('info', `Verschlüsselung: ${encrypted ? 'ja' : 'nein'}`);
+
   let uploadPath = dbPath;
   let tempPath: string | null = null;
   if (encrypted) {
-    tempPath = await encryptDbToTemp(rawPath);
-    uploadPath = tempPath.startsWith('file://') ? tempPath : `file://${tempPath}`;
+    try {
+      tempPath = await encryptDbToTemp(rawPath);
+      uploadPath = tempPath.startsWith('file://') ? tempPath : `file://${tempPath}`;
+      await appendLog('info', `Verschlüsselt nach: ${uploadPath}`);
+    } catch (e: any) {
+      const msg = `Verschlüsselung fehlgeschlagen: ${e?.message ?? String(e)}`;
+      await appendLog('error', msg);
+      throw new Error(msg);
+    }
   }
 
   const credentials = btoa(`${config.username}:${config.password}`);
 
-  const result = await uploadAsync(uploadUrl, uploadPath, {
-    httpMethod: 'PUT',
-    uploadType: FileSystemUploadType.BINARY_CONTENT,
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/octet-stream',
-    },
-  });
+  let result: { status: number };
+  try {
+    result = await uploadAsync(uploadUrl, uploadPath, {
+      httpMethod: 'PUT',
+      uploadType: FileSystemUploadType.BINARY_CONTENT,
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/octet-stream',
+      },
+    });
+    await appendLog('info', `HTTP-Status: ${result.status}`);
+  } catch (e: any) {
+    if (tempPath) await deleteAsync(`file://${tempPath}`, { idempotent: true }).catch(() => {});
+    const msg = `Netzwerkfehler: ${e?.message ?? String(e)}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
+  }
 
   if (tempPath) await deleteAsync(`file://${tempPath}`, { idempotent: true }).catch(() => {});
 
@@ -98,6 +127,7 @@ export async function syncNow(): Promise<void> {
         : result.status === 404
           ? 'Verzeichnis nicht gefunden. Bitte Pfad in den Einstellungen prüfen.'
           : `Fehler ${result.status}: Upload fehlgeschlagen.`;
+    await appendLog('error', msg);
     throw new Error(msg);
   }
 
@@ -109,12 +139,16 @@ export async function syncNow(): Promise<void> {
     minute: '2-digit',
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
+  await appendLog('info', 'Sync erfolgreich');
 }
 
 export async function restoreNow(): Promise<void> {
+  await appendLog('info', 'Restore gestartet');
   const config = await loadConfig();
   if (!config.url || !config.username || !config.password) {
-    throw new Error('Nextcloud nicht konfiguriert.');
+    const msg = 'Nextcloud nicht konfiguriert.';
+    await appendLog('error', msg);
+    throw new Error(msg);
   }
 
   const encrypted = await isEncryptionEnabled();
@@ -125,12 +159,22 @@ export async function restoreNow(): Promise<void> {
     ? `${base}${remotePath}`
     : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${remotePath}`;
 
+  await appendLog('info', `Download-URL: ${downloadUrl}`);
+
   const credentials = btoa(`${config.username}:${config.password}`);
   const tempPath = (cacheDirectory ?? '') + 'tagebuch_restore.tmp';
 
-  const dlResult = await downloadAsync(downloadUrl, tempPath, {
-    headers: { Authorization: `Basic ${credentials}` },
-  });
+  let dlResult: { status: number };
+  try {
+    dlResult = await downloadAsync(downloadUrl, tempPath, {
+      headers: { Authorization: `Basic ${credentials}` },
+    });
+    await appendLog('info', `HTTP-Status: ${dlResult.status}`);
+  } catch (e: any) {
+    const msg = `Netzwerkfehler beim Download: ${e?.message ?? String(e)}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
+  }
 
   if (dlResult.status >= 400) {
     await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
@@ -140,11 +184,13 @@ export async function restoreNow(): Promise<void> {
         : dlResult.status === 404
           ? 'Kein Backup gefunden. Zuerst synchronisieren.'
           : `Fehler ${dlResult.status}: Download fehlgeschlagen.`;
+    await appendLog('error', msg);
     throw new Error(msg);
   }
 
   const rawDbPath = await getDbPath();
   await closeDb();
+  await appendLog('info', 'DB geschlossen, ersetze Datei…');
 
   try {
     if (encrypted) {
@@ -153,12 +199,16 @@ export async function restoreNow(): Promise<void> {
       await deleteAsync(`file://${rawDbPath}`, { idempotent: true });
       await copyAsync({ from: tempPath, to: `file://${rawDbPath}` });
     }
-    // Remove stale WAL/SHM files
     await deleteAsync(`file://${rawDbPath}-wal`, { idempotent: true }).catch(() => {});
     await deleteAsync(`file://${rawDbPath}-shm`, { idempotent: true }).catch(() => {});
+  } catch (e: any) {
+    const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
   } finally {
     await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
   }
 
   await initDb();
+  await appendLog('info', 'Restore erfolgreich');
 }
