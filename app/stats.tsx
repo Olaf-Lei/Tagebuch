@@ -258,13 +258,21 @@ function Heatmap({ perDay, from, to, c }: {
 
 // ── Bar chart ─────────────────────────────────────────────────────────────────
 
-function BarChart({ items, c }: { items: { label: string; count: number }[]; c: ReturnType<typeof useColors> }) {
+function BarChart({ items, c, labelWidth = 72 }: {
+  items: { label: string; count: number }[];
+  c: ReturnType<typeof useColors>;
+  labelWidth?: number;
+}) {
   const max = Math.max(...items.map(i => i.count), 1);
   return (
     <View style={{ gap: 6 }}>
       {items.map(({ label, count }) => (
         <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ width: 72, fontSize: 12, color: c.muted, textAlign: 'right' }}>{label}</Text>
+          <Text
+            style={{ width: labelWidth, fontSize: 12, color: c.muted, textAlign: 'right' }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >{label}</Text>
           <View style={{ flex: 1, height: 14, backgroundColor: c.border, borderRadius: 7, overflow: 'hidden' }}>
             <View style={{ width: `${(count / max) * 100}%`, height: '100%', backgroundColor: c.accent, borderRadius: 7 }} />
           </View>
@@ -470,7 +478,7 @@ export default function StatsScreen() {
             <View>
               <Text style={styles.section}>Top-Kategorien</Text>
               <View style={styles.block}>
-                <BarChart items={catItems} c={c} />
+                <BarChart items={catItems} c={c} labelWidth={110} />
               </View>
             </View>
           )}
@@ -480,7 +488,7 @@ export default function StatsScreen() {
             <View>
               <Text style={styles.section}>Top-Tags</Text>
               <View style={styles.block}>
-                <BarChart items={tagItems} c={c} />
+                <BarChart items={tagItems} c={c} labelWidth={110} />
               </View>
             </View>
           )}

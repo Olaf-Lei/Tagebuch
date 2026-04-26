@@ -107,7 +107,7 @@ export async function getStats(from: number, to: number, groupBy: PeriodGroupBy)
      JOIN entry_categories ec ON c.id = ec.category_id
      JOIN entries e ON e.id = ec.entry_id
      WHERE e.timestamp >= ? AND e.timestamp <= ?
-     GROUP BY c.id ORDER BY count DESC LIMIT 5`,
+     GROUP BY c.id ORDER BY count DESC LIMIT 10`,
     [from, to]
   );
 
@@ -116,7 +116,7 @@ export async function getStats(from: number, to: number, groupBy: PeriodGroupBy)
      JOIN entry_tags et ON t.id = et.tag_id
      JOIN entries e ON e.id = et.entry_id
      WHERE e.timestamp >= ? AND e.timestamp <= ?
-     GROUP BY t.id ORDER BY count DESC LIMIT 5`,
+     GROUP BY t.id ORDER BY count DESC LIMIT 10`,
     [from, to]
   );
 
