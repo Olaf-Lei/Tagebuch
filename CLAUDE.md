@@ -292,8 +292,7 @@ Installiertes Tooling:
 
 ### Offen (nach Priorität)
 
-1. **Tastatur-Scroll** *(Hoch/Klein)* — bei Textfeldern automatisch scrollen sodass das aktive Feld über der Bildschirmtastatur sichtbar bleibt; KeyboardAvoidingView + ScrollView konsistent in `new.tsx`, `entry/[id].tsx`; bricht das 5-Sekunden-Ziel wenn Textfeld verdeckt ist
-2. **Sync-Verhalten verbessern** *(Hoch/Mittel)* — direkt beim App-Start, nach jedem gespeicherten Eintrag, beim Beenden (AppState → inactive/background), zyklisch; bestehendes Intervall-System in `backgroundSync.ts` ausbauen
+1. **Sync-Verhalten verbessern** *(Hoch/Mittel)* — direkt beim App-Start, nach jedem gespeicherten Eintrag, beim Beenden (AppState → inactive/background), zyklisch; bestehendes Intervall-System in `backgroundSync.ts` ausbauen
 3. **Farben für Kategorien** *(Mittel/Mittel)* — Auto-Vorgabe aus festem Palette (Navy/Gold-kompatibel) beim Anlegen, manuell anpassbar in Settings; Auswirkung auf Kategorie-Badges (EntryCard, DropdownPicker) und Heatmap in `stats.tsx`; neue Spalte `color TEXT` in `categories`-Tabelle per Migration
 4. **Burger-Menü** *(Niedrig/Klein)* — Settings-Einstieg als Icon oben links im Header von `index.tsx` statt separatem FAB oder Tab; reine Navigation, keine neue Funktion
 5. **Querformat / ChromeOS** *(Niedrig/Groß)* — adaptives Layout für landscape-Orientierung; zweispaltiges Layout wo sinnvoll; Nischen-Zielgruppe, nach allen anderen Features
