@@ -9,6 +9,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { useTheme, type ThemePreference } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useT } from '../i18n';
 import {
   createCategory, deleteCategory, getCategories,
   renameCategory, type Category,
@@ -41,7 +43,9 @@ function SectionHeader({
 
 export default function SettingsScreen() {
   const c = useColors();
+  const t = useT();
   const { mode, preference: themePref, setPreference: setThemePref } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const { enabled: bioEnabled, available: bioAvailable, setEnabled: setBioEnabled } = useBiometric();
   const router = useRouter();
 
@@ -60,7 +64,6 @@ export default function SettingsScreen() {
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
     content: { padding: 16, gap: 0, paddingBottom: 40 },
-    // Accordion header
     sectionHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.surface, borderRadius: 10,
@@ -70,12 +73,10 @@ export default function SettingsScreen() {
       fontSize: 13, fontWeight: '700', color: c.text, textTransform: 'uppercase', letterSpacing: 0.8,
     },
     sectionChevron: { fontSize: 16, color: c.muted },
-    // Section body
     sectionBody: {
       backgroundColor: c.surface, borderRadius: 10, marginTop: 2,
       paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14, gap: 8,
     },
-    // Item rows
     catRow: {
       flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg,
       borderRadius: 8, paddingVertical: 4, paddingHorizontal: 12, gap: 4,
@@ -179,11 +180,11 @@ export default function SettingsScreen() {
   const [pwError, setPwError] = useState('');
 
   const SYNC_INTERVALS = [
-    { label: 'Aus', value: 0 },
-    { label: '15 Min', value: 15 },
-    { label: '1 Std', value: 60 },
-    { label: '6 Std', value: 360 },
-    { label: '24 Std', value: 1440 },
+    { label: t.settings.syncOff, value: 0 },
+    { label: t.settings.sync15m, value: 15 },
+    { label: t.settings.sync1h, value: 60 },
+    { label: t.settings.sync6h, value: 360 },
+    { label: t.settings.sync24h, value: 1440 },
   ];
 
   useEffect(() => {
@@ -216,9 +217,9 @@ export default function SettingsScreen() {
   };
 
   const confirmCatDelete = (cat: Category) => {
-    Alert.alert(`„${cat.name}" löschen?`, 'Die Kategorie wird aus allen Einträgen entfernt.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: async () => { await deleteCategory(cat.id); getCategories().then(setCategories); } },
+    Alert.alert(t.settings.deleteCategoryTitle(cat.name), t.settings.deleteCategoryMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      { text: t.common.delete, style: 'destructive', onPress: async () => { await deleteCategory(cat.id); getCategories().then(setCategories); } },
     ]);
   };
 
@@ -230,9 +231,9 @@ export default function SettingsScreen() {
   };
 
   const confirmTagDelete = (tag: Tag) => {
-    Alert.alert(`„#${tag.name}" löschen?`, 'Der Tag wird aus allen Einträgen entfernt.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: async () => { await deleteTag(tag.id); getTags().then(setTags); } },
+    Alert.alert(t.settings.deleteTagTitle(tag.name), t.settings.deleteTagMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      { text: t.common.delete, style: 'destructive', onPress: async () => { await deleteTag(tag.id); getTags().then(setTags); } },
     ]);
   };
 
@@ -250,25 +251,25 @@ export default function SettingsScreen() {
   };
 
   const handleSavePassword = async () => {
-    if (pwNew.length < 4) { setPwError('Mindestens 4 Zeichen'); return; }
-    if (pwNew !== pwConfirm) { setPwError('Passwörter stimmen nicht überein'); return; }
+    if (pwNew.length < 4) { setPwError(t.settings.pwErrorMinLength); return; }
+    if (pwNew !== pwConfirm) { setPwError(t.settings.pwErrorMismatch); return; }
     if (pwModal === 'change') {
       const ok = await checkFallbackPassword(pwCurrent);
-      if (!ok) { setPwError('Aktuelles Passwort falsch'); return; }
+      if (!ok) { setPwError(t.settings.pwErrorWrong); return; }
     }
     await setFallbackPassword(pwNew);
     if (pwModal === 'set') await setBioEnabled(true);
     closePwModal();
-    Alert.alert('Passwort gespeichert');
+    Alert.alert(t.settings.pwSaved);
   };
 
   const handleBioReset = async () => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Passwort zurücksetzen – Identität bestätigen',
+      promptMessage: t.settings.btnResetWithBiometric,
       disableDeviceFallback: true,
     });
     if (result.success) { setPwModal('reset'); }
-    else { Alert.alert('Abgebrochen', 'Biometrische Bestätigung fehlgeschlagen.'); }
+    else { Alert.alert(t.settings.bioResetAbortTitle, t.settings.bioResetAbortMsg); }
   };
 
   const handleGenerateRecovery = async () => {
@@ -282,7 +283,7 @@ export default function SettingsScreen() {
     if (v) {
       const granted = await requestPermission();
       if (!granted) {
-        Alert.alert('Keine Berechtigung', 'Bitte erlaube Benachrichtigungen in den Android-Einstellungen.');
+        Alert.alert(t.settings.reminderNoPermissionTitle, t.settings.reminderNoPermissionMsg);
         return;
       }
       await scheduleReminder(reminderHour, reminderMinute);
@@ -300,7 +301,7 @@ export default function SettingsScreen() {
 
   const handleExport = (format: 'json' | 'csv') => {
     const fn = format === 'json' ? exportJSON : exportCSV;
-    fn().catch((e) => Alert.alert('Export fehlgeschlagen', e.message ?? String(e)));
+    fn().catch((e) => Alert.alert(t.settings.exportFailTitle, e.message ?? String(e)));
   };
 
   const refreshLog = async () => {
@@ -315,9 +316,9 @@ export default function SettingsScreen() {
       await syncNow();
       const updated = await getLastSync();
       setLastSync(updated);
-      Alert.alert('Sync erfolgreich', `Zuletzt synchronisiert: ${updated}`);
+      Alert.alert(t.settings.syncSuccessTitle, t.settings.syncSuccessMsg(updated ?? ''));
     } catch (e: any) {
-      Alert.alert('Sync fehlgeschlagen', e.message ?? 'Unbekannter Fehler');
+      Alert.alert(t.settings.syncFailTitle, e.message ?? t.settings.unknownError);
     } finally {
       setSyncing(false);
       await refreshLog();
@@ -326,22 +327,22 @@ export default function SettingsScreen() {
 
   const handleRestore = () => {
     Alert.alert(
-      'Aus Nextcloud wiederherstellen?',
-      'Alle lokalen Daten werden durch das Backup ersetzt.',
+      t.settings.restoreConfirmTitle,
+      t.settings.restoreConfirmMsg,
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Wiederherstellen', style: 'destructive', onPress: async () => {
+          text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
             setRestoring(true);
             try {
               await restoreNow();
               await refreshLog();
-              Alert.alert('Wiederhergestellt', 'Daten wurden aus dem Backup geladen.', [
-                { text: 'OK', onPress: () => router.replace('/') },
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
               ]);
             } catch (e: any) {
               await refreshLog();
-              Alert.alert('Fehler', e.message ?? 'Wiederherstellung fehlgeschlagen.');
+              Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
             } finally {
               setRestoring(false);
             }
@@ -353,11 +354,11 @@ export default function SettingsScreen() {
 
   const saveNextcloud = async () => {
     if (!config.url || !config.username || !config.password) {
-      Alert.alert('Fehlende Angaben', 'URL, Benutzername und Passwort sind erforderlich.');
+      Alert.alert(t.settings.missingFieldsTitle, t.settings.missingFieldsMsg);
       return;
     }
     await saveConfig(config as WebDavConfig);
-    Alert.alert('Gespeichert');
+    Alert.alert(t.settings.savedAlert);
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -368,16 +369,16 @@ export default function SettingsScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {/* ── Inhalte ── */}
-          <SectionHeader title="Inhalte" open={open.inhalte} onToggle={() => toggle('inhalte')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionContent} open={open.inhalte} onToggle={() => toggle('inhalte')} styles={headerStyles} />
           {open.inhalte && (
             <View style={styles.sectionBody}>
-              <Text style={styles.subLabel}>Kategorien</Text>
+              <Text style={styles.subLabel}>{t.settings.subCategories}</Text>
               {categories.map((cat) => (
                 <View key={cat.id} style={styles.catRow}>
                   {editingId === cat.id ? (
                     <>
                       <TextInput style={styles.catInput} value={editingName} onChangeText={setEditingName} onSubmitEditing={confirmRename} autoFocus />
-                      <Pressable style={styles.catAction} onPress={confirmRename}><Text style={styles.accentText}>OK</Text></Pressable>
+                      <Pressable style={styles.catAction} onPress={confirmRename}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
                       <Pressable style={styles.catAction} onPress={() => setEditingId(null)}><Text style={styles.mutedText}>✕</Text></Pressable>
                     </>
                   ) : (
@@ -392,7 +393,7 @@ export default function SettingsScreen() {
               <View style={styles.addRow}>
                 <TextInput
                   style={styles.addInput} value={newCatName} onChangeText={setNewCatName}
-                  placeholder="Neue Kategorie…" placeholderTextColor={c.muted}
+                  placeholder={t.settings.newCategoryPlaceholder} placeholderTextColor={c.muted}
                   onSubmitEditing={addCategory} returnKeyType="done"
                 />
                 <Pressable style={styles.addButton} onPress={addCategory}>
@@ -402,13 +403,13 @@ export default function SettingsScreen() {
 
               {tags.length > 0 && (
                 <>
-                  <Text style={[styles.subLabel, { marginTop: 10 }]}>Tags</Text>
+                  <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subTags}</Text>
                   {tags.map((tag) => (
                     <View key={tag.id} style={styles.catRow}>
                       {editingTagId === tag.id ? (
                         <>
                           <TextInput style={styles.catInput} value={editingTagName} onChangeText={setEditingTagName} onSubmitEditing={confirmTagRename} autoFocus autoCapitalize="none" />
-                          <Pressable style={styles.catAction} onPress={confirmTagRename}><Text style={styles.accentText}>OK</Text></Pressable>
+                          <Pressable style={styles.catAction} onPress={confirmTagRename}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
                           <Pressable style={styles.catAction} onPress={() => setEditingTagId(null)}><Text style={styles.mutedText}>✕</Text></Pressable>
                         </>
                       ) : (
@@ -426,31 +427,31 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Sync & Backup ── */}
-          <SectionHeader title="Sync & Backup" open={open.sync} onToggle={() => toggle('sync')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} styles={headerStyles} />
           {open.sync && (
             <View style={styles.sectionBody}>
-              <Text style={styles.subLabel}>Nextcloud</Text>
-              <Text style={styles.fieldLabel}>URL (z. B. https://cloud.example.com)</Text>
+              <Text style={styles.subLabel}>{t.settings.subNextcloud}</Text>
+              <Text style={styles.fieldLabel}>{t.settings.fieldUrl}</Text>
               <TextInput style={styles.field} value={config.url ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, url: v }))} placeholder="https://…" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" />
-              <Text style={styles.fieldLabel}>Benutzername</Text>
+              <Text style={styles.fieldLabel}>{t.settings.fieldUsername}</Text>
               <TextInput style={styles.field} value={config.username ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, username: v }))} placeholder="user" placeholderTextColor={c.muted} autoCapitalize="none" />
-              <Text style={styles.fieldLabel}>Passwort</Text>
+              <Text style={styles.fieldLabel}>{t.settings.fieldPassword}</Text>
               <TextInput style={styles.field} value={config.password ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, password: v }))} placeholder="••••••••" placeholderTextColor={c.muted} secureTextEntry />
-              <Text style={styles.fieldLabel}>Pfad auf Nextcloud</Text>
+              <Text style={styles.fieldLabel}>{t.settings.fieldPath}</Text>
               <TextInput style={styles.field} value={config.path ?? '/Tagebuch/'} onChangeText={(v) => setConfig((p) => ({ ...p, path: v }))} placeholder="/Tagebuch/" placeholderTextColor={c.muted} autoCapitalize="none" />
               <Pressable style={styles.saveButton} onPress={saveNextcloud}>
-                <Text style={styles.saveText}>Zugangsdaten speichern</Text>
+                <Text style={styles.saveText}>{t.settings.btnSaveCredentials}</Text>
               </Pressable>
 
               <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleSync} disabled={syncing || restoring}>
-                {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>Jetzt synchronisieren</Text>}
+                {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.btnSyncNow}</Text>}
               </Pressable>
               <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring}>
-                {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>Aus Nextcloud wiederherstellen</Text>}
+                {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
               </Pressable>
-              {lastSync && <Text style={styles.lastSync}>Zuletzt: {lastSync}</Text>}
+              {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
 
-              <Text style={[styles.subLabel, { marginTop: 10 }]}>Auto-Sync</Text>
+              <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subAutoSync}</Text>
               <View style={styles.intervalRow}>
                 {SYNC_INTERVALS.map(({ label, value }) => (
                   <Pressable
@@ -464,13 +465,13 @@ export default function SettingsScreen() {
               </View>
 
               <Pressable style={{ marginTop: 10 }} onPress={() => setLogExpanded((v) => !v)}>
-                <Text style={styles.subLabel}>Sync-Log {logExpanded ? '▾' : '▸'}</Text>
+                <Text style={styles.subLabel}>{t.settings.subSyncLog} {logExpanded ? '▾' : '▸'}</Text>
               </Pressable>
               {logExpanded && (
                 <>
                   <View style={styles.logBox}>
                     {syncLog.length === 0 ? (
-                      <Text style={styles.logEmpty}>Noch keine Einträge</Text>
+                      <Text style={styles.logEmpty}>{t.settings.logEmpty}</Text>
                     ) : (
                       syncLog.map((entry, i) => (
                         <Text key={i} style={[styles.logEntry, entry.level === 'error' ? styles.logEntryError : styles.logEntryInfo]}>
@@ -480,11 +481,15 @@ export default function SettingsScreen() {
                     )}
                   </View>
                   <View style={styles.logActionRow}>
-                    <Pressable style={styles.logActionBtn} onPress={() => { const t = syncLog.map((e) => `${e.time} [${e.level}] ${e.message}`).join('\n'); Clipboard.setString(t); Alert.alert('Kopiert', 'Log in die Zwischenablage kopiert.'); }}>
-                      <Text style={styles.logActionBtnText}>Kopieren</Text>
+                    <Pressable style={styles.logActionBtn} onPress={() => {
+                      const txt = syncLog.map((e) => `${e.time} [${e.level}] ${e.message}`).join('\n');
+                      Clipboard.setString(txt);
+                      Alert.alert(t.settings.logCopied, t.settings.logCopiedMsg);
+                    }}>
+                      <Text style={styles.logActionBtnText}>{t.settings.logCopy}</Text>
                     </Pressable>
                     <Pressable style={styles.logActionBtn} onPress={async () => { await clearSyncLog(); setSyncLog([]); }}>
-                      <Text style={styles.logActionBtnText}>Leeren</Text>
+                      <Text style={styles.logActionBtnText}>{t.settings.logClear}</Text>
                     </Pressable>
                   </View>
                 </>
@@ -493,53 +498,51 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Sicherheit ── */}
-          <SectionHeader title="Sicherheit" open={open.sicherheit} onToggle={() => toggle('sicherheit')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionSecurity} open={open.sicherheit} onToggle={() => toggle('sicherheit')} styles={headerStyles} />
           {open.sicherheit && (
             <View style={styles.sectionBody}>
-              <Text style={styles.subLabel}>Biometrie-Lock</Text>
+              <Text style={styles.subLabel}>{t.settings.subBiometric}</Text>
               <View style={styles.switchRow}>
-                <Text style={[styles.switchLabel, !bioAvailable && { color: c.muted }]}>Biometrie-Lock aktiv</Text>
+                <Text style={[styles.switchLabel, !bioAvailable && { color: c.muted }]}>{t.settings.biometricActive}</Text>
                 <Switch value={bioEnabled} onValueChange={handleBioToggle} disabled={!bioAvailable} trackColor={{ false: c.border, true: c.accent }} thumbColor="#fff" />
               </View>
-              {!bioAvailable && <Text style={styles.warnText}>Kein Fingerabdruck oder Gesichtserkennung eingerichtet.</Text>}
+              {!bioAvailable && <Text style={styles.warnText}>{t.settings.biometricUnavailable}</Text>}
               {bioEnabled && (
                 <>
                   <Pressable style={styles.saveButton} onPress={() => setPwModal('change')}>
-                    <Text style={styles.saveText}>Passwort ändern</Text>
+                    <Text style={styles.saveText}>{t.settings.btnChangePassword}</Text>
                   </Pressable>
                   <Pressable style={styles.saveButton} onPress={handleBioReset}>
-                    <Text style={styles.saveText}>Passwort vergessen? Per Biometrie zurücksetzen</Text>
+                    <Text style={styles.saveText}>{t.settings.btnResetWithBiometric}</Text>
                   </Pressable>
                   <Pressable
                     style={styles.saveButton}
                     onPress={() => Alert.alert(
-                      hasRecovery ? 'Recovery-Code ersetzen?' : 'Recovery-Code generieren',
-                      hasRecovery
-                        ? 'Der alte Code wird ungültig. Fortfahren?'
-                        : 'Generiert einen einmalig angezeigten Code, mit dem du die App entsperren kannst, wenn Biometrie und Passwort nicht funktionieren.',
+                      hasRecovery ? t.settings.recoveryReplaceTitle : t.settings.recoveryGenerateTitle,
+                      hasRecovery ? t.settings.recoveryReplaceMsg : t.settings.recoveryGenerateMsg,
                       [
-                        { text: 'Abbrechen', style: 'cancel' },
-                        { text: hasRecovery ? 'Ersetzen' : 'Generieren', onPress: handleGenerateRecovery },
+                        { text: t.common.cancel, style: 'cancel' },
+                        { text: hasRecovery ? t.settings.recoveryReplaceBtn : t.settings.recoveryGenerateBtn, onPress: handleGenerateRecovery },
                       ],
                     )}
                   >
-                    <Text style={styles.saveText}>{hasRecovery ? 'Recovery-Code ersetzen' : 'Recovery-Code generieren'}</Text>
+                    <Text style={styles.saveText}>{hasRecovery ? t.settings.btnReplaceRecovery : t.settings.btnGenerateRecovery}</Text>
                   </Pressable>
                   {recoveryCode && (
                     <View style={[styles.placeholder, { gap: 6 }]}>
                       <Text style={styles.recoveryCode}>{recoveryCode}</Text>
-                      <Text style={styles.recoveryHint}>Notiere diesen Code — er wird nicht erneut angezeigt.</Text>
+                      <Text style={styles.recoveryHint}>{t.settings.recoveryHint}</Text>
                       <Pressable onPress={() => setRecoveryCodeState(null)}>
-                        <Text style={[styles.accentText, { textAlign: 'center', marginTop: 4 }]}>Verstanden, ausblenden</Text>
+                        <Text style={[styles.accentText, { textAlign: 'center', marginTop: 4 }]}>{t.settings.btnRecoveryDismiss}</Text>
                       </Pressable>
                     </View>
                   )}
                 </>
               )}
 
-              <Text style={[styles.subLabel, { marginTop: 10 }]}>Verschlüsselung</Text>
+              <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subEncryption}</Text>
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Verschlüsselung vor Upload</Text>
+                <Text style={styles.switchLabel}>{t.settings.encryptionLabel}</Text>
                 <Switch
                   value={encEnabled}
                   onValueChange={async (v) => { await setEncryptionEnabled(v); setEncEnabledState(v); }}
@@ -547,34 +550,34 @@ export default function SettingsScreen() {
                   thumbColor="#fff"
                 />
               </View>
-              <Text style={styles.warnText}>Verschlüsselte Backups können nur auf diesem Gerät wiederhergestellt werden.</Text>
+              <Text style={styles.warnText}>{t.settings.encryptionWarn}</Text>
               {encEnabled && (
                 <Pressable
                   style={styles.resetBtn}
                   onPress={() => Alert.alert(
-                    'Schlüssel zurücksetzen?',
-                    'Bestehende Backups auf Nextcloud können danach nicht mehr entschlüsselt werden.',
+                    t.settings.keyResetTitle,
+                    t.settings.keyResetMsg,
                     [
-                      { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Zurücksetzen', style: 'destructive', onPress: () => resetEncryptionKey() },
+                      { text: t.common.cancel, style: 'cancel' },
+                      { text: t.settings.keyResetBtn, style: 'destructive', onPress: () => resetEncryptionKey() },
                     ],
                   )}
                 >
-                  <Text style={styles.resetBtnText}>Schlüssel zurücksetzen</Text>
+                  <Text style={styles.resetBtnText}>{t.settings.btnResetKey}</Text>
                 </Pressable>
               )}
             </View>
           )}
 
           {/* ── Erinnerungen ── */}
-          <SectionHeader title="Erinnerungen" open={open.erinnerungen} onToggle={() => toggle('erinnerungen')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionReminders} open={open.erinnerungen} onToggle={() => toggle('erinnerungen')} styles={headerStyles} />
           {open.erinnerungen && (
             <View style={styles.sectionBody}>
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Tägliche Erinnerung</Text>
+                <Text style={styles.switchLabel}>{t.settings.reminderLabel}</Text>
                 <Switch value={reminderEnabled} onValueChange={handleReminderToggle} trackColor={{ false: c.border, true: c.accent }} thumbColor="#fff" />
               </View>
-              <Text style={styles.subLabel}>Uhrzeit</Text>
+              <Text style={styles.subLabel}>{t.settings.reminderTime}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Pressable onPress={() => applyReminderTime((reminderHour + 23) % 24, reminderMinute)} style={styles.intervalChip}>
@@ -599,21 +602,20 @@ export default function SettingsScreen() {
                     <Text style={styles.intervalChipText}>＋</Text>
                   </Pressable>
                 </View>
-                <Text style={styles.warnText}>  Uhr  (±1h / ±5min)</Text>
               </View>
             </View>
           )}
 
           {/* ── Darstellung ── */}
-          <SectionHeader title="Darstellung" open={open.darstellung} onToggle={() => toggle('darstellung')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionAppearance} open={open.darstellung} onToggle={() => toggle('darstellung')} styles={headerStyles} />
           {open.darstellung && (
             <View style={styles.sectionBody}>
-              <Text style={styles.subLabel}>Farbmodus</Text>
+              <Text style={styles.subLabel}>{t.settings.subColorMode}</Text>
               <View style={styles.intervalRow}>
                 {([
-                  { key: 'system', label: 'System' },
-                  { key: 'dark',   label: 'Dunkel' },
-                  { key: 'light',  label: 'Hell'   },
+                  { key: 'system', label: t.settings.themeSystem },
+                  { key: 'dark',   label: t.settings.themeDark },
+                  { key: 'light',  label: t.settings.themeLight },
                 ] as { key: ThemePreference; label: string }[]).map(({ key, label }) => (
                   <Pressable
                     key={key}
@@ -624,11 +626,27 @@ export default function SettingsScreen() {
                   </Pressable>
                 ))}
               </View>
+
+              <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subLanguage}</Text>
+              <View style={styles.intervalRow}>
+                {([
+                  { key: 'de', label: t.settings.langDE },
+                  { key: 'en', label: t.settings.langEN },
+                ] as { key: 'de' | 'en'; label: string }[]).map(({ key, label }) => (
+                  <Pressable
+                    key={key}
+                    style={[styles.intervalChip, language === key && styles.intervalChipActive]}
+                    onPress={() => setLanguage(key)}
+                  >
+                    <Text style={[styles.intervalChipText, language === key && styles.intervalChipTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           )}
 
           {/* ── Export ── */}
-          <SectionHeader title="Export" open={open.export} onToggle={() => toggle('export')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionExport} open={open.export} onToggle={() => toggle('export')} styles={headerStyles} />
           {open.export && (
             <View style={styles.sectionBody}>
               <View style={styles.exportRow}>
@@ -643,16 +661,16 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Über die App ── */}
-          <SectionHeader title="Über die App" open={open.about} onToggle={() => toggle('about')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionAbout} open={open.about} onToggle={() => toggle('about')} styles={headerStyles} />
           {open.about && (
             <View style={styles.sectionBody}>
               <View style={styles.aboutBlock}>
                 <Image source={require('../assets/icon.png')} style={styles.aboutIcon} />
-                <Text style={styles.aboutTitle}>Tagebuch</Text>
+                <Text style={styles.aboutTitle}>{t.appName}</Text>
                 <Text style={styles.aboutLine}>Version {Constants.expoConfig?.version ?? '–'}</Text>
-                <Text style={styles.aboutLine}>Entwickelt von Olaf Leichsenring mit Claude Code</Text>
-                <Text style={styles.aboutLine}>React Native · Android Studio Build</Text>
-                <Text style={styles.aboutLine}>Lokale Daten · Kein Cloud-Zwang</Text>
+                <Text style={styles.aboutLine}>{t.settings.aboutDeveloper}</Text>
+                <Text style={styles.aboutLine}>{t.settings.aboutBuild}</Text>
+                <Text style={styles.aboutLine}>{t.settings.aboutTagline}</Text>
               </View>
             </View>
           )}
@@ -665,19 +683,19 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>
-              {pwModal === 'set' ? 'Fallback-Passwort festlegen'
-                : pwModal === 'reset' ? 'Neues Passwort festlegen'
-                : 'Passwort ändern'}
+              {pwModal === 'set' ? t.settings.pwSetTitle
+                : pwModal === 'reset' ? t.settings.pwResetTitle
+                : t.settings.pwChangeTitle}
             </Text>
             {pwModal === 'change' && (
-              <TextInput style={styles.modalInput} value={pwCurrent} onChangeText={(v) => { setPwCurrent(v); setPwError(''); }} placeholder="Aktuelles Passwort" placeholderTextColor={c.muted} secureTextEntry />
+              <TextInput style={styles.modalInput} value={pwCurrent} onChangeText={(v) => { setPwCurrent(v); setPwError(''); }} placeholder={t.settings.pwCurrentPlaceholder} placeholderTextColor={c.muted} secureTextEntry />
             )}
-            <TextInput style={styles.modalInput} value={pwNew} onChangeText={(v) => { setPwNew(v); setPwError(''); }} placeholder="Neues Passwort (min. 4 Zeichen)" placeholderTextColor={c.muted} secureTextEntry />
-            <TextInput style={styles.modalInput} value={pwConfirm} onChangeText={(v) => { setPwConfirm(v); setPwError(''); }} placeholder="Passwort wiederholen" placeholderTextColor={c.muted} secureTextEntry onSubmitEditing={handleSavePassword} returnKeyType="done" />
+            <TextInput style={styles.modalInput} value={pwNew} onChangeText={(v) => { setPwNew(v); setPwError(''); }} placeholder={t.settings.pwNewPlaceholder} placeholderTextColor={c.muted} secureTextEntry />
+            <TextInput style={styles.modalInput} value={pwConfirm} onChangeText={(v) => { setPwConfirm(v); setPwError(''); }} placeholder={t.settings.pwConfirmPlaceholder} placeholderTextColor={c.muted} secureTextEntry onSubmitEditing={handleSavePassword} returnKeyType="done" />
             {!!pwError && <Text style={styles.modalError}>{pwError}</Text>}
             <View style={styles.modalBtnRow}>
-              <Pressable style={styles.modalCancel} onPress={closePwModal}><Text style={styles.modalCancelText}>Abbrechen</Text></Pressable>
-              <Pressable style={styles.modalBtn} onPress={handleSavePassword}><Text style={styles.modalBtnText}>Speichern</Text></Pressable>
+              <Pressable style={styles.modalCancel} onPress={closePwModal}><Text style={styles.modalCancelText}>{t.common.cancel}</Text></Pressable>
+              <Pressable style={styles.modalBtn} onPress={handleSavePassword}><Text style={styles.modalBtnText}>{t.common.save}</Text></Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>

@@ -14,10 +14,12 @@ import { captureLocation, type GeoTag } from '../utils/location';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { createEntry } from '../db/entries';
+import { useT } from '../i18n';
 
 export default function NewEntryScreen() {
   const router = useRouter();
   const c = useColors();
+  const t = useT();
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
@@ -81,7 +83,7 @@ export default function NewEntryScreen() {
         headerRight: () => (
           <Pressable style={styles.headerSave} onPress={save} disabled={!text.trim() || saving}>
             <Text style={[styles.headerSaveText, { color: text.trim() && !saving ? c.accent : c.muted }]}>
-              Speichern
+              {t.common.save}
             </Text>
           </Pressable>
         ),
@@ -102,14 +104,14 @@ export default function NewEntryScreen() {
             style={styles.textInput}
             value={text}
             onChangeText={setText}
-            placeholder="Was liegt dir auf dem Herzen?"
+            placeholder={t.entry.textPlaceholderNew}
             placeholderTextColor={c.muted}
             multiline
             textAlignVertical="top"
           />
 
-          <QualifierPicker label="Laune" emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
-          <QualifierPicker label="Befinden" emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
+          <QualifierPicker label={t.entry.labelMood} emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
+          <QualifierPicker label={t.entry.labelHealth} emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
           <Pressable
             style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
             onPress={async () => {
@@ -124,21 +126,21 @@ export default function NewEntryScreen() {
             {locating
               ? <ActivityIndicator size="small" color={c.accent} />
               : <Text style={[styles.locationBtnText, geoTag && styles.locationBtnTextActive]}>
-                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : '📍 Standort hinzufügen'}
+                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : t.entry.locationAdd}
                 </Text>
             }
           </Pressable>
 
-          <Text style={styles.label}>Kategorien</Text>
+          <Text style={styles.label}>{t.entry.labelCategories}</Text>
           <DropdownPicker
             options={categories}
             selected={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
-            placeholder="Kategorien wählen…"
+            placeholder={t.entry.categoriesPlaceholder}
             multi
           />
 
-          <Text style={styles.label}>Tags</Text>
+          <Text style={styles.label}>{t.entry.labelTags}</Text>
           <TagInput
             selectedTagIds={selectedTagIds}
             selectedTagNames={selectedTagNames}
@@ -152,4 +154,3 @@ export default function NewEntryScreen() {
     </SafeAreaView>
   );
 }
-

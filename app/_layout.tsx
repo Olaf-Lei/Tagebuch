@@ -6,6 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { BiometricProvider } from '../contexts/BiometricContext';
+import { LanguageProvider } from '../contexts/LanguageContext';
+import { useT } from '../i18n';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
@@ -13,6 +15,7 @@ import { ensureReminderScheduled } from '../utils/notifications';
 
 function AppShell() {
   const { mode } = useTheme();
+  const t = useT();
   const c = mode === 'dark' ? darkColors : lightColors;
 
   return (
@@ -26,12 +29,12 @@ function AppShell() {
           contentStyle: { backgroundColor: c.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Tagebuch' }} />
-        <Stack.Screen name="new" options={{ title: 'Neuer Eintrag', presentation: 'modal' }} />
-        <Stack.Screen name="entry/[id]" options={{ title: 'Eintrag' }} />
-        <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
-        <Stack.Screen name="calendar" options={{ title: 'Kalender' }} />
-        <Stack.Screen name="stats" options={{ title: 'Statistiken' }} />
+        <Stack.Screen name="index" options={{ title: t.appName }} />
+        <Stack.Screen name="new" options={{ title: t.nav.newEntry, presentation: 'modal' }} />
+        <Stack.Screen name="entry/[id]" options={{ title: t.nav.entry }} />
+        <Stack.Screen name="settings" options={{ title: t.nav.settings }} />
+        <Stack.Screen name="calendar" options={{ title: t.nav.calendar }} />
+        <Stack.Screen name="stats" options={{ title: t.nav.stats }} />
       </Stack>
     </>
   );
@@ -49,9 +52,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <BiometricProvider>
-          <AppShell />
-        </BiometricProvider>
+        <LanguageProvider>
+          <BiometricProvider>
+            <AppShell />
+          </BiometricProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
