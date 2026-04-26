@@ -290,6 +290,13 @@ export default function SettingsScreen() {
     setEncKeyModal('export');
   };
 
+  const handleCopyKey = () => {
+    if (exportedKey) {
+      Clipboard.setString(exportedKey);
+      Alert.alert(t.settings.logCopied);
+    }
+  };
+
   const handleImportKey = async () => {
     setImportKeyError('');
     try {
@@ -739,10 +746,7 @@ export default function SettingsScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>{t.settings.exportKeyTitle}</Text>
             <Text style={styles.warnText}>{t.settings.exportKeyHint}</Text>
-            <Pressable
-              style={[styles.modalInput, { justifyContent: 'center' }]}
-              onPress={() => { if (exportedKey) { Clipboard.setString(exportedKey); Alert.alert(t.settings.logCopied); } }}
-            >
+            <Pressable style={[styles.modalInput, { justifyContent: 'center' }]} onPress={handleCopyKey}>
               <Text style={[styles.recoveryCode, { fontSize: 11, letterSpacing: 1 }]} numberOfLines={3} selectable>
                 {exportedKey ?? '–'}
               </Text>
@@ -751,7 +755,7 @@ export default function SettingsScreen() {
               <Pressable style={styles.modalCancel} onPress={() => setEncKeyModal(null)}>
                 <Text style={styles.modalCancelText}>{t.common.ok}</Text>
               </Pressable>
-              <Pressable style={styles.modalBtn} onPress={() => { if (exportedKey) { Clipboard.setString(exportedKey); Alert.alert(t.settings.logCopied); } }}>
+              <Pressable style={styles.modalBtn} onPress={handleCopyKey}>
                 <Text style={styles.modalBtnText}>{t.settings.logCopy}</Text>
               </Pressable>
             </View>

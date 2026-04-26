@@ -55,11 +55,13 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', async (nextState) => {
       if (nextState !== 'active') return;
       try {
-        const config = await loadConfig();
+        const [config, intervalMin, lastMs] = await Promise.all([
+          loadConfig(),
+          getAutoSyncInterval(),
+          getLastSyncMs(),
+        ]);
         if (!config.url || !config.username || !config.password) return;
-        const intervalMin = await getAutoSyncInterval();
         if (intervalMin === 0) return;
-        const lastMs = await getLastSyncMs();
         if (lastMs !== null && Date.now() - lastMs < intervalMin * 60_000) return;
         syncNow().catch(() => {});
       } catch {}

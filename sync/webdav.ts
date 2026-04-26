@@ -12,6 +12,17 @@ import { getDbPath, closeDb, initDb, getDb } from '../db/schema';
 import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 
+function buildWebDavUrl(base: string, dir: string, username: string, filename: string): string {
+  const p = `${dir}/${filename}`;
+  return base.includes('/remote.php/dav') || base.includes('/webdav')
+    ? `${base}${p}`
+    : `${base}/remote.php/dav/files/${encodeURIComponent(username.trim())}${p}`;
+}
+
+function downloadErrMsg(status: number): string {
+  return status === 401 ? 'Authentifizierung fehlgeschlagen.' : `Fehler ${status}: Download fehlgeschlagen.`;
+}
+
 const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
 const STORE_PASS = 'webdav_pass';
@@ -92,14 +103,8 @@ async function _doSync(): Promise<void> {
   const credentials = btoa(`${config.username}:${config.password}`);
   const base = config.url.replace(/\/$/, '');
   const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
-  const buildUrl = (filename: string) => {
-    const p = `${dir}/${filename}`;
-    return base.includes('/remote.php/dav') || base.includes('/webdav')
-      ? `${base}${p}`
-      : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${p}`;
-  };
+  const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
 
-  // ── Step 1: Download remote DB for merge ──────────────────────────────────
   const tempDownPath = (cacheDirectory ?? '') + 'tagebuch_merge.tmp';
   let remoteExists = false;
   let remoteIsEnc = false;
@@ -140,22 +145,17 @@ async function _doSync(): Promise<void> {
       await appendLog('info', 'Kein Remote-Backup vorhanden — Erstsync.');
     } else {
       await deleteAsync(tempDownPath, { idempotent: true }).catch(() => {});
-      const msg = dl.status === 401
-        ? 'Authentifizierung fehlgeschlagen.'
-        : `Fehler ${dl.status}: Download fehlgeschlagen.`;
+      const msg = downloadErrMsg(dl.status);
       await appendLog('error', msg);
       throw new Error(msg);
     }
   } else {
     await deleteAsync(tempDownPath, { idempotent: true }).catch(() => {});
-    const msg = dl.status === 401
-      ? 'Authentifizierung fehlgeschlagen.'
-      : `Fehler ${dl.status}: Download fehlgeschlagen.`;
+    const msg = downloadErrMsg(dl.status);
     await appendLog('error', msg);
     throw new Error(msg);
   }
 
-  // ── Step 2: Merge remote into local ──────────────────────────────────────
   if (remoteExists) {
     let decryptedTempPath: string | null = null;
     let attached = false;
@@ -315,16 +315,9 @@ export async function restoreNow(): Promise<void> {
   const credentials = btoa(`${config.username}:${config.password}`);
   const base = config.url.replace(/\/$/, '');
   const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
-  const buildUrl = (filename: string) => {
-    const p = `${dir}/${filename}`;
-    return base.includes('/remote.php/dav') || base.includes('/webdav')
-      ? `${base}${p}`
-      : `${base}/remote.php/dav/files/${encodeURIComponent(config.username!.trim())}${p}`;
-  };
+  const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
 
   const tempPath = (cacheDirectory ?? '') + 'tagebuch_restore.tmp';
-
-  // Probe encrypted backup first, then unencrypted
   const encUrl = buildUrl('tagebuch.db.enc');
   const plainUrl = buildUrl('tagebuch.db');
 
@@ -372,9 +365,7 @@ export async function restoreNow(): Promise<void> {
     }
   } else {
     await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
-    const msg = dlResult.status === 401
-      ? 'Authentifizierung fehlgeschlagen.'
-      : `Fehler ${dlResult.status}: Download fehlgeschlagen.`;
+    const msg = downloadErrMsg(dlResult.status);
     await appendLog('error', msg);
     throw new Error(msg);
   }
