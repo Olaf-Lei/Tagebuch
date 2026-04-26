@@ -186,6 +186,38 @@ export const de = {
     btnApply: 'Anwenden',
   },
 
+  help: {
+    title: 'Hilfe-Tour',
+    stepLabel: (n: number, total: number) => `${n} / ${total}`,
+    btnNext: 'Weiter',
+    btnBack: 'Zurück',
+    btnDone: 'Fertig',
+
+    step1Title: 'Eintrag erstellen',
+    step1Icon: '✍️',
+    step1Text: 'Tippe auf ＋, schreibe deinen Eintrag und speichere ihn oben rechts.\n\nOptional: Stimmung, Befinden, Standort, Kategorien und Tags ergänzen — alles ohne Pflichtfelder.',
+
+    step2Title: 'Suche & Filter',
+    step2Icon: '🔍',
+    step2Text: 'Die Suchleiste filtert Einträge nach Stichwörtern, Treffer werden farbig hervorgehoben.\n\nMit den Dropdown-Filtern kannst du nach Kategorien oder Tags filtern. Der Zeitfilter (Heute / Woche / Monat / Alles) schränkt den Zeitraum ein.',
+
+    step3Title: 'Kalender',
+    step3Icon: '📅',
+    step3Text: 'Die Kalenderansicht zeigt Tage mit Einträgen als Punkte.\n\nTippe auf einen Tag, um seine Einträge direkt darunter zu sehen.',
+
+    step4Title: 'Statistiken',
+    step4Icon: '📊',
+    step4Text: 'Wähle einen Zeitraum (Tag / Woche / Monat / Jahr / Frei).\n\nDu siehst Eintragsanzahl, Streak-Rekord, Laune- und Befindenstrendkurven, Aktivitätsheatmap sowie Top-Kategorien und Top-Tags.',
+
+    step5Title: 'Sync & Backup',
+    step5Icon: '☁️',
+    step5Text: 'Verbinde die App unter Einstellungen → Sync & Backup mit deinem Nextcloud-Server.\n\nDu kannst manuell synchronisieren oder ein automatisches Intervall wählen. Optional: Verschlüsselung vor dem Upload aktivieren.',
+
+    step6Title: 'Sicherheit',
+    step6Icon: '🔒',
+    step6Text: 'Aktiviere den Biometrie-Lock unter Einstellungen → Sicherheit.\n\nDie App sperrt beim Start oder nach 15 Sekunden im Hintergrund. Richte ein Fallback-Passwort und einen Recovery-Code ein, um immer Zugang zu haben.',
+  },
+
   lock: {
     title: 'Tagebuch gesperrt',
     btnBiometric: 'Biometrie verwenden',
