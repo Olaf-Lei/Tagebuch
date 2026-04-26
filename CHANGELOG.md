@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.2 — 2026-04-26
+- Fix: ATTACH DATABASE Pfad in DB-Verzeichnis verlegt — expo-sqlite (native) und expo-file-system (JS) sehen unterschiedliche Basis-Pfade; SQLite fand die Temp-Datei nicht und legte eine leere DB an → "no such table: remote.entries"
+
 ## v2.4.1 — 2026-04-26
 - Bidirektionaler Sync-Merge via SQLite ATTACH DATABASE (`created_at` als stabiler Identifier)
 - Foreground-Trigger für Auto-Sync (AppState-Listener in `_layout.tsx`, zuverlässiger als BackgroundFetch)
