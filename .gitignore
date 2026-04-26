@@ -40,3 +40,7 @@ yarn-error.*
 /ios
 /android
 local.properties
+
+# release signing — back these up externally, never commit
+/release/*.jks
+/release/keystore.properties
