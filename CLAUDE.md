@@ -66,33 +66,42 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
   index.tsx             -- Eintragsliste (Startscreen)
   new.tsx               -- Neuer Eintrag
   entry/[id].tsx        -- Eintrag bearbeiten
-  settings.tsx          -- Einstellungen
-  stats.tsx             -- Statistiken
+  settings.tsx          -- Einstellungen (Accordion-Sektionen)
+  stats.tsx             -- Statistiken (mit Zeitfilter + Charts)
+  calendar.tsx          -- Monatskalender mit Tages-Einträgen
 /components
   EntryCard.tsx
   TagInput.tsx
   DropdownPicker.tsx    -- Material Exposed Dropdown (single + multi)
   QualifierPicker.tsx   -- Emoji-Reihe für Laune/Befinden
   TimestampPicker.tsx
+  HelpModal.tsx         -- Schritt-für-Schritt-Tour (nummeriete Hilfe-Screens)
   qualifiers.ts         -- MOOD_EMOJIS, HEALTH_EMOJIS, emojiForLevel()
   theme.ts              -- useColors(), Dark/Light Palette
 /contexts
   BiometricContext.tsx  -- Lock-Screen als Overlay (App-State bleibt erhalten)
   ThemeContext.tsx
+  LanguageContext.tsx   -- Aktive Sprache (de/en), gespeichert in AsyncStorage
+/i18n
+  de.ts                 -- Deutsche UI-Strings (vollständig)
+  en.ts                 -- Englische UI-Strings (vollständig)
+  index.ts              -- useT() Hook → gibt typisierten String-Record zurück
 /db
   schema.ts             -- SQL-Definitionen + Migrationen + closeDb()
   entries.ts            -- CRUD Entries (inkl. mood/health/geo)
   tags.ts               -- CRUD Tags (upsert bei Neueingabe)
   categories.ts         -- CRUD Categories
-  stats.ts              -- Aggregierte Statistiken
+  stats.ts              -- Aggregierte Statistiken (inkl. getCategoryUsage, getTagUsage)
 /sync
   webdav.ts             -- Nextcloud WebDAV Sync + Restore
   backgroundSync.ts     -- Konfigurierbares Auto-Sync-Intervall
+  syncLog.ts            -- Persistenter Sync-Log (SecureStore)
 /utils
   auth.ts               -- SHA-256 Passwort-Hashing (SecureStore)
   crypto.ts             -- AES-Verschlüsselung der DB-Datei
   location.ts           -- GPS + Reverse Geocoding → Stadtname
   export.ts             -- JSON- und CSV-Export
+  notifications.ts      -- expo-notifications: tägliche Erinnerung planen/löschen
 /hooks
   useEntries.ts
   useTags.ts
@@ -116,7 +125,7 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 - Kompakte Karten: Timestamp, Text-Preview, Laune/Befinden-Emojis, Kategorie-Badges, Tags, Standort
 - Segmented Control für Zeitfilter (Heute / Woche / Monat / Alles)
 - Multi-Select Dropdowns für Kategorie- und Tag-Filter
-- Volltextsuche
+- Volltextsuche (Suchbegriff in EntryCard hervorheben)
 - FAB → new.tsx
 
 ### new.tsx / entry/[id].tsx – Eintrag erstellen/bearbeiten
@@ -129,19 +138,27 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 - Löschen mit Bestätigung (nur edit)
 
 ### settings.tsx – Einstellungen
-- Kategorien und Tags verwalten (hinzufügen, umbenennen, löschen)
-- Nextcloud: URL, Benutzername, Passwort, Pfad
-- Sync-Button + Restore-Button + letzter Sync-Zeitstempel
-- Auto-Sync: Aus / 15 Min / 1 Std / 6 Std / 24 Std
-- Darstellung: Dark/Light Toggle
-- Biometrie-Lock: aktivieren/deaktivieren, Passwort ändern, **Passwort-Reset per Biometrie**
-- Verschlüsselung: AES vor Upload, Schlüssel zurücksetzen
-- Export: JSON / CSV
-- Über die App
+Sektionen sind einklappbar (Accordion). Gliederung:
+- **Inhalte**: Kategorien und Tags verwalten (hinzufügen, umbenennen, löschen)
+- **Sync & Backup**: Nextcloud URL/User/PW/Pfad, Sync-Button, Restore-Button, letzter Sync-Zeitstempel, Auto-Sync-Intervall, Sync-Log (einklappbar)
+- **Sicherheit**: Biometrie-Lock (aktivieren/deaktivieren, Passwort ändern, Reset per Biometrie), Verschlüsselung (AES vor Upload, Schlüssel zurücksetzen)
+- **Erinnerungen**: Tägliche Benachrichtigung aktivieren, Uhrzeit wählen
+- **Darstellung**: Farbmodus Hell / Dunkel / System (folgt Systemeinstellung), Sprache DE/EN
+- **Export**: JSON / CSV
+- **Über die App**: App-Icon, Name, Version, Build-Info (Android Studio), Lizenz
 
 ### stats.tsx – Statistiken
-- Anzahl Einträge gesamt / diesen Monat
-- Ø Laune und Ø Befinden (nur wenn Daten vorhanden)
+- Globaler Zeitfilter (Tag / Woche / Monat / Jahr / Frei)
+- Eintragsanzahl gesamt / im Zeitraum
+- Laune- und Befinden-Trend als Doppelliniendiagramm
+- Heatmap der Eintragsfrequenz (adaptive Granularität)
+- Balkendiagramm Einträge pro Periode
+- Kategorien-Rang: Balkendiagramm der meistgenutzten Kategorien im Zeitraum
+- Tag-Rang: Balkendiagramm der meistgenutzten Tags im Zeitraum
+
+### calendar.tsx – Kalenderansicht
+- Monatskalender, Tage mit Einträgen markiert
+- Tap auf Tag → Einträge des Tages als Liste darunter
 
 ## Sicherheit & Lock
 
@@ -213,8 +230,77 @@ Installiertes Tooling:
 - build-tools 35.0.0, platform-tools 37.0, platforms;android-35
 - `studio` Symlink → `/usr/local/bin/studio`
 
+## Mehrsprachigkeit (i18n)
+- Kein externes i18n-Framework — eigener schlanker `useT()` Hook via `LanguageContext`
+- `i18n/de.ts` und `i18n/en.ts` exportieren je ein `const strings = { ... }` Objekt mit identischer Struktur
+- `i18n/index.ts` exportiert `useT()` → gibt den passenden String-Record zurück
+- Sprache in `AsyncStorage` unter `app_language` speichern, Default: Systemsprache (`expo-localization`)
+- Beim Hinzufügen neuer UI-Strings immer **beide** Dateien gleichzeitig ergänzen
+- Keine automatische Übersetzung: alle Strings manuell formulieren
+
+## Benachrichtigungen (utils/notifications.ts)
+- `expo-notifications` für lokale tägliche Erinnerungen
+- Uhrzeit und Aktivierung in `AsyncStorage` persistieren (`reminder_enabled`, `reminder_time`)
+- Nur planen wenn Berechtigung vorhanden; ohne Berechtigung graceful degradieren
+- Beim App-Start prüfen ob Notification noch geplant, ggf. neu registrieren
+
+## Hilfe-Tour (components/HelpModal.tsx)
+- Modales Overlay mit nummerierten Schritten (Weiter / Zurück / Schließen)
+- Je ein Schritt pro Haupt-Feature: Eintrag erstellen, Suche & Filter, Kalender, Statistiken, Sync, Sicherheit
+- Erreichbar über `?`-Button im Header der index.tsx und über Settings > Über die App
+- Beim ersten App-Start automatisch anzeigen (Flag `help_shown` in AsyncStorage)
+- Texte kommen aus i18n — kein Hardcoding
+
+## Android Widget (geplant)
+- Schnelleingabe-Widget für den Android-Homescreen
+- Umsetzung via nativer Glance-Komponente im `android/`-Ordner nach `expo prebuild`
+- Widget öffnet `new.tsx` direkt mit einem Deep-Link (`tagebuch://new`)
+- Nur Android; iOS nicht geplant
+
 ## Noch offen / Nächste Schritte
-- Recovery Code für "weder Biometrie noch Passwort" Szenario
-- iOS-Support (nicht geplant)
-- Bilder/Anhänge (nicht geplant)
-- Auswertungen/Diagramme (optional)
+
+### Sofort (kleine Fixes)
+- [x] Recovery Code für "weder Biometrie noch Passwort" Szenario
+- [x] "Über die App" korrigieren: Framework React Native, Build via Android Studio; Entwickelt von Olaf
+- [x] App-Logo (assets/icon.png) im "Über die App"-Block anzeigen
+
+### Einstellungen refactoring
+- [x] Einstellungen in einklappbare Accordion-Sektionen gliedern (Inhalte / Sync & Backup / Sicherheit / Darstellung / Export / Über die App)
+
+### Darstellungsmodus
+- [x] ThemeContext: Dritter Modus `'system'` ergänzen — folgt `Appearance.getColorScheme()` + `Appearance.addChangeListener`
+- [x] Settings: Toggle "Hell / Dunkel / System" (3-Way statt boolean Switch)
+- [x] Default für Neuinstallationen: `'system'`
+- [ ] Suchbegriff im EntryCard-Text und im Vorschau-Text hervorheben (Text-Splitting, kein extra Package)
+
+### Erinnerungen
+- [ ] `utils/notifications.ts` implementieren (planen, löschen, Berechtigung)
+- [ ] Berechtigung beim ersten Aktivieren anfragen
+- [ ] Sektion "Erinnerungen" in settings.tsx: Toggle + Uhrzeit-Picker
+- [ ] Beim App-Start: geplante Notification prüfen und ggf. neu registrieren
+
+### Statistiken erweitern
+- [ ] `db/stats.ts`: `getCategoryUsage(from, to)` und `getTagUsage(from, to)` ergänzen
+- [ ] stats.tsx: Kategorien-Balkendiagramm (Top 10, gleiche Zeitfilter wie Rest)
+- [ ] stats.tsx: Tag-Balkendiagramm (Top 10, gleiche Zeitfilter wie Rest)
+
+### Mehrsprachigkeit (DE + EN)
+- [ ] `i18n/de.ts`, `i18n/en.ts`, `i18n/index.ts` anlegen
+- [ ] `LanguageContext.tsx` anlegen (Sprache laden/speichern, Default via expo-localization)
+- [ ] Alle UI-Strings in allen Screens und Komponenten auf `useT()` umstellen
+- [ ] Sprach-Auswahl in Settings > Darstellung ergänzen
+
+### Hilfe-Tour
+- [ ] `HelpModal.tsx` mit Schritt-Logik implementieren
+- [ ] Tour-Inhalte in i18n-Strings formulieren (DE + EN)
+- [ ] `?`-Button in index.tsx-Header verdrahten
+- [ ] Beim ersten Start automatisch anzeigen (AsyncStorage-Flag)
+
+### Android Widget
+- [ ] Machbarkeit mit Glance nach prebuild klären
+- [ ] Widget implementieren (Schnelleingabe → Deep-Link nach new.tsx)
+
+### Nicht geplant
+- iOS-Support
+- Bilder/Anhänge
+- Gamification (Streaks etc.)
