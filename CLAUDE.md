@@ -290,12 +290,13 @@ Installiertes Tooling:
 
 ## Backlog
 
-### Offen
-1. **Sync-Verhalten verbessern** — direkt beim App-Start, nach jedem neuen Eintrag, beim Beenden (AppState inactive/background), zyklisch (bestehendes Intervall-System ausbauen)
-2. **Farben für Kategorien** — passend zum Navy/Gold-Farbschema, Auto-Vorgabe beim Anlegen, manuell anpassbar; Auswirkung auf Kategorie-Badges und Heatmap in stats.tsx
-3. **Setup-Button ins Burger-Menü** — FAB oder Settings-Icon oben links in der Headerleiste als Drawer/Menü; Setup/Settings-Einstieg dort bündeln
-4. **Tastatur-Scroll** — bei Textfeldern automatisch scrollen sodass das aktive Feld über der Bildschirmtastatur sichtbar bleibt (KeyboardAvoidingView + ScrollView konsistent in new.tsx, entry/[id].tsx)
-5. **Querformat / ChromeOS** — adaptives Layout für landscape-Orientierung; zweispaltiges Layout wo sinnvoll
+### Offen (nach Priorität)
+
+1. **Tastatur-Scroll** *(Hoch/Klein)* — bei Textfeldern automatisch scrollen sodass das aktive Feld über der Bildschirmtastatur sichtbar bleibt; KeyboardAvoidingView + ScrollView konsistent in `new.tsx`, `entry/[id].tsx`; bricht das 5-Sekunden-Ziel wenn Textfeld verdeckt ist
+2. **Sync-Verhalten verbessern** *(Hoch/Mittel)* — direkt beim App-Start, nach jedem gespeicherten Eintrag, beim Beenden (AppState → inactive/background), zyklisch; bestehendes Intervall-System in `backgroundSync.ts` ausbauen
+3. **Farben für Kategorien** *(Mittel/Mittel)* — Auto-Vorgabe aus festem Palette (Navy/Gold-kompatibel) beim Anlegen, manuell anpassbar in Settings; Auswirkung auf Kategorie-Badges (EntryCard, DropdownPicker) und Heatmap in `stats.tsx`; neue Spalte `color TEXT` in `categories`-Tabelle per Migration
+4. **Burger-Menü** *(Niedrig/Klein)* — Settings-Einstieg als Icon oben links im Header von `index.tsx` statt separatem FAB oder Tab; reine Navigation, keine neue Funktion
+5. **Querformat / ChromeOS** *(Niedrig/Groß)* — adaptives Layout für landscape-Orientierung; zweispaltiges Layout wo sinnvoll; Nischen-Zielgruppe, nach allen anderen Features
 
 ### Nicht geplant
 - iOS-Support
