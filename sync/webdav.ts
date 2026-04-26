@@ -257,6 +257,10 @@ async function _doSync(): Promise<void> {
     }
   }
 
+  // WAL in Hauptdatei flushen — sonst enthält die .db beim Upload nur 1 leere Page
+  const db = await getDb();
+  await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
+
   const encrypted = await isEncryptionEnabled();
   const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
   const uploadUrl = buildUrl(remoteFilename);
