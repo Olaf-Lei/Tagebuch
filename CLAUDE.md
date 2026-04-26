@@ -271,13 +271,13 @@ Installiertes Tooling:
 - [x] ThemeContext: Dritter Modus `'system'` ergänzen — folgt `Appearance.getColorScheme()` + `Appearance.addChangeListener`
 - [x] Settings: Toggle "Hell / Dunkel / System" (3-Way statt boolean Switch)
 - [x] Default für Neuinstallationen: `'system'`
-- [ ] Suchbegriff im EntryCard-Text und im Vorschau-Text hervorheben (Text-Splitting, kein extra Package)
+- [x] Suchbegriff im EntryCard-Text hervorheben (HighlightedText, Text-Splitting)
 
 ### Erinnerungen
-- [ ] `utils/notifications.ts` implementieren (planen, löschen, Berechtigung)
-- [ ] Berechtigung beim ersten Aktivieren anfragen
-- [ ] Sektion "Erinnerungen" in settings.tsx: Toggle + Uhrzeit-Picker
-- [ ] Beim App-Start: geplante Notification prüfen und ggf. neu registrieren
+- [x] `utils/notifications.ts` implementieren (planen, löschen, Berechtigung)
+- [x] Berechtigung beim ersten Aktivieren anfragen
+- [x] Sektion "Erinnerungen" in settings.tsx: Toggle + Uhrzeit-Picker (±1h/±5min)
+- [x] Beim App-Start: geplante Notification prüfen und ggf. neu registrieren
 
 ### Statistiken erweitern
 - [ ] `db/stats.ts`: `getCategoryUsage(from, to)` und `getTagUsage(from, to)` ergänzen
