@@ -5,13 +5,17 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
+import { HelpModal } from '../components/HelpModal';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 import { useT } from '../i18n';
+
+const HELP_SHOWN_KEY = 'help_shown';
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -75,9 +79,18 @@ export default function IndexScreen() {
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showHelp, setShowHelp] = useState(false);
   const allTags = useTags();
 
-  useEffect(() => { getCategories().then(setCategories); }, []);
+  useEffect(() => {
+    getCategories().then(setCategories);
+    SecureStore.getItemAsync(HELP_SHOWN_KEY).then((val) => {
+      if (!val) {
+        setShowHelp(true);
+        SecureStore.setItemAsync(HELP_SHOWN_KEY, 'true');
+      }
+    });
+  }, []);
 
   const { entries, loading, reload } = useEntries({
     search,
@@ -109,6 +122,9 @@ export default function IndexScreen() {
         ),
         headerRight: () => (
           <View style={{ flexDirection: 'row' }}>
+            <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 17, color: c.muted, fontWeight: '600' }}>?</Text>
+            </Pressable>
             <Pressable onPress={() => router.push('/stats')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
               <Text style={{ fontSize: 19, color: c.accent }}>📊</Text>
             </Pressable>
@@ -180,6 +196,8 @@ export default function IndexScreen() {
       <Pressable style={styles.settingsBtn} onPress={() => router.push('/settings')}>
         <Text style={styles.settingsText}>⚙</Text>
       </Pressable>
+
+      <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
     </SafeAreaView>
   );
 }

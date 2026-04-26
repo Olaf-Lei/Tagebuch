@@ -188,6 +188,38 @@ export const en: Strings = {
     btnApply: 'Apply',
   },
 
+  help: {
+    title: 'Help Tour',
+    stepLabel: (n: number, total: number) => `${n} / ${total}`,
+    btnNext: 'Next',
+    btnBack: 'Back',
+    btnDone: 'Done',
+
+    step1Title: 'Create an entry',
+    step1Icon: '✍️',
+    step1Text: 'Tap ＋, write your entry and save it with the button in the top right.\n\nOptionally add mood, health, location, categories and tags — nothing is required.',
+
+    step2Title: 'Search & filter',
+    step2Icon: '🔍',
+    step2Text: 'The search bar filters entries by keyword, with matches highlighted in colour.\n\nUse the dropdown filters to filter by category or tag. The date filter (Today / Week / Month / All) restricts the time range.',
+
+    step3Title: 'Calendar',
+    step3Icon: '📅',
+    step3Text: 'The calendar view marks days with entries as dots.\n\nTap a day to see its entries directly below.',
+
+    step4Title: 'Statistics',
+    step4Icon: '📊',
+    step4Text: 'Choose a time range (Day / Week / Month / Year / Custom).\n\nSee entry count, streak record, mood and health trend curves, activity heatmap, and top categories and tags.',
+
+    step5Title: 'Sync & backup',
+    step5Icon: '☁️',
+    step5Text: 'Connect the app to your Nextcloud server under Settings → Sync & Backup.\n\nSync manually or choose an automatic interval. Optionally enable encryption before upload.',
+
+    step6Title: 'Security',
+    step6Icon: '🔒',
+    step6Text: 'Enable biometric lock under Settings → Security.\n\nThe app locks on start or after 15 seconds in the background. Set a fallback password and recovery code to always maintain access.',
+  },
+
   lock: {
     title: 'Diary locked',
     btnBiometric: 'Use biometrics',

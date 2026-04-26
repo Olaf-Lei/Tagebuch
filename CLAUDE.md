@@ -292,14 +292,13 @@ Installiertes Tooling:
 - [x] Lock-Screen: Tastatur überlagert Eingabefelder nicht mehr (KeyboardAvoidingView + ScrollView + SafeAreaInsets)
 
 ### Hilfe-Tour
-- [ ] `HelpModal.tsx` mit Schritt-Logik implementieren
-- [ ] Tour-Inhalte in i18n-Strings formulieren (DE + EN)
-- [ ] `?`-Button in index.tsx-Header verdrahten
-- [ ] Beim ersten Start automatisch anzeigen (AsyncStorage-Flag)
+- [x] `HelpModal.tsx` mit Schritt-Logik implementieren (6 Schritte, Punkte-Navigation, Weiter/Zurück/Fertig)
+- [x] Tour-Inhalte in i18n-Strings formulieren (DE + EN)
+- [x] `?`-Button in index.tsx-Header verdrahten
+- [x] Beim ersten Start automatisch anzeigen (SecureStore-Flag `help_shown`)
 
 ### Android Widget
-- [ ] Machbarkeit mit Glance nach prebuild klären
-- [ ] Widget implementieren (Schnelleingabe → Deep-Link nach new.tsx)
+- [x] gestrichen — zu eng gekoppelt an generierten android/-Ordner, kein stabiler Mehrwert
 
 ### Nicht geplant
 - iOS-Support
