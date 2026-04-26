@@ -1,8 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView,
-  Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DropdownPicker } from '../../components/DropdownPicker';
@@ -46,6 +46,7 @@ export default function EditEntryScreen() {
     headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
 
+  const scrollRef = useRef<ScrollView>(null);
   const [loading, setLoading] = useState(true);
   const [timestamp, setTimestamp] = useState(Date.now());
   const [text, setText] = useState('');
@@ -139,9 +140,10 @@ export default function EditEntryScreen() {
       }} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -196,6 +198,7 @@ export default function EditEntryScreen() {
               setSelectedTagIds(ids);
               setSelectedTagNames(names);
             }}
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150)}
           />
 
           <Pressable style={styles.deleteButton} onPress={confirmDelete}>

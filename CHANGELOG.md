@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.5 — 2026-04-26
+- Tastatur-Scroll: `KeyboardAvoidingView` auf `behavior="padding"` umgestellt (war `height` auf Android), ScrollView-Ref + `scrollToEnd` wenn TagInput-Feld fokussiert wird — aktives Feld bleibt über der Tastatur sichtbar
+
 ## v2.4.4 — 2026-04-26
 - Fix: WAL checkpoint (`PRAGMA wal_checkpoint(TRUNCATE)`) vor Upload — ohne diesen Schritt enthielt die hochgeladene `.db` nur 1 leere Page, da expo-sqlite alle Writes inkl. Schema zunächst in die `-wal`-Datei schreibt; Nextcloud bekam eine schema-lose DB, Merge schlug fehl, jeder Client sah nur eigene Einträge
 

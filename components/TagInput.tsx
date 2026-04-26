@@ -7,9 +7,10 @@ interface Props {
   selectedTagIds: number[];
   selectedTagNames: string[];
   onChange: (ids: number[], names: string[]) => void;
+  onFocus?: () => void;
 }
 
-export function TagInput({ selectedTagIds, selectedTagNames, onChange }: Props) {
+export function TagInput({ selectedTagIds, selectedTagNames, onChange, onFocus }: Props) {
   const c = useColors();
   const styles = useMemo(() => StyleSheet.create({
     container: { gap: 0 },
@@ -71,6 +72,7 @@ export function TagInput({ selectedTagIds, selectedTagNames, onChange }: Props) 
           value={input}
           onChangeText={handleInputChange}
           onSubmitEditing={() => addTagByName(input)}
+          onFocus={onFocus}
           placeholder="Tag hinzufügen…"
           placeholderTextColor={c.muted}
           returnKeyType="done"

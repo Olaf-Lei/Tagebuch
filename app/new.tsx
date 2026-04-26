@@ -42,6 +42,7 @@ export default function NewEntryScreen() {
   }), [c]);
 
   const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const [timestamp, setTimestamp] = useState(Date.now());
   const [text, setText] = useState('');
@@ -90,9 +91,10 @@ export default function NewEntryScreen() {
       }} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -148,6 +150,7 @@ export default function NewEntryScreen() {
               setSelectedTagIds(ids);
               setSelectedTagNames(names);
             }}
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150)}
           />
         </ScrollView>
       </KeyboardAvoidingView>
