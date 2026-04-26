@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.3 — 2026-04-26
+- Fix: Schema-Check nach ATTACH — Remote-DB ohne entries-Tabelle führte zu "no such table: remote.entries"; Merge wird jetzt übersprungen und lokale DB direkt hochgeladen (wie Erstsync)
+
 ## v2.4.2 — 2026-04-26
 - Fix: ATTACH DATABASE Pfad in DB-Verzeichnis verlegt — expo-sqlite (native) und expo-file-system (JS) sehen unterschiedliche Basis-Pfade; SQLite fand die Temp-Datei nicht und legte eine leere DB an → "no such table: remote.entries"
 
