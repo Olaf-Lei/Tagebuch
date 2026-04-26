@@ -9,6 +9,7 @@ import { BiometricProvider } from '../contexts/BiometricContext';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
+import { ensureReminderScheduled } from '../utils/notifications';
 
 function AppShell() {
   const { mode } = useTheme();
@@ -40,7 +41,7 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initDb().then(() => setReady(true));
+    initDb().then(() => { setReady(true); ensureReminderScheduled(); });
   }, []);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: '#0F1B2D' }} />;

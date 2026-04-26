@@ -21,8 +21,9 @@ import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync
 import { useBiometric } from '../contexts/BiometricContext';
 import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey } from '../utils/crypto';
 import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword, generateRecoveryCode, setRecoveryCode, hasRecoveryCode } from '../utils/auth';
+import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
 
-type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'darstellung' | 'export' | 'about';
+type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'about';
 
 function SectionHeader({
   title, open, onToggle, styles,
@@ -48,6 +49,7 @@ export default function SettingsScreen() {
     inhalte: true,
     sync: false,
     sicherheit: false,
+    erinnerungen: false,
     darstellung: false,
     export: false,
     about: false,
@@ -166,6 +168,10 @@ export default function SettingsScreen() {
   const [recoveryCode, setRecoveryCodeState] = useState<string | null>(null);
   const [hasRecovery, setHasRecovery] = useState(false);
 
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(20);
+  const [reminderMinute, setReminderMinute] = useState(0);
+
   const [pwModal, setPwModal] = useState<'set' | 'change' | 'reset' | null>(null);
   const [pwCurrent, setPwCurrent] = useState('');
   const [pwNew, setPwNew] = useState('');
@@ -189,6 +195,8 @@ export default function SettingsScreen() {
     isEncryptionEnabled().then(setEncEnabledState);
     getSyncLog().then(setSyncLog);
     hasRecoveryCode().then(setHasRecovery);
+    getReminderEnabled().then(setReminderEnabled);
+    getReminderTime().then(({ hour, minute }) => { setReminderHour(hour); setReminderMinute(minute); });
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -268,6 +276,26 @@ export default function SettingsScreen() {
     await setRecoveryCode(code);
     setHasRecovery(true);
     setRecoveryCodeState(code);
+  };
+
+  const handleReminderToggle = async (v: boolean) => {
+    if (v) {
+      const granted = await requestPermission();
+      if (!granted) {
+        Alert.alert('Keine Berechtigung', 'Bitte erlaube Benachrichtigungen in den Android-Einstellungen.');
+        return;
+      }
+      await scheduleReminder(reminderHour, reminderMinute);
+    } else {
+      await cancelReminder();
+    }
+    setReminderEnabled(v);
+  };
+
+  const applyReminderTime = async (hour: number, minute: number) => {
+    setReminderHour(hour);
+    setReminderMinute(minute);
+    if (reminderEnabled) await scheduleReminder(hour, minute);
   };
 
   const handleExport = (format: 'json' | 'csv') => {
@@ -535,6 +563,44 @@ export default function SettingsScreen() {
                   <Text style={styles.resetBtnText}>Schlüssel zurücksetzen</Text>
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {/* ── Erinnerungen ── */}
+          <SectionHeader title="Erinnerungen" open={open.erinnerungen} onToggle={() => toggle('erinnerungen')} styles={headerStyles} />
+          {open.erinnerungen && (
+            <View style={styles.sectionBody}>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Tägliche Erinnerung</Text>
+                <Switch value={reminderEnabled} onValueChange={handleReminderToggle} trackColor={{ false: c.border, true: c.accent }} thumbColor="#fff" />
+              </View>
+              <Text style={styles.subLabel}>Uhrzeit</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Pressable onPress={() => applyReminderTime((reminderHour + 23) % 24, reminderMinute)} style={styles.intervalChip}>
+                    <Text style={styles.intervalChipText}>−</Text>
+                  </Pressable>
+                  <Text style={[styles.switchLabel, { minWidth: 28, textAlign: 'center' }]}>
+                    {String(reminderHour).padStart(2, '0')}
+                  </Text>
+                  <Pressable onPress={() => applyReminderTime((reminderHour + 1) % 24, reminderMinute)} style={styles.intervalChip}>
+                    <Text style={styles.intervalChipText}>＋</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.switchLabel}>:</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Pressable onPress={() => applyReminderTime(reminderHour, (reminderMinute + 55) % 60)} style={styles.intervalChip}>
+                    <Text style={styles.intervalChipText}>−</Text>
+                  </Pressable>
+                  <Text style={[styles.switchLabel, { minWidth: 28, textAlign: 'center' }]}>
+                    {String(reminderMinute).padStart(2, '0')}
+                  </Text>
+                  <Pressable onPress={() => applyReminderTime(reminderHour, (reminderMinute + 5) % 60)} style={styles.intervalChip}>
+                    <Text style={styles.intervalChipText}>＋</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.warnText}>  Uhr  (±1h / ±5min)</Text>
+              </View>
             </View>
           )}
 

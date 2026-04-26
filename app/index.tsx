@@ -164,7 +164,7 @@ export default function IndexScreen() {
         <FlatList
           data={entries}
           keyExtractor={(e) => String(e.id)}
-          renderItem={({ item }) => <EntryCard entry={item} />}
+          renderItem={({ item }) => <EntryCard entry={item} highlight={search} />}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>Noch keine Einträge.</Text>
