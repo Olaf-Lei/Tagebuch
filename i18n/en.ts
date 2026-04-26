@@ -93,8 +93,17 @@ export const en: Strings = {
 
     subEncryption: 'Encryption',
     encryptionLabel: 'Encrypt before upload',
-    encryptionWarn: 'Encrypted backups can only be restored on this device.',
+    encryptionWarn: 'To restore on another device: export the key and import it there.',
     btnResetKey: 'Reset key',
+    btnExportKey: 'Export key',
+    btnImportKey: 'Import key',
+    exportKeyTitle: 'Encryption key',
+    exportKeyHint: 'Copy this key and import it on device 2 (Settings → Security → Encryption → Import key). Only share it with yourself.',
+    importKeyTitle: 'Import key',
+    importKeyHint: 'Paste the key from device 1 here. Encryption will be enabled automatically.',
+    importKeyPlaceholder: '64 hex characters…',
+    importKeyError: 'Invalid key (64 hex characters expected).',
+    importKeySuccess: 'Key imported. Encryption enabled.',
 
     reminderLabel: 'Daily reminder',
     reminderTime: 'Time',

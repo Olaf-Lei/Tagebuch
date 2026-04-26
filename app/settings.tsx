@@ -21,7 +21,7 @@ import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
 import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
 import { useBiometric } from '../contexts/BiometricContext';
-import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey } from '../utils/crypto';
+import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey, exportEncKey, importEncKey } from '../utils/crypto';
 import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword, generateRecoveryCode, setRecoveryCode, hasRecoveryCode } from '../utils/auth';
 import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
 
@@ -179,6 +179,11 @@ export default function SettingsScreen() {
   const [pwConfirm, setPwConfirm] = useState('');
   const [pwError, setPwError] = useState('');
 
+  const [encKeyModal, setEncKeyModal] = useState<'export' | 'import' | null>(null);
+  const [exportedKey, setExportedKey] = useState<string | null>(null);
+  const [importKeyText, setImportKeyText] = useState('');
+  const [importKeyError, setImportKeyError] = useState('');
+
   const SYNC_INTERVALS = [
     { label: t.settings.syncOff, value: 0 },
     { label: t.settings.sync15m, value: 15 },
@@ -277,6 +282,25 @@ export default function SettingsScreen() {
     await setRecoveryCode(code);
     setHasRecovery(true);
     setRecoveryCodeState(code);
+  };
+
+  const handleShowExportKey = async () => {
+    const key = await exportEncKey();
+    setExportedKey(key);
+    setEncKeyModal('export');
+  };
+
+  const handleImportKey = async () => {
+    setImportKeyError('');
+    try {
+      await importEncKey(importKeyText);
+      setEncEnabledState(true);
+      setEncKeyModal(null);
+      setImportKeyText('');
+      Alert.alert(t.settings.importKeySuccess);
+    } catch {
+      setImportKeyError(t.settings.importKeyError);
+    }
   };
 
   const handleReminderToggle = async (v: boolean) => {
@@ -552,20 +576,28 @@ export default function SettingsScreen() {
               </View>
               <Text style={styles.warnText}>{t.settings.encryptionWarn}</Text>
               {encEnabled && (
-                <Pressable
-                  style={styles.resetBtn}
-                  onPress={() => Alert.alert(
-                    t.settings.keyResetTitle,
-                    t.settings.keyResetMsg,
-                    [
-                      { text: t.common.cancel, style: 'cancel' },
-                      { text: t.settings.keyResetBtn, style: 'destructive', onPress: () => resetEncryptionKey() },
-                    ],
-                  )}
-                >
-                  <Text style={styles.resetBtnText}>{t.settings.btnResetKey}</Text>
-                </Pressable>
+                <>
+                  <Pressable style={styles.saveButton} onPress={handleShowExportKey}>
+                    <Text style={styles.saveText}>{t.settings.btnExportKey}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.resetBtn}
+                    onPress={() => Alert.alert(
+                      t.settings.keyResetTitle,
+                      t.settings.keyResetMsg,
+                      [
+                        { text: t.common.cancel, style: 'cancel' },
+                        { text: t.settings.keyResetBtn, style: 'destructive', onPress: () => resetEncryptionKey() },
+                      ],
+                    )}
+                  >
+                    <Text style={styles.resetBtnText}>{t.settings.btnResetKey}</Text>
+                  </Pressable>
+                </>
               )}
+              <Pressable style={styles.saveButton} onPress={() => { setImportKeyText(''); setImportKeyError(''); setEncKeyModal('import'); }}>
+                <Text style={styles.saveText}>{t.settings.btnImportKey}</Text>
+              </Pressable>
             </View>
           )}
 
@@ -696,6 +728,63 @@ export default function SettingsScreen() {
             <View style={styles.modalBtnRow}>
               <Pressable style={styles.modalCancel} onPress={closePwModal}><Text style={styles.modalCancelText}>{t.common.cancel}</Text></Pressable>
               <Pressable style={styles.modalBtn} onPress={handleSavePassword}><Text style={styles.modalBtnText}>{t.common.save}</Text></Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Schlüssel exportieren ── */}
+      <Modal visible={encKeyModal === 'export'} transparent animationType="fade" onRequestClose={() => setEncKeyModal(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setEncKeyModal(null)}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>{t.settings.exportKeyTitle}</Text>
+            <Text style={styles.warnText}>{t.settings.exportKeyHint}</Text>
+            <Pressable
+              style={[styles.modalInput, { justifyContent: 'center' }]}
+              onPress={() => { if (exportedKey) { Clipboard.setString(exportedKey); Alert.alert(t.settings.logCopied); } }}
+            >
+              <Text style={[styles.recoveryCode, { fontSize: 11, letterSpacing: 1 }]} numberOfLines={3} selectable>
+                {exportedKey ?? '–'}
+              </Text>
+            </Pressable>
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={() => setEncKeyModal(null)}>
+                <Text style={styles.modalCancelText}>{t.common.ok}</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtn} onPress={() => { if (exportedKey) { Clipboard.setString(exportedKey); Alert.alert(t.settings.logCopied); } }}>
+                <Text style={styles.modalBtnText}>{t.settings.logCopy}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Schlüssel importieren ── */}
+      <Modal visible={encKeyModal === 'import'} transparent animationType="fade" onRequestClose={() => setEncKeyModal(null)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={{ flex: 1 }} onPress={() => setEncKeyModal(null)} />
+          <View style={[styles.modalBox, { marginHorizontal: 24, marginBottom: 24 }]}>
+            <Text style={styles.modalTitle}>{t.settings.importKeyTitle}</Text>
+            <Text style={styles.warnText}>{t.settings.importKeyHint}</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={importKeyText}
+              onChangeText={(v) => { setImportKeyText(v); setImportKeyError(''); }}
+              placeholder={t.settings.importKeyPlaceholder}
+              placeholderTextColor={c.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+              numberOfLines={2}
+            />
+            {!!importKeyError && <Text style={styles.modalError}>{importKeyError}</Text>}
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={() => setEncKeyModal(null)}>
+                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtn} onPress={handleImportKey}>
+                <Text style={styles.modalBtnText}>{t.settings.btnImportKey}</Text>
+              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>

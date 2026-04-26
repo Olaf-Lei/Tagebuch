@@ -300,6 +300,70 @@ Installiertes Tooling:
 ### Android Widget
 - [x] gestrichen — zu eng gekoppelt an generierten android/-Ordner, kein stabiler Mehrwert
 
+### [x] Sync: Bidirektionaler Merge (Multi-Client)
+
+**Problem:** `syncNow()` macht bisher nur einen PUT-Upload. Zwei Clients überschreiben sich gegenseitig — jeder sieht nur seine eigenen Daten.
+
+**Ursache:** Kein Download-before-Upload, kein Merge. IDs sind pro Client unabhängig (AUTOINCREMENT), können nicht als stabiler Identifier dienen. Stabiler Identifier: `created_at` (einmalig beim Anlegen, nie geändert).
+
+**Lösung: SQLite ATTACH DATABASE-Merge in `sync/webdav.ts`**
+
+`syncNow()` soll folgendes tun:
+1. Remote-DB herunterladen (falls vorhanden) → Temp-Datei (analog zu `restoreNow`)
+2. `ATTACH 'tempPath' AS remote` auf der lokalen DB-Verbindung via `db.execAsync`
+3. Merge-SQL ausführen (in dieser Reihenfolge):
+   - Kategorien: `INSERT OR IGNORE INTO categories (name) SELECT name FROM remote.categories`
+   - Tags: `INSERT OR IGNORE INTO tags (name) SELECT name FROM remote.tags`
+   - Einträge INSERT (neue aus Remote, `created_at` fehlt lokal):
+     ```sql
+     INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health, latitude, longitude, location_name)
+     SELECT re.timestamp, re.text, re.created_at, re.updated_at, re.mood, re.health, re.latitude, re.longitude, re.location_name
+     FROM remote.entries re
+     WHERE re.created_at NOT IN (SELECT created_at FROM entries)
+     ```
+   - Einträge UPDATE (Konflikt, Remote ist neuer):
+     ```sql
+     UPDATE entries SET timestamp=(SELECT re.timestamp FROM remote.entries re WHERE re.created_at=entries.created_at),
+       text=(SELECT re.text FROM remote.entries re WHERE re.created_at=entries.created_at),
+       updated_at=(SELECT re.updated_at FROM remote.entries re WHERE re.created_at=entries.created_at),
+       mood=(SELECT re.mood FROM remote.entries re WHERE re.created_at=entries.created_at),
+       health=(SELECT re.health FROM remote.entries re WHERE re.created_at=entries.created_at),
+       latitude=(SELECT re.latitude FROM remote.entries re WHERE re.created_at=entries.created_at),
+       longitude=(SELECT re.longitude FROM remote.entries re WHERE re.created_at=entries.created_at),
+       location_name=(SELECT re.location_name FROM remote.entries re WHERE re.created_at=entries.created_at)
+     WHERE created_at IN (SELECT re.created_at FROM remote.entries re
+       WHERE re.updated_at > (SELECT le.updated_at FROM entries le WHERE le.created_at=re.created_at))
+     ```
+   - Junction-Tabellen (Mapping via `created_at` für Einträge, `name` für Kategorien/Tags):
+     ```sql
+     INSERT OR IGNORE INTO entry_categories (entry_id, category_id)
+     SELECT le.id, lc.id
+     FROM remote.entry_categories rec
+     JOIN remote.entries re ON re.id = rec.entry_id
+     JOIN remote.categories rc ON rc.id = rec.category_id
+     JOIN entries le ON le.created_at = re.created_at
+     JOIN categories lc ON lc.name = rc.name
+     ```
+     (analog für `entry_tags`)
+4. `DETACH remote`, Temp-Datei löschen
+5. Gemergete lokale DB hochladen (wie bisher)
+6. Falls Remote-DB nicht vorhanden (404): nur hochladen, kein Merge nötig (Erstsync)
+7. Log-Eintrag mit Anzahl neu importierter Einträge
+
+Kein Alert bei erfolgreichen Merges — nur im Sync-Log festhalten. Fehler wie bisher als Alert.
+
+### [x] Auto-Sync: Foreground-Trigger als Hauptmechanismus
+
+**Problem:** `expo-background-fetch` ist auf Android strukturell unzuverlässig (Doze, App Standby, Hersteller-Optimierungen). Der OS entscheidet, wann oder ob der Task läuft.
+
+**Lösung: AppState-Listener in `app/_layout.tsx`**
+
+- `AppState.addEventListener('change', handler)` lauscht auf `'active'` (App kommt in Vordergrund)
+- Im Handler: `lastSync`-Timestamp aus SecureStore lesen, Intervall aus `getAutoSyncInterval()`
+- Wenn `Date.now() - lastSyncMs > intervalMs` → `syncNow()` silent im Hintergrund (kein Alert bei Erfolg, nur Log)
+- `BackgroundFetch`-Registrierung in `backgroundSync.ts` bleibt als best-effort-Ergänzung
+- Beim App-Start (Mount des Root-Layouts): prüfen ob Background-Task noch registriert, ggf. neu registrieren (`isTaskRegisteredAsync` → `registerTaskAsync`)
+
 ### Nicht geplant
 - iOS-Support
 - Bilder/Anhänge

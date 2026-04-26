@@ -37,6 +37,18 @@ export async function resetEncryptionKey(): Promise<void> {
   await SecureStore.setItemAsync(STORE_ENC_KEY, key);
 }
 
+export async function exportEncKey(): Promise<string | null> {
+  return SecureStore.getItemAsync(STORE_ENC_KEY);
+}
+
+export async function importEncKey(hexKey: string): Promise<void> {
+  if (!/^[0-9a-fA-F]{64}$/.test(hexKey.trim())) {
+    throw new Error('invalid_key');
+  }
+  await SecureStore.setItemAsync(STORE_ENC_KEY, hexKey.trim().toLowerCase());
+  await SecureStore.setItemAsync(STORE_ENC_ENABLED, 'true');
+}
+
 // Decrypts an encrypted file and writes the result to targetPath.
 export async function decryptToPath(encPath: string, targetPath: string): Promise<void> {
   const key = await getOrCreateKey();
