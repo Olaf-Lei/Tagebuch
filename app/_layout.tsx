@@ -12,7 +12,7 @@ import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
 import { ensureReminderScheduled } from '../utils/notifications';
-import { syncNow, loadConfig, getLastSyncMs } from '../sync/webdav';
+import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
 import { getAutoSyncInterval, ensureBackgroundSyncRegistered } from '../sync/backgroundSync';
 
 function AppShell() {
@@ -50,10 +50,16 @@ export default function RootLayout() {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
+      syncIfConfigured(); // App-Start
     });
 
     const sub = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background') {
+        syncIfConfigured(); // Beenden: letzte Chance, Daten zu sichern
+        return;
+      }
       if (nextState !== 'active') return;
+      // Foreground: nur bei konfiguriertem Intervall und abgelaufener Wartezeit
       try {
         const [config, intervalMin, lastMs] = await Promise.all([
           loadConfig(),

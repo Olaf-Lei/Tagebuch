@@ -16,6 +16,7 @@ import { getCategories, type Category } from '../../db/categories';
 import { deleteEntry, getEntry, updateEntry } from '../../db/entries';
 import { getTags } from '../../db/tags';
 import { useT } from '../../i18n';
+import { syncIfConfigured } from '../../sync/webdav';
 
 export default function EditEntryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -104,6 +105,7 @@ export default function EditEntryScreen() {
       longitude: geoTag?.longitude ?? null,
       locationName: geoTag?.locationName ?? null,
     });
+    syncIfConfigured();
     router.back();
   };
 

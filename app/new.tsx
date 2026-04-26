@@ -15,6 +15,7 @@ import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { createEntry } from '../db/entries';
 import { useT } from '../i18n';
+import { syncIfConfigured } from '../sync/webdav';
 
 export default function NewEntryScreen() {
   const router = useRouter();
@@ -75,6 +76,7 @@ export default function NewEntryScreen() {
       longitude: geoTag?.longitude ?? null,
       locationName: geoTag?.locationName ?? null,
     });
+    syncIfConfigured();
     router.back();
   };
 

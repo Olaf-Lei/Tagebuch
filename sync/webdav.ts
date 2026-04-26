@@ -72,6 +72,12 @@ export async function getLastSyncMs(): Promise<number | null> {
 
 let _syncInProgress = false;
 
+export async function syncIfConfigured(): Promise<void> {
+  const config = await loadConfig();
+  if (!config.url || !config.username || !config.password) return;
+  syncNow().catch(() => {});
+}
+
 export async function syncNow(): Promise<void> {
   if (_syncInProgress) return;
   _syncInProgress = true;

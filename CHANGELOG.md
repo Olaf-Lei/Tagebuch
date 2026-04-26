@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.6 — 2026-04-26
+- Sync-Verhalten verbessert: `syncIfConfigured()` feuert bei App-Start, nach jedem gespeicherten/bearbeiteten Eintrag und wenn die App in den Hintergrund geht; zyklischer Foreground-Sync bleibt erhalten (AppState active + Interval-Check)
+
 ## v2.4.5 — 2026-04-26
 - Tastatur-Scroll: `KeyboardAvoidingView` auf `behavior="padding"` umgestellt (war `height` auf Android), ScrollView-Ref + `scrollToEnd` wenn TagInput-Feld fokussiert wird — aktives Feld bleibt über der Tastatur sichtbar
 
