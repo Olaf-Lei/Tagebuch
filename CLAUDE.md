@@ -210,15 +210,29 @@ Download → probt `.db.enc` zuerst, dann `.db` → `closeDb()` → ersetzen →
 
 ## Versionierung
 
-Semver: `major.minor.patch` in `package.json` und `app.json`. `versionCode` wird bei jedem Bump um 1 erhöht.
+Schema `x.y.z` (Semver), `versionCode` steigt bei jedem Bump um 1.
+
+| Ebene | Wer entscheidet | Wann |
+|---|---|---|
+| `z` patch | Claude automatisch | Jeder Build |
+| `y` minor | Olaf gibt vor | Neue Features / größere Änderungen |
+| `x` major | Olaf gibt vor | Breaking Changes / komplette Überarbeitungen |
 
 ```bash
-npm run bump           # patch  (z. B. 2.1.0 → 2.1.1)
-npm run bump:minor     # minor  (z. B. 2.1.0 → 2.2.0)
-npm run bump:major     # major  (z. B. 2.1.0 → 3.0.0)
+npm run bump           # patch  (2.1.0 → 2.1.1) — Standard vor jedem Build
+npm run bump:minor     # minor  (2.1.0 → 2.2.0) — nur auf Anweisung
+npm run bump:major     # major  (2.1.0 → 3.0.0) — nur auf Anweisung
 ```
 
-Das Skript (`scripts/bump.js`) aktualisiert `package.json` + `app.json`, erstellt einen Git-Commit und setzt einen Tag (`v2.1.0`).
+Das Skript (`scripts/bump.js`) aktualisiert `package.json` + `app.json`, erstellt einen Git-Commit und setzt einen Tag.
+
+**Pflichten bei jedem Build (patch):**
+- `npm run bump` aufrufen
+- `CHANGELOG.md` um einen Eintrag ergänzen (Datum, Version, Änderungen als Bullet-Liste)
+
+**Zusätzliche Pflichten bei minor/major:**
+- README.md aktualisieren (Features, Stack, Struktur)
+- CLAUDE.md auf aktuellen Stand bringen (Screens, Sync, Sicherheit etc.)
 
 **Vor jedem Build immer zuerst bump aufrufen.**
 
