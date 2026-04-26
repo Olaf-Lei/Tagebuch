@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.4 — 2026-04-26
+- Fix: WAL checkpoint (`PRAGMA wal_checkpoint(TRUNCATE)`) vor Upload — ohne diesen Schritt enthielt die hochgeladene `.db` nur 1 leere Page, da expo-sqlite alle Writes inkl. Schema zunächst in die `-wal`-Datei schreibt; Nextcloud bekam eine schema-lose DB, Merge schlug fehl, jeder Client sah nur eigene Einträge
+
 ## v2.4.3 — 2026-04-26
 - Fix: Schema-Check nach ATTACH — Remote-DB ohne entries-Tabelle führte zu "no such table: remote.entries"; Merge wird jetzt übersprungen und lokale DB direkt hochgeladen (wie Erstsync)
 
