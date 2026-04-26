@@ -290,6 +290,13 @@ Installiertes Tooling:
 
 ## Backlog
 
+### Offen
+1. **Sync-Verhalten verbessern** — direkt beim App-Start, nach jedem neuen Eintrag, beim Beenden (AppState inactive/background), zyklisch (bestehendes Intervall-System ausbauen)
+2. **Farben für Kategorien** — passend zum Navy/Gold-Farbschema, Auto-Vorgabe beim Anlegen, manuell anpassbar; Auswirkung auf Kategorie-Badges und Heatmap in stats.tsx
+3. **Setup-Button ins Burger-Menü** — FAB oder Settings-Icon oben links in der Headerleiste als Drawer/Menü; Setup/Settings-Einstieg dort bündeln
+4. **Tastatur-Scroll** — bei Textfeldern automatisch scrollen sodass das aktive Feld über der Bildschirmtastatur sichtbar bleibt (KeyboardAvoidingView + ScrollView konsistent in new.tsx, entry/[id].tsx)
+5. **Querformat / ChromeOS** — adaptives Layout für landscape-Orientierung; zweispaltiges Layout wo sinnvoll
+
 ### Nicht geplant
 - iOS-Support
 - Bilder/Anhänge
