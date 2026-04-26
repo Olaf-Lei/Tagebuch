@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "2.2.2",
+    "version": "2.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
         "backgroundColor": "#0F1B2D"
       },
       "package": "com.tagebuch.app",
-      "versionCode": 10
+      "versionCode": 11
     },
     "plugins": [
       "expo-router",
@@ -39,7 +39,8 @@
         {
           "locationWhenInUsePermission": "Wird für Geotagging von Einträgen verwendet."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "router": {},
