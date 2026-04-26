@@ -6,12 +6,19 @@ Persönliche Tagebuch-App für Android. Schnelle Erfassung von Log-Einträgen �
 
 - **Schnelle Eingabe** — App öffnen, tippen, speichern in unter 5 Sekunden
 - **Kategorien & Tags** — Mehrfach-Kategorisierung und freie Hashtags mit Autocomplete
-- **Volltextsuche** mit Datumfilter (heute / Woche / Monat / alles)
-- **Kalenderansicht** — Monatsraster, Punkte auf Tagen mit Einträgen
-- **Statistiken** — KPI-Kacheln, 26-Wochen-Heatmap, Balkendiagramme, Streak-Zähler
-- **Hell/Dunkel-Modus** (persistent)
+- **Laune & Befinden** — je 5 Emoji-Stufen pro Eintrag, optional
+- **GPS-Standort** — automatisch als Stadtname, per Tap entfernbar
+- **Volltextsuche** — mit Suchbegriff-Hervorhebung und Datumfilter (Heute / Woche / Monat / Alles)
+- **Kalenderansicht** — Monatsraster, Tage mit Einträgen markiert
+- **Statistiken** — Laune/Befinden-Trend, Heatmap, Balkendiagramme, Top-Kategorien & Tags
+- **Biometrie-Lock** — Fingerabdruck + Passwort-Fallback, 15s Grace Period
+- **Nextcloud-Sync** — bidirektionaler Merge via WebDAV, manuell oder automatisch
+- **AES-Verschlüsselung** — DB wird vor dem Upload verschlüsselt; Schlüssel-Transfer zwischen Geräten möglich
+- **Tägliche Erinnerung** — lokale Notification zur konfigurierbaren Uhrzeit
+- **Hell / Dunkel / System** — folgt Systemeinstellung oder manuell
+- **DE / EN** — vollständig zweisprachig
+- **Hilfe-Tour** — 6-schrittiger Onboarding-Guide, beim ersten Start automatisch
 - **Export** als JSON oder CSV
-- **Nextcloud-Sync** — WebDAV, manuell oder automatisch im Hintergrund
 - Vollständig **offline-fähig**, alle Daten lokal in SQLite
 
 ## Stack
@@ -19,12 +26,13 @@ Persönliche Tagebuch-App für Android. Schnelle Erfassung von Log-Einträgen �
 | Komponente | Version |
 |---|---|
 | Expo SDK | 55 |
-| React Native | 0.83.6 |
-| React | 19.2.0 |
+| React Native | 0.83 |
 | Expo Router | 55.x |
 | expo-sqlite | 55.x |
 | expo-secure-store | 55.x |
-| expo-background-fetch | 55.x |
+| expo-local-authentication | 55.x |
+| expo-notifications | 55.x |
+| crypto-js | AES |
 
 ## Projektstruktur
 
@@ -33,70 +41,89 @@ Persönliche Tagebuch-App für Android. Schnelle Erfassung von Log-Einträgen �
   index.tsx           Eintragsliste (Startscreen)
   new.tsx             Neuer Eintrag
   entry/[id].tsx      Eintrag bearbeiten
-  settings.tsx        Einstellungen
+  settings.tsx        Einstellungen (Accordion)
   calendar.tsx        Kalenderansicht
   stats.tsx           Statistik-Screen
+  _layout.tsx         Root-Layout, AppState-Listener für Auto-Sync
 
 /components
-  EntryCard.tsx       Karte in der Liste
+  EntryCard.tsx       Karte in der Liste (mit Hervorhebung)
   TagInput.tsx        Freitexteingabe mit Autocomplete
-  CategoryPicker.tsx  Chip-Auswahl
-  TimestampPicker.tsx Nativer Datum/Zeit-Dialog
-  theme.ts            Farbpaletten + useColors()-Hook
+  DropdownPicker.tsx  Material Exposed Dropdown (single + multi)
+  QualifierPicker.tsx Emoji-Reihe für Laune/Befinden
+  TimestampPicker.tsx Datum/Zeit-Dialog
+  HelpModal.tsx       Schritt-für-Schritt-Tour
 
 /contexts
-  ThemeContext.tsx    Hell/Dunkel-Modus (SecureStore-persistent)
+  BiometricContext.tsx  Lock-Screen als Overlay
+  ThemeContext.tsx      Hell/Dunkel/System
+  LanguageContext.tsx   DE/EN
+
+/i18n
+  de.ts / en.ts       UI-Strings
+  index.ts            useT() Hook
 
 /db
   schema.ts           SQL-Schema + Migrationen
   entries.ts          CRUD Einträge
-  tags.ts             CRUD Tags (upsert)
-  categories.ts       CRUD Kategorien
-  stats.ts            Statistik-Abfragen + Streak-Berechnung
+  tags.ts / categories.ts
+  stats.ts            Statistik-Abfragen
 
 /sync
-  webdav.ts           Nextcloud WebDAV Upload/Download
-  backgroundSync.ts   Hintergrund-Task (TaskManager + BackgroundFetch)
-
-/hooks
-  useEntries.ts
-  useTags.ts
+  webdav.ts           Bidirektionaler Sync + Restore
+  backgroundSync.ts   BackgroundFetch-Task + Foreground-Trigger
+  syncLog.ts          Persistenter Sync-Log
 
 /utils
-  export.ts           JSON- und CSV-Export via expo-sharing
+  auth.ts             SHA-256 Passwort-Hashing
+  crypto.ts           AES-Verschlüsselung + Key-Export/Import
+  location.ts         GPS + Reverse Geocoding
+  export.ts           JSON- und CSV-Export
+  notifications.ts    Tägliche Erinnerung
 ```
-
-## Build
-
-APK via EAS Build (Expo Application Services):
-
-```bash
-npm install
-eas build --platform android --profile preview
-```
-
-Voraussetzung: `eas-cli` installiert, bei `expo.dev` eingeloggt.
-
-Die `.npmrc` setzt `legacy-peer-deps=true` — notwendig wegen react-dom-Peer-Konflikt unter SDK 55.
 
 ## Datenmodell
 
 ```sql
-entries        id, timestamp (user-editierbar), text, created_at, updated_at
-categories     id, name UNIQUE
-tags           id, name UNIQUE
-entry_categories  entry_id, category_id
-entry_tags        entry_id, tag_id
+entries          id, timestamp (user-editierbar), text, created_at (immutable), updated_at,
+                 mood, health, latitude, longitude, location_name
+categories       id, name UNIQUE
+tags             id, name UNIQUE
+entry_categories entry_id, category_id
+entry_tags       entry_id, tag_id
 ```
 
-`timestamp` = Zeitpunkt laut Nutzer (editierbar).
-`created_at` = Systemzeit beim Anlegen (immutable).
+`created_at` ist der stabile Identifier für den bidirektionalen Sync-Merge.
 
 ## Sync
 
-Nextcloud WebDAV: Die SQLite-Datenbankdatei wird in das konfigurierte Verzeichnis hochgeladen. Der vollständige WebDAV-Pfad (`/remote.php/dav/files/USERNAME/...`) wird automatisch konstruiert — es reicht die Basis-URL der Nextcloud-Instanz.
+Nextcloud WebDAV. `syncNow()` lädt zuerst die Remote-DB herunter, merged via `ATTACH DATABASE` (last-write-wins per Eintrag, `created_at` als Identifier), und lädt die gemergete DB hoch. Erster Sync = nur Upload.
 
-Hintergrundsync: konfigurierbar in 15 Min / 1 Std / 6 Std / 24 Std oder deaktiviert.
+Trigger: App kommt in Vordergrund (AppState-Listener) + expo-background-fetch als best-effort.
+
+Verschlüsselung: Backup als `tagebuch.db.enc` (AES). Schlüssel-Transfer für Restore auf anderem Gerät: Einstellungen → Sicherheit → Schlüssel exportieren / importieren.
+
+## Build
+
+### Cloud (EAS)
+
+```bash
+npm run build          # patch-bump + EAS-Build in einem Schritt
+npm run build:minor    # minor-bump + EAS-Build
+```
+
+Kein expo.dev-Login nötig — `eas.json` ist konfiguriert.
+
+### Lokal (Android Studio)
+
+```bash
+source ~/.bashrc       # JAVA_HOME, ANDROID_HOME
+npm run bump
+npx expo prebuild --platform android --clean
+bash scripts/prepare-android.sh
+cd android && ./gradlew assembleRelease
+# APK: android/app/build/outputs/apk/release/app-release.apk
+```
 
 ## Lizenz
 

@@ -118,6 +118,13 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 - Speichern-Button immer im Stack-Header (sichtbar über Tastatur)
 - Lock-Screen als absolutes Overlay rendern – nie die children unmounten
 
+## Arbeitsweise (Claude-Hinweise)
+- Vor jeder Implementierung zuerst `git diff HEAD` lesen — offene Änderungen kennen
+- Einen Schritt aus dem Backlog pro Session — kein Scope-Creep
+- Specs als Code schreiben (SQL, Dateiname:Zeile, Pseudocode) statt Prosa
+- Kein Cleanup, kein Refactoring außerhalb des beauftragten Schritts
+- Nach dem Feature: Backlog aktualisieren, `npm run bump`, committen und pushen
+
 ## Screens
 
 ### index.tsx – Eintragsliste
@@ -178,12 +185,28 @@ Sektionen sind einklappbar (Accordion). Gliederung:
 - Schlüssel: 32 zufällige Bytes als Hex-String in SecureStore (`enc_key`)
 - Pfade müssen `file://`-Prefix haben (expo-file-system/legacy Anforderung)
 - Entschlüsselung beim Restore: `decryptToPath()` → DB ersetzen → `initDb()`
+- Schlüssel-Transfer: `exportEncKey()` → Hex-String anzeigen → auf Gerät 2 via `importEncKey()` eintragen (Settings → Sicherheit)
 
 ## Sync (sync/webdav.ts)
-- Upload: DB-Datei (ggf. verschlüsselt als `.db.enc`) per WebDAV PUT
-- Restore: Download → DB schließen (`closeDb()`) → ersetzen → WAL/SHM löschen → `initDb()`
-- Auto-Sync via `backgroundSync.ts` mit konfigurierbarem Intervall
-- Fehler werden als Alert angezeigt
+
+### syncNow() — bidirektionaler Merge
+1. Remote-DB herunterladen (probt `.db.enc`, dann `.db`; 404 → Erstsync)
+2. `ATTACH DATABASE tempPath AS remote`, Merge via SQL:
+   - `INSERT OR IGNORE` für categories + tags (nach Name)
+   - Neue entries importieren (created_at fehlt lokal)
+   - Vorhandene entries updaten wenn `remote.updated_at > local.updated_at`
+   - Junction-Tabellen via `created_at`/`name` mappen
+3. `DETACH`, Temp-Datei löschen, gemergete DB hochladen
+4. Kein Alert bei Erfolg — nur Sync-Log. Fehler werden als Alert angezeigt.
+5. `_syncInProgress`-Flag verhindert parallele Läufe
+
+### restoreNow()
+Download → probt `.db.enc` zuerst, dann `.db` → `closeDb()` → ersetzen → WAL/SHM löschen → `initDb()`
+
+### Auto-Sync
+- Primär: `AppState`-Listener in `_layout.tsx` (Foreground-Trigger, zuverlässig)
+- Sekundär: `expo-background-fetch` als best-effort-Ergänzung
+- Intervall aus SecureStore (`bg_sync_interval`), 0 = deaktiviert
 
 ## Versionierung
 
@@ -251,120 +274,10 @@ Installiertes Tooling:
 - Beim ersten App-Start automatisch anzeigen (Flag `help_shown` in AsyncStorage)
 - Texte kommen aus i18n — kein Hardcoding
 
-## Android Widget (geplant)
-- Schnelleingabe-Widget für den Android-Homescreen
-- Umsetzung via nativer Glance-Komponente im `android/`-Ordner nach `expo prebuild`
-- Widget öffnet `new.tsx` direkt mit einem Deep-Link (`tagebuch://new`)
-- Nur Android; iOS nicht geplant
-
-## Noch offen / Nächste Schritte
-
-### Sofort (kleine Fixes)
-- [x] Recovery Code für "weder Biometrie noch Passwort" Szenario
-- [x] "Über die App" korrigieren: Framework React Native, Build via Android Studio; Entwickelt von Olaf
-- [x] App-Logo (assets/icon.png) im "Über die App"-Block anzeigen
-
-### Einstellungen refactoring
-- [x] Einstellungen in einklappbare Accordion-Sektionen gliedern (Inhalte / Sync & Backup / Sicherheit / Darstellung / Export / Über die App)
-
-### Darstellungsmodus
-- [x] ThemeContext: Dritter Modus `'system'` ergänzen — folgt `Appearance.getColorScheme()` + `Appearance.addChangeListener`
-- [x] Settings: Toggle "Hell / Dunkel / System" (3-Way statt boolean Switch)
-- [x] Default für Neuinstallationen: `'system'`
-- [x] Suchbegriff im EntryCard-Text hervorheben (HighlightedText, Text-Splitting)
-
-### Erinnerungen
-- [x] `utils/notifications.ts` implementieren (planen, löschen, Berechtigung)
-- [x] Berechtigung beim ersten Aktivieren anfragen
-- [x] Sektion "Erinnerungen" in settings.tsx: Toggle + Uhrzeit-Picker (±1h/±5min)
-- [x] Beim App-Start: geplante Notification prüfen und ggf. neu registrieren
-
-### Statistiken erweitern
-- [x] `db/stats.ts`: perCategory/perTag LIMIT auf 10 erhöht
-- [x] stats.tsx: Kategorien-Balkendiagramm (Top 10, labelWidth=110)
-- [x] stats.tsx: Tag-Balkendiagramm (Top 10, labelWidth=110)
-
-### Mehrsprachigkeit (DE + EN)
-- [x] `i18n/de.ts`, `i18n/en.ts`, `i18n/index.ts` anlegen
-- [x] `LanguageContext.tsx` anlegen (Sprache laden/speichern, Default via expo-localization)
-- [x] Alle UI-Strings in allen Screens und Komponenten auf `useT()` umstellen
-- [x] Sprach-Auswahl in Settings > Darstellung ergänzen
-- [x] Lock-Screen: Tastatur überlagert Eingabefelder nicht mehr (KeyboardAvoidingView + ScrollView + SafeAreaInsets)
-
-### Hilfe-Tour
-- [x] `HelpModal.tsx` mit Schritt-Logik implementieren (6 Schritte, Punkte-Navigation, Weiter/Zurück/Fertig)
-- [x] Tour-Inhalte in i18n-Strings formulieren (DE + EN)
-- [x] `?`-Button in index.tsx-Header verdrahten
-- [x] Beim ersten Start automatisch anzeigen (SecureStore-Flag `help_shown`)
-
-### Android Widget
-- [x] gestrichen — zu eng gekoppelt an generierten android/-Ordner, kein stabiler Mehrwert
-
-### [x] Sync: Bidirektionaler Merge (Multi-Client)
-
-**Problem:** `syncNow()` macht bisher nur einen PUT-Upload. Zwei Clients überschreiben sich gegenseitig — jeder sieht nur seine eigenen Daten.
-
-**Ursache:** Kein Download-before-Upload, kein Merge. IDs sind pro Client unabhängig (AUTOINCREMENT), können nicht als stabiler Identifier dienen. Stabiler Identifier: `created_at` (einmalig beim Anlegen, nie geändert).
-
-**Lösung: SQLite ATTACH DATABASE-Merge in `sync/webdav.ts`**
-
-`syncNow()` soll folgendes tun:
-1. Remote-DB herunterladen (falls vorhanden) → Temp-Datei (analog zu `restoreNow`)
-2. `ATTACH 'tempPath' AS remote` auf der lokalen DB-Verbindung via `db.execAsync`
-3. Merge-SQL ausführen (in dieser Reihenfolge):
-   - Kategorien: `INSERT OR IGNORE INTO categories (name) SELECT name FROM remote.categories`
-   - Tags: `INSERT OR IGNORE INTO tags (name) SELECT name FROM remote.tags`
-   - Einträge INSERT (neue aus Remote, `created_at` fehlt lokal):
-     ```sql
-     INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health, latitude, longitude, location_name)
-     SELECT re.timestamp, re.text, re.created_at, re.updated_at, re.mood, re.health, re.latitude, re.longitude, re.location_name
-     FROM remote.entries re
-     WHERE re.created_at NOT IN (SELECT created_at FROM entries)
-     ```
-   - Einträge UPDATE (Konflikt, Remote ist neuer):
-     ```sql
-     UPDATE entries SET timestamp=(SELECT re.timestamp FROM remote.entries re WHERE re.created_at=entries.created_at),
-       text=(SELECT re.text FROM remote.entries re WHERE re.created_at=entries.created_at),
-       updated_at=(SELECT re.updated_at FROM remote.entries re WHERE re.created_at=entries.created_at),
-       mood=(SELECT re.mood FROM remote.entries re WHERE re.created_at=entries.created_at),
-       health=(SELECT re.health FROM remote.entries re WHERE re.created_at=entries.created_at),
-       latitude=(SELECT re.latitude FROM remote.entries re WHERE re.created_at=entries.created_at),
-       longitude=(SELECT re.longitude FROM remote.entries re WHERE re.created_at=entries.created_at),
-       location_name=(SELECT re.location_name FROM remote.entries re WHERE re.created_at=entries.created_at)
-     WHERE created_at IN (SELECT re.created_at FROM remote.entries re
-       WHERE re.updated_at > (SELECT le.updated_at FROM entries le WHERE le.created_at=re.created_at))
-     ```
-   - Junction-Tabellen (Mapping via `created_at` für Einträge, `name` für Kategorien/Tags):
-     ```sql
-     INSERT OR IGNORE INTO entry_categories (entry_id, category_id)
-     SELECT le.id, lc.id
-     FROM remote.entry_categories rec
-     JOIN remote.entries re ON re.id = rec.entry_id
-     JOIN remote.categories rc ON rc.id = rec.category_id
-     JOIN entries le ON le.created_at = re.created_at
-     JOIN categories lc ON lc.name = rc.name
-     ```
-     (analog für `entry_tags`)
-4. `DETACH remote`, Temp-Datei löschen
-5. Gemergete lokale DB hochladen (wie bisher)
-6. Falls Remote-DB nicht vorhanden (404): nur hochladen, kein Merge nötig (Erstsync)
-7. Log-Eintrag mit Anzahl neu importierter Einträge
-
-Kein Alert bei erfolgreichen Merges — nur im Sync-Log festhalten. Fehler wie bisher als Alert.
-
-### [x] Auto-Sync: Foreground-Trigger als Hauptmechanismus
-
-**Problem:** `expo-background-fetch` ist auf Android strukturell unzuverlässig (Doze, App Standby, Hersteller-Optimierungen). Der OS entscheidet, wann oder ob der Task läuft.
-
-**Lösung: AppState-Listener in `app/_layout.tsx`**
-
-- `AppState.addEventListener('change', handler)` lauscht auf `'active'` (App kommt in Vordergrund)
-- Im Handler: `lastSync`-Timestamp aus SecureStore lesen, Intervall aus `getAutoSyncInterval()`
-- Wenn `Date.now() - lastSyncMs > intervalMs` → `syncNow()` silent im Hintergrund (kein Alert bei Erfolg, nur Log)
-- `BackgroundFetch`-Registrierung in `backgroundSync.ts` bleibt als best-effort-Ergänzung
-- Beim App-Start (Mount des Root-Layouts): prüfen ob Background-Task noch registriert, ggf. neu registrieren (`isTaskRegisteredAsync` → `registerTaskAsync`)
+## Backlog
 
 ### Nicht geplant
 - iOS-Support
 - Bilder/Anhänge
 - Gamification (Streaks etc.)
+- Android Widget (zu eng an generierten `android/`-Ordner gekoppelt)
