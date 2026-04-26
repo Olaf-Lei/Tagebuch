@@ -46,12 +46,6 @@ export default function IndexScreen() {
       justifyContent: 'center', elevation: 6,
     },
     fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
-    settingsBtn: {
-      position: 'absolute', bottom: fabBottom + 4, left: 20, width: 52, height: 52,
-      borderRadius: 26, backgroundColor: c.surface, borderWidth: 1,
-      borderColor: c.border, alignItems: 'center', justifyContent: 'center',
-    },
-    settingsText: { fontSize: 22, color: c.muted },
   }), [c, fabBottom]);
 
   type DateRange = 'all' | 'today' | 'week' | 'month';
@@ -111,6 +105,11 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
+        headerLeft: () => (
+          <Pressable onPress={() => router.push('/settings')} style={{ paddingHorizontal: 14, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 20, color: c.muted }}>☰</Text>
+          </Pressable>
+        ),
         headerTitle: () => (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Image
@@ -193,11 +192,7 @@ export default function IndexScreen() {
       <Pressable style={styles.fab} onPress={() => router.push('/new')}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
-      <Pressable style={styles.settingsBtn} onPress={() => router.push('/settings')}>
-        <Text style={styles.settingsText}>⚙</Text>
-      </Pressable>
-
-      <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+<HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
     </SafeAreaView>
   );
 }
