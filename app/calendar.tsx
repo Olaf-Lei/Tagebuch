@@ -4,12 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EntryCard } from '../components/EntryCard';
 import { useColors } from '../components/theme';
 import { getEntries, getEntryDatesInMonth, type Entry } from '../db/entries';
-
-const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+import { useT } from '../i18n';
 
 function buildGrid(year: number, month: number): (number | null)[] {
-  const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
-  const offset = (firstDow + 6) % 7; // shift to Mon=0
+  const firstDow = new Date(year, month, 1).getDay();
+  const offset = (firstDow + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = Array(offset).fill(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -17,18 +16,9 @@ function buildGrid(year: number, month: number): (number | null)[] {
   return cells;
 }
 
-function monthLabel(year: number, month: number): string {
-  return new Date(year, month, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-}
-
-function dayLabel(year: number, month: number, day: number): string {
-  return new Date(year, month, day).toLocaleDateString('de-DE', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
-}
-
 export default function CalendarScreen() {
   const c = useColors();
+  const t = useT();
   const today = new Date();
 
   const [year, setYear] = useState(today.getFullYear());
@@ -38,6 +28,14 @@ export default function CalendarScreen() {
   const [dayEntries, setDayEntries] = useState<Entry[]>([]);
 
   const grid = useMemo(() => buildGrid(year, month), [year, month]);
+
+  const monthLabel = (y: number, m: number) =>
+    new Date(y, m, 1).toLocaleDateString(t.locale, { month: 'long', year: 'numeric' });
+
+  const dayLabel = (y: number, m: number, d: number) =>
+    new Date(y, m, d).toLocaleDateString(t.locale, {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
 
   useEffect(() => {
     getEntryDatesInMonth(year, month).then((days) => setMarkedDays(new Set(days)));
@@ -104,7 +102,7 @@ export default function CalendarScreen() {
       </View>
 
       <View style={styles.weekRow}>
-        {WEEKDAYS.map((d) => <Text key={d} style={styles.weekDay}>{d}</Text>)}
+        {t.calendar.weekdays.map((d) => <Text key={d} style={styles.weekDay}>{d}</Text>)}
       </View>
 
       <View style={styles.grid}>
@@ -149,8 +147,8 @@ export default function CalendarScreen() {
         }
         ListEmptyComponent={
           selectedDay
-            ? <Text style={styles.empty}>Keine Einträge an diesem Tag.</Text>
-            : <Text style={styles.empty}>Tag antippen um Einträge zu sehen.</Text>
+            ? <Text style={styles.empty}>{t.calendar.noEntries}</Text>
+            : <Text style={styles.empty}>{t.calendar.tapHint}</Text>
         }
       />
     </SafeAreaView>

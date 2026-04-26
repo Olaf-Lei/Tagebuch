@@ -6,18 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { getStats, getMoodHealthTrend, type Stats, type TrendPoint, type PeriodGroupBy } from '../db/stats';
+import { useT } from '../i18n';
 
 // ── Filter ────────────────────────────────────────────────────────────────────
 
 type FilterKey = 'day' | 'week' | 'month' | 'year' | 'custom';
-
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'day', label: 'Tag' },
-  { key: 'week', label: 'Woche' },
-  { key: 'month', label: 'Monat' },
-  { key: 'year', label: 'Jahr' },
-  { key: 'custom', label: 'Frei' },
-];
 
 function getRange(
   filter: FilterKey,
@@ -62,12 +55,12 @@ function formatDateDE(d: Date): string {
 
 // ── Label formatting ──────────────────────────────────────────────────────────
 
-function formatPeriodLabel(label: string): string {
+function formatPeriodLabel(label: string, locale: string, weekPrefix: string): string {
   if (/^\d{2}:\d{2}$/.test(label)) return label;
-  if (/^\d{4}-W\d{2}$/.test(label)) return `KW${label.split('-W')[1]}`;
+  if (/^\d{4}-W\d{2}$/.test(label)) return `${weekPrefix}${label.split('-W')[1]}`;
   if (/^\d{4}-\d{2}$/.test(label)) {
     const [y, m] = label.split('-').map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+    return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: 'short', year: '2-digit' });
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
     const [, m, d] = label.split('-').map(Number);
@@ -78,7 +71,13 @@ function formatPeriodLabel(label: string): string {
 
 // ── Trend chart (two curves, no SVG) ─────────────────────────────────────────
 
-function TrendChart({ trend, c }: { trend: TrendPoint[]; c: ReturnType<typeof useColors> }) {
+function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
+  trend: TrendPoint[];
+  c: ReturnType<typeof useColors>;
+  noDataLabel: string;
+  legendMood: string;
+  legendHealth: string;
+}) {
   const [chartWidth, setChartWidth] = useState(0);
   const CHART_H = 130;
   const PAD_TOP = 8;
@@ -91,7 +90,7 @@ function TrendChart({ trend, c }: { trend: TrendPoint[]; c: ReturnType<typeof us
   if (!hasMood && !hasHealth) {
     return (
       <Text style={{ fontSize: 13, color: c.muted, textAlign: 'center', paddingVertical: 24 }}>
-        Keine Laune/Befinden-Daten für diesen Zeitraum
+        {noDataLabel}
       </Text>
     );
   }
@@ -139,14 +138,13 @@ function TrendChart({ trend, c }: { trend: TrendPoint[]; c: ReturnType<typeof us
   const moodPts = trend.map((p, i) => p.avgMood !== null ? { i, v: p.avgMood as number } : null).filter(Boolean) as { i: number; v: number }[];
   const healthPts = trend.map((p, i) => p.avgHealth !== null ? { i, v: p.avgHealth as number } : null).filter(Boolean) as { i: number; v: number }[];
 
-  // Pick 3 evenly-spaced x-axis labels
   const xLabels: { i: number; label: string }[] = [];
-  if (trend.length >= 1) xLabels.push({ i: 0, label: formatPeriodLabel(trend[0].label) });
+  if (trend.length >= 1) xLabels.push({ i: 0, label: trend[0].label });
   if (trend.length >= 3) {
     const mid = Math.floor((trend.length - 1) / 2);
-    xLabels.push({ i: mid, label: formatPeriodLabel(trend[mid].label) });
+    xLabels.push({ i: mid, label: trend[mid].label });
   }
-  if (trend.length >= 2) xLabels.push({ i: trend.length - 1, label: formatPeriodLabel(trend[trend.length - 1].label) });
+  if (trend.length >= 2) xLabels.push({ i: trend.length - 1, label: trend[trend.length - 1].label });
 
   return (
     <View>
@@ -169,7 +167,6 @@ function TrendChart({ trend, c }: { trend: TrendPoint[]; c: ReturnType<typeof us
                 width: 44, fontSize: 9, color: c.muted, textAlign: 'center',
               }}>{label}</Text>
             ))}
-            {/* Y-axis hint */}
             {[1, 3, 5].map(v => (
               <Text key={v} style={{
                 position: 'absolute', left: -18, top: toY(v) - 7,
@@ -183,13 +180,13 @@ function TrendChart({ trend, c }: { trend: TrendPoint[]; c: ReturnType<typeof us
         {hasMood && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={{ width: 14, height: 3, backgroundColor: MOOD_COLOR, borderRadius: 1.5 }} />
-            <Text style={{ fontSize: 11, color: c.muted }}>Laune</Text>
+            <Text style={{ fontSize: 11, color: c.muted }}>{legendMood}</Text>
           </View>
         )}
         {hasHealth && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={{ width: 14, height: 3, backgroundColor: HEALTH_COLOR, borderRadius: 1.5 }} />
-            <Text style={{ fontSize: 11, color: c.muted }}>Befinden</Text>
+            <Text style={{ fontSize: 11, color: c.muted }}>{legendHealth}</Text>
           </View>
         )}
       </View>
@@ -232,27 +229,38 @@ function buildHeatmapGrid(
   return grid;
 }
 
-function Heatmap({ perDay, from, to, c }: {
-  perDay: Stats['perDay']; from: number; to: number; c: ReturnType<typeof useColors>;
+function Heatmap({ perDay, from, to, c, labelLow, labelHigh }: {
+  perDay: Stats['perDay']; from: number; to: number;
+  c: ReturnType<typeof useColors>;
+  labelLow: string; labelHigh: string;
 }) {
   const grid = useMemo(() => buildHeatmapGrid(perDay, from, to), [perDay, from, to]);
   const cellSize = 11; const gap = 2;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View style={{ flexDirection: 'row', gap }}>
-        {grid.map((week, wi) => (
-          <View key={wi} style={{ flexDirection: 'column', gap }}>
-            {week.map((cell, di) => {
-              const bg = !cell ? 'transparent'
-                : cell.count === 0 ? c.border
-                : cell.count === 1 ? c.accent + '77'
-                : c.accent;
-              return <View key={di} style={{ width: cellSize, height: cellSize, borderRadius: 2, backgroundColor: bg }} />;
-            })}
-          </View>
+    <>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{ flexDirection: 'row', gap }}>
+          {grid.map((week, wi) => (
+            <View key={wi} style={{ flexDirection: 'column', gap }}>
+              {week.map((cell, di) => {
+                const bg = !cell ? 'transparent'
+                  : cell.count === 0 ? c.border
+                  : cell.count === 1 ? c.accent + '77'
+                  : c.accent;
+                return <View key={di} style={{ width: cellSize, height: cellSize, borderRadius: 2, backgroundColor: bg }} />;
+              })}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' }}>
+        <Text style={{ fontSize: 10, color: c.muted }}>{labelLow}</Text>
+        {[c.border, c.accent + '55', c.accent + '99', c.accent].map((bg, i) => (
+          <View key={i} style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: bg }} />
         ))}
+        <Text style={{ fontSize: 10, color: c.muted }}>{labelHigh}</Text>
       </View>
-    </ScrollView>
+    </>
   );
 }
 
@@ -287,6 +295,7 @@ function BarChart({ items, c, labelWidth = 72 }: {
 
 export default function StatsScreen() {
   const c = useColors();
+  const t = useT();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('month');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -299,6 +308,14 @@ export default function StatsScreen() {
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const FILTERS: { key: FilterKey; label: string }[] = [
+    { key: 'day', label: t.stats.filterDay },
+    { key: 'week', label: t.stats.filterWeek },
+    { key: 'month', label: t.stats.filterMonth },
+    { key: 'year', label: t.stats.filterYear },
+    { key: 'custom', label: t.stats.filterCustom },
+  ];
+
   const range = useMemo(
     () => getRange(activeFilter, customFrom, customTo),
     [activeFilter, customFrom, customTo]
@@ -309,9 +326,9 @@ export default function StatsScreen() {
     Promise.all([
       getStats(range.from, range.to, range.groupBy),
       getMoodHealthTrend(range.from, range.to, range.trendGroupBy),
-    ]).then(([s, t]) => {
+    ]).then(([s, tr]) => {
       setStats(s);
-      setTrend(t);
+      setTrend(tr);
       setLoading(false);
     });
   }, [range]);
@@ -357,9 +374,9 @@ export default function StatsScreen() {
   const applyCustomRange = () => {
     const from = parseDateDE(fromInput);
     const to = parseDateDE(toInput);
-    if (!from) { setDateError('Ungültiges Von-Datum (TT.MM.JJJJ)'); return; }
-    if (!to) { setDateError('Ungültiges Bis-Datum (TT.MM.JJJJ)'); return; }
-    if (from > to) { setDateError('Von muss vor Bis liegen'); return; }
+    if (!from) { setDateError(t.stats.dateErrorFrom); return; }
+    if (!to) { setDateError(t.stats.dateErrorTo); return; }
+    if (from > to) { setDateError(t.stats.dateErrorOrder); return; }
     setCustomFrom(from);
     setCustomTo(to);
     setActiveFilter('custom');
@@ -376,8 +393,10 @@ export default function StatsScreen() {
     setShowDatePicker(true);
   };
 
+  const weekPrefix = t.calendar.weekPrefix;
+
   const periodItems = stats?.perPeriod.map(p => ({
-    label: formatPeriodLabel(p.label),
+    label: formatPeriodLabel(p.label, t.locale, weekPrefix),
     count: p.count,
   })) ?? [];
 
@@ -386,7 +405,6 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Filter row */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}
         contentContainerStyle={[styles.filterRow, { padding: 12, paddingBottom: 4 }]}>
         {FILTERS.map(f => (
@@ -405,7 +423,7 @@ export default function StatsScreen() {
           <Text style={styles.customRangeText}>
             {formatDateDE(customFrom)} – {formatDateDE(customTo)}
           </Text>
-          <Text style={{ fontSize: 12, color: c.muted }}>ändern</Text>
+          <Text style={{ fontSize: 12, color: c.muted }}>{t.stats.changeRange}</Text>
         </Pressable>
       )}
 
@@ -414,79 +432,74 @@ export default function StatsScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
 
-          {/* Kennzahlen */}
           <View style={styles.cardRow}>
             <View style={styles.card}>
               <Text style={styles.cardNum}>{stats?.total ?? 0}</Text>
-              <Text style={styles.cardLabel}>Einträge</Text>
+              <Text style={styles.cardLabel}>{t.stats.cardEntries}</Text>
             </View>
             <View style={styles.card}>
               <Text style={styles.cardNum}>{stats?.activeDays ?? 0}</Text>
-              <Text style={styles.cardLabel}>Tage aktiv</Text>
+              <Text style={styles.cardLabel}>{t.stats.cardActiveDays}</Text>
             </View>
           </View>
           {activeFilter !== 'day' && (
             <View style={styles.cardRow}>
               <View style={styles.card}>
                 <Text style={styles.cardNum}>{stats?.currentStreak ?? 0}</Text>
-                <Text style={styles.cardLabel}>Tage{'\n'}Serie</Text>
+                <Text style={styles.cardLabel}>{t.stats.cardStreak}</Text>
               </View>
               <View style={styles.card}>
                 <Text style={styles.cardNum}>{stats?.longestStreak ?? 0}</Text>
-                <Text style={styles.cardLabel}>Tage{'\n'}Rekord</Text>
+                <Text style={styles.cardLabel}>{t.stats.cardRecord}</Text>
               </View>
             </View>
           )}
 
-          {/* Laune & Befinden Verlauf */}
           <View>
-            <Text style={styles.section}>Laune & Befinden</Text>
+            <Text style={styles.section}>{t.stats.sectionMoodHealth}</Text>
             <View style={[styles.block, { paddingLeft: 24 }]}>
-              <TrendChart trend={trend} c={c} />
+              <TrendChart
+                trend={trend} c={c}
+                noDataLabel={t.stats.noMoodData}
+                legendMood={t.stats.legendMood}
+                legendHealth={t.stats.legendHealth}
+              />
             </View>
           </View>
 
-          {/* Aktivitäts-Heatmap */}
           {activeFilter !== 'day' && (
             <View>
-              <Text style={styles.section}>Aktivität</Text>
+              <Text style={styles.section}>{t.stats.sectionActivity}</Text>
               <View style={styles.block}>
-                <Heatmap perDay={stats?.perDay ?? []} from={range.from} to={range.to} c={c} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' }}>
-                  <Text style={{ fontSize: 10, color: c.muted }}>wenig</Text>
-                  {[c.border, c.accent + '55', c.accent + '99', c.accent].map((bg, i) => (
-                    <View key={i} style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: bg }} />
-                  ))}
-                  <Text style={{ fontSize: 10, color: c.muted }}>viel</Text>
-                </View>
+                <Heatmap
+                  perDay={stats?.perDay ?? []} from={range.from} to={range.to} c={c}
+                  labelLow={t.stats.heatmapLow} labelHigh={t.stats.heatmapHigh}
+                />
               </View>
             </View>
           )}
 
-          {/* Einträge pro Periode */}
           {periodItems.length > 0 && (
             <View>
-              <Text style={styles.section}>Einträge pro Zeitraum</Text>
+              <Text style={styles.section}>{t.stats.sectionPerPeriod}</Text>
               <View style={styles.block}>
                 <BarChart items={periodItems} c={c} />
               </View>
             </View>
           )}
 
-          {/* Kategorien */}
           {catItems.length > 0 && (
             <View>
-              <Text style={styles.section}>Top-Kategorien</Text>
+              <Text style={styles.section}>{t.stats.sectionCategories}</Text>
               <View style={styles.block}>
                 <BarChart items={catItems} c={c} labelWidth={110} />
               </View>
             </View>
           )}
 
-          {/* Tags */}
           {tagItems.length > 0 && (
             <View>
-              <Text style={styles.section}>Top-Tags</Text>
+              <Text style={styles.section}>{t.stats.sectionTags}</Text>
               <View style={styles.block}>
                 <BarChart items={tagItems} c={c} labelWidth={110} />
               </View>
@@ -494,31 +507,30 @@ export default function StatsScreen() {
           )}
 
           {stats?.total === 0 && (
-            <Text style={styles.empty}>Keine Einträge in diesem Zeitraum.</Text>
+            <Text style={styles.empty}>{t.stats.noEntries}</Text>
           )}
 
         </ScrollView>
       )}
 
-      {/* Freier Zeitraum – Modal */}
       <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowDatePicker(false)}>
           <Pressable onPress={e => e.stopPropagation()}>
             <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>Zeitraum wählen</Text>
+              <Text style={styles.modalTitle}>{t.stats.datePickerTitle}</Text>
               <View>
-                <Text style={styles.modalLabel}>Von (TT.MM.JJJJ)</Text>
+                <Text style={styles.modalLabel}>{t.stats.dateFromLabel}</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={fromInput}
                   onChangeText={v => { setFromInput(v); setDateError(''); }}
-                  placeholder="01.01.2026"
+                  placeholder={t.stats.datePlaceholder}
                   placeholderTextColor={c.muted}
                   keyboardType="numeric"
                 />
               </View>
               <View>
-                <Text style={styles.modalLabel}>Bis (TT.MM.JJJJ)</Text>
+                <Text style={styles.modalLabel}>{t.stats.dateToLabel}</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={toInput}
@@ -533,10 +545,10 @@ export default function StatsScreen() {
               {!!dateError && <Text style={styles.modalError}>{dateError}</Text>}
               <View style={styles.modalBtnRow}>
                 <Pressable style={styles.modalCancel} onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.modalCancelText}>Abbrechen</Text>
+                  <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
                 </Pressable>
                 <Pressable style={styles.modalBtn} onPress={applyCustomRange}>
-                  <Text style={styles.modalBtnText}>Anwenden</Text>
+                  <Text style={styles.modalBtnText}>{t.stats.btnApply}</Text>
                 </Pressable>
               </View>
             </View>

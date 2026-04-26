@@ -15,11 +15,13 @@ import { useColors } from '../../components/theme';
 import { getCategories, type Category } from '../../db/categories';
 import { deleteEntry, getEntry, updateEntry } from '../../db/entries';
 import { getTags } from '../../db/tags';
+import { useT } from '../../i18n';
 
 export default function EditEntryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useColors();
+  const t = useT();
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
@@ -78,9 +80,9 @@ export default function EditEntryScreen() {
       const catIds = cats.filter((c) => entry.categories.includes(c.name)).map((c) => c.id);
       setSelectedCategoryIds(catIds);
 
-      const matchedTags = allTags.filter((t) => entry.tags.includes(t.name));
-      setSelectedTagIds(matchedTags.map((t) => t.id));
-      setSelectedTagNames(matchedTags.map((t) => t.name));
+      const matchedTags = allTags.filter((tag) => entry.tags.includes(tag.name));
+      setSelectedTagIds(matchedTags.map((tag) => tag.id));
+      setSelectedTagNames(matchedTags.map((tag) => tag.name));
 
       setLoading(false);
     };
@@ -105,10 +107,10 @@ export default function EditEntryScreen() {
   };
 
   const confirmDelete = () => {
-    Alert.alert('Eintrag löschen?', 'Diese Aktion kann nicht rückgängig gemacht werden.', [
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t.entry.deleteConfirmTitle, t.entry.deleteConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
       {
-        text: 'Löschen', style: 'destructive', onPress: async () => {
+        text: t.common.delete, style: 'destructive', onPress: async () => {
           await deleteEntry(Number(id));
           router.back();
         },
@@ -130,7 +132,7 @@ export default function EditEntryScreen() {
         headerRight: () => (
           <Pressable style={styles.headerSave} onPress={save} disabled={!text.trim() || saving}>
             <Text style={[styles.headerSaveText, { color: text.trim() && !saving ? c.accent : c.muted }]}>
-              Speichern
+              {t.common.save}
             </Text>
           </Pressable>
         ),
@@ -152,12 +154,12 @@ export default function EditEntryScreen() {
             onChangeText={setText}
             multiline
             textAlignVertical="top"
-            placeholder="Eintrag…"
+            placeholder={t.entry.textPlaceholderEdit}
             placeholderTextColor={c.muted}
           />
 
-          <QualifierPicker label="Laune" emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
-          <QualifierPicker label="Befinden" emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
+          <QualifierPicker label={t.entry.labelMood} emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
+          <QualifierPicker label={t.entry.labelHealth} emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
           <Pressable
             style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
             onPress={async () => {
@@ -172,21 +174,21 @@ export default function EditEntryScreen() {
             {locating
               ? <ActivityIndicator size="small" color={c.accent} />
               : <Text style={[styles.locationBtnText, geoTag && styles.locationBtnTextActive]}>
-                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : '📍 Standort hinzufügen'}
+                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : t.entry.locationAdd}
                 </Text>
             }
           </Pressable>
 
-          <Text style={styles.label}>Kategorien</Text>
+          <Text style={styles.label}>{t.entry.labelCategories}</Text>
           <DropdownPicker
             options={categories}
             selected={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
-            placeholder="Kategorien wählen…"
+            placeholder={t.entry.categoriesPlaceholder}
             multi
           />
 
-          <Text style={styles.label}>Tags</Text>
+          <Text style={styles.label}>{t.entry.labelTags}</Text>
           <TagInput
             selectedTagIds={selectedTagIds}
             selectedTagNames={selectedTagNames}
@@ -197,11 +199,10 @@ export default function EditEntryScreen() {
           />
 
           <Pressable style={styles.deleteButton} onPress={confirmDelete}>
-            <Text style={styles.deleteText}>Eintrag löschen</Text>
+            <Text style={styles.deleteText}>{t.entry.deleteEntry}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-

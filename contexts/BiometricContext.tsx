@@ -3,10 +3,12 @@ import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   AppState, AppStateStatus, KeyboardAvoidingView, Platform,
-  Pressable, StyleSheet, Text, TextInput, View,
+  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { checkFallbackPassword, checkRecoveryCode } from '../utils/auth';
+import { useT } from '../i18n';
 
 const STORE_KEY = 'biometric_enabled';
 
@@ -30,6 +32,8 @@ type LockMode = 'bio' | 'password' | 'recovery';
 
 function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvailable: boolean }) {
   const c = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<LockMode>(bioAvailable ? 'bio' : 'password');
   const [pw, setPw] = useState('');
   const [recovery, setRecovery] = useState('');
@@ -37,8 +41,8 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
 
   const tryBio = useCallback(async () => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Tagebuch entsperren',
-      cancelLabel: 'Abbrechen',
+      promptMessage: t.lock.title,
+      cancelLabel: t.common.cancel,
       disableDeviceFallback: true,
     });
     if (result.success) {
@@ -46,12 +50,12 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
     } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
       setMode('password');
     }
-  }, [onUnlock]);
+  }, [onUnlock, t]);
 
   useEffect(() => {
     if (mode === 'bio' && bioAvailable) {
-      const t = setTimeout(tryBio, 150);
-      return () => clearTimeout(t);
+      const timer = setTimeout(tryBio, 150);
+      return () => clearTimeout(timer);
     }
   }, [mode, bioAvailable, tryBio]);
 
@@ -60,7 +64,7 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
     if (ok) {
       onUnlock();
     } else {
-      setError('Falsches Passwort');
+      setError(t.lock.errorPassword);
       setPw('');
     }
   };
@@ -70,20 +74,27 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
     if (ok) {
       onUnlock();
     } else {
-      setError('Ungültiger Recovery-Code');
+      setError(t.lock.errorRecovery);
       setRecovery('');
     }
   };
 
   const styles = StyleSheet.create({
     outer: { ...StyleSheet.absoluteFillObject, zIndex: 9999, backgroundColor: c.bg },
-    header: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8 },
+    inner: {
+      paddingTop: insets.top + 48,
+      paddingHorizontal: 32,
+      paddingBottom: 32,
+    },
+    iconRow: { alignItems: 'center', gap: 8, marginBottom: 36 },
     icon: { fontSize: 56 },
     title: { fontSize: 20, fontWeight: '600', color: c.text },
-    body: { padding: 32, gap: 12 },
+    form: { gap: 12 },
     input: {
-      backgroundColor: c.surface, color: c.text, borderColor: error ? c.danger : c.border,
-      borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
+      backgroundColor: c.surface, color: c.text,
+      borderColor: error ? c.danger : c.border,
+      borderWidth: 1, borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
     },
     btn: { backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
     btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
@@ -93,25 +104,32 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
   });
 
   return (
-    <View style={styles.outer}>
-      <View style={styles.header}>
-        <Text style={styles.icon}>🔒</Text>
-        <Text style={styles.title}>Tagebuch gesperrt</Text>
-      </View>
+    <KeyboardAvoidingView
+      style={styles.outer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+        contentContainerStyle={styles.inner}
+      >
+        <View style={styles.iconRow}>
+          <Text style={styles.icon}>🔒</Text>
+          <Text style={styles.title}>{t.lock.title}</Text>
+        </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.body}>
+        <View style={styles.form}>
           {mode === 'bio' && (
             <>
               <Pressable style={styles.btn} onPress={tryBio}>
-                <Text style={styles.btnText}>Biometrie verwenden</Text>
+                <Text style={styles.btnText}>{t.lock.btnBiometric}</Text>
               </Pressable>
               <View style={styles.linkRow}>
                 <Pressable onPress={() => { setError(''); setMode('password'); }}>
-                  <Text style={styles.link}>Mit Passwort</Text>
+                  <Text style={styles.link}>{t.lock.withPassword}</Text>
                 </Pressable>
                 <Pressable onPress={() => { setError(''); setMode('recovery'); }}>
-                  <Text style={styles.link}>Recovery-Code</Text>
+                  <Text style={styles.link}>{t.lock.withRecovery}</Text>
                 </Pressable>
               </View>
             </>
@@ -123,7 +141,7 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
                 style={styles.input}
                 value={pw}
                 onChangeText={(v) => { setPw(v); setError(''); }}
-                placeholder="Passwort"
+                placeholder={t.lock.pwPlaceholder}
                 placeholderTextColor={c.muted}
                 secureTextEntry
                 autoFocus
@@ -132,16 +150,16 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
               />
               {!!error && <Text style={styles.error}>{error}</Text>}
               <Pressable style={styles.btn} onPress={tryPassword}>
-                <Text style={styles.btnText}>Entsperren</Text>
+                <Text style={styles.btnText}>{t.lock.btnUnlock}</Text>
               </Pressable>
               <View style={styles.linkRow}>
                 {bioAvailable && (
                   <Pressable onPress={() => { setError(''); setMode('bio'); }}>
-                    <Text style={styles.link}>Biometrie</Text>
+                    <Text style={styles.link}>{t.lock.biometricShort}</Text>
                   </Pressable>
                 )}
                 <Pressable onPress={() => { setError(''); setMode('recovery'); }}>
-                  <Text style={styles.link}>Recovery-Code</Text>
+                  <Text style={styles.link}>{t.lock.withRecovery}</Text>
                 </Pressable>
               </View>
             </>
@@ -153,7 +171,7 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
                 style={styles.input}
                 value={recovery}
                 onChangeText={(v) => { setRecovery(v.toUpperCase()); setError(''); }}
-                placeholder="XXXX-XXXX"
+                placeholder={t.lock.recoveryPlaceholder}
                 placeholderTextColor={c.muted}
                 autoCapitalize="characters"
                 autoFocus
@@ -162,23 +180,23 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
               />
               {!!error && <Text style={styles.error}>{error}</Text>}
               <Pressable style={styles.btn} onPress={tryRecovery}>
-                <Text style={styles.btnText}>Entsperren</Text>
+                <Text style={styles.btnText}>{t.lock.btnUnlock}</Text>
               </Pressable>
               <View style={styles.linkRow}>
                 {bioAvailable && (
                   <Pressable onPress={() => { setError(''); setMode('bio'); }}>
-                    <Text style={styles.link}>Biometrie</Text>
+                    <Text style={styles.link}>{t.lock.biometricShort}</Text>
                   </Pressable>
                 )}
                 <Pressable onPress={() => { setError(''); setMode('password'); }}>
-                  <Text style={styles.link}>Passwort</Text>
+                  <Text style={styles.link}>{t.lock.withPassword}</Text>
                 </Pressable>
               </View>
             </>
           )}
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

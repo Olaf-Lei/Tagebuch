@@ -11,10 +11,12 @@ import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
+import { useT } from '../i18n';
 
 export default function IndexScreen() {
   const router = useRouter();
   const c = useColors();
+  const t = useT();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const fabBottom = Math.max(bottomInset, 16) + 12;
   const styles = useMemo(() => StyleSheet.create({
@@ -49,12 +51,6 @@ export default function IndexScreen() {
   }), [c, fabBottom]);
 
   type DateRange = 'all' | 'today' | 'week' | 'month';
-  const DATE_RANGES: { key: DateRange; label: string }[] = [
-    { key: 'all', label: 'Alles' },
-    { key: 'today', label: 'Heute' },
-    { key: 'week', label: 'Woche' },
-    { key: 'month', label: 'Monat' },
-  ];
 
   function dateRangeTimes(range: DateRange): { startTime?: number; endTime?: number } {
     const now = new Date();
@@ -63,7 +59,7 @@ export default function IndexScreen() {
       return { startTime: start };
     }
     if (range === 'week') {
-      const dow = (now.getDay() + 6) % 7; // Mon=0
+      const dow = (now.getDay() + 6) % 7;
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow).getTime();
       return { startTime: start };
     }
@@ -92,6 +88,13 @@ export default function IndexScreen() {
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
+  const DATE_RANGES: { key: DateRange; label: string }[] = [
+    { key: 'all', label: t.list.dateAll },
+    { key: 'today', label: t.list.dateToday },
+    { key: 'week', label: t.list.dateWeek },
+    { key: 'month', label: t.list.dateMonth },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
@@ -101,7 +104,7 @@ export default function IndexScreen() {
               source={require('../assets/icon.png')}
               style={{ width: 28, height: 28, borderRadius: 6 }}
             />
-            <Text style={{ fontSize: 17, fontWeight: '600', color: c.text }}>Tagebuch</Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: c.text }}>{t.appName}</Text>
           </View>
         ),
         headerRight: () => (
@@ -120,7 +123,7 @@ export default function IndexScreen() {
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
-          placeholder="Suchen…"
+          placeholder={t.list.searchPlaceholder}
           placeholderTextColor={c.muted}
           clearButtonMode="while-editing"
         />
@@ -130,7 +133,7 @@ export default function IndexScreen() {
           options={categories}
           selected={selectedCategories}
           onChange={setSelectedCategories}
-          placeholder="Kategorien"
+          placeholder={t.list.filterCategories}
           multi
         />
         {allTags.length > 0 && (
@@ -138,7 +141,7 @@ export default function IndexScreen() {
             options={allTags}
             selected={selectedTags}
             onChange={setSelectedTags}
-            placeholder="Tags"
+            placeholder={t.list.filterTags}
             multi
           />
         )}
@@ -167,7 +170,7 @@ export default function IndexScreen() {
           renderItem={({ item }) => <EntryCard entry={item} highlight={search} />}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>Noch keine Einträge.</Text>
+            <Text style={styles.empty}>{t.list.empty}</Text>
           }
         />
       )}
@@ -180,4 +183,3 @@ export default function IndexScreen() {
     </SafeAreaView>
   );
 }
-

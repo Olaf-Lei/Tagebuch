@@ -234,7 +234,7 @@ Installiertes Tooling:
 - Kein externes i18n-Framework — eigener schlanker `useT()` Hook via `LanguageContext`
 - `i18n/de.ts` und `i18n/en.ts` exportieren je ein `const strings = { ... }` Objekt mit identischer Struktur
 - `i18n/index.ts` exportiert `useT()` → gibt den passenden String-Record zurück
-- Sprache in `AsyncStorage` unter `app_language` speichern, Default: Systemsprache (`expo-localization`)
+- Sprache in `SecureStore` unter `app_language` speichern, Default: Systemsprache (`expo-localization`)
 - Beim Hinzufügen neuer UI-Strings immer **beide** Dateien gleichzeitig ergänzen
 - Keine automatische Übersetzung: alle Strings manuell formulieren
 
@@ -280,15 +280,16 @@ Installiertes Tooling:
 - [x] Beim App-Start: geplante Notification prüfen und ggf. neu registrieren
 
 ### Statistiken erweitern
-- [ ] `db/stats.ts`: `getCategoryUsage(from, to)` und `getTagUsage(from, to)` ergänzen
-- [ ] stats.tsx: Kategorien-Balkendiagramm (Top 10, gleiche Zeitfilter wie Rest)
-- [ ] stats.tsx: Tag-Balkendiagramm (Top 10, gleiche Zeitfilter wie Rest)
+- [x] `db/stats.ts`: perCategory/perTag LIMIT auf 10 erhöht
+- [x] stats.tsx: Kategorien-Balkendiagramm (Top 10, labelWidth=110)
+- [x] stats.tsx: Tag-Balkendiagramm (Top 10, labelWidth=110)
 
 ### Mehrsprachigkeit (DE + EN)
-- [ ] `i18n/de.ts`, `i18n/en.ts`, `i18n/index.ts` anlegen
-- [ ] `LanguageContext.tsx` anlegen (Sprache laden/speichern, Default via expo-localization)
-- [ ] Alle UI-Strings in allen Screens und Komponenten auf `useT()` umstellen
-- [ ] Sprach-Auswahl in Settings > Darstellung ergänzen
+- [x] `i18n/de.ts`, `i18n/en.ts`, `i18n/index.ts` anlegen
+- [x] `LanguageContext.tsx` anlegen (Sprache laden/speichern, Default via expo-localization)
+- [x] Alle UI-Strings in allen Screens und Komponenten auf `useT()` umstellen
+- [x] Sprach-Auswahl in Settings > Darstellung ergänzen
+- [x] Lock-Screen: Tastatur überlagert Eingabefelder nicht mehr (KeyboardAvoidingView + ScrollView + SafeAreaInsets)
 
 ### Hilfe-Tour
 - [ ] `HelpModal.tsx` mit Schritt-Logik implementieren
