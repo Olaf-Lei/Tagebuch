@@ -13,6 +13,7 @@ import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
 import { ensureReminderScheduled } from '../utils/notifications';
 import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
+import { syncIfConfigured as gdriveSyncIfConfigured, syncNow as gdriveSyncNow, isConnected as gdriveIsConnected, getLastSyncMs as gdriveGetLastSyncMs } from '../sync/googledrive';
 import { getAutoSyncInterval, ensureBackgroundSyncRegistered } from '../sync/backgroundSync';
 
 function AppShell() {
@@ -61,11 +62,13 @@ export default function RootLayout() {
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
       syncIfConfigured(); // App-Start
+      gdriveSyncIfConfigured();
     });
 
     const sub = AppState.addEventListener('change', async (nextState) => {
       if (nextState === 'background') {
         syncIfConfigured(); // Beenden: letzte Chance, Daten zu sichern
+        gdriveSyncIfConfigured();
         return;
       }
       if (nextState !== 'active') return;
@@ -76,10 +79,21 @@ export default function RootLayout() {
           getAutoSyncInterval(),
           getLastSyncMs(),
         ]);
-        if (!config.url || !config.username || !config.password) return;
-        if (intervalMin === 0) return;
-        if (lastMs !== null && Date.now() - lastMs < intervalMin * 60_000) return;
-        syncNow().catch(() => {});
+        if (config.url && config.username && config.password) {
+          if (intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
+            syncNow().catch(() => {});
+          }
+        }
+      } catch {}
+      try {
+        const [connected, intervalMin, lastMs] = await Promise.all([
+          gdriveIsConnected(),
+          getAutoSyncInterval(),
+          gdriveGetLastSyncMs(),
+        ]);
+        if (connected && intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
+          gdriveSyncNow().catch(() => {});
+        }
       } catch {}
     });
     return () => sub.remove();

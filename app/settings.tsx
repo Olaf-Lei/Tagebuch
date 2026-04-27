@@ -17,6 +17,7 @@ import {
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
+import * as gdrive from '../sync/googledrive';
 import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
 import { exportJSON, exportCSV } from '../utils/export';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../sync/backgroundSync';
@@ -205,6 +206,16 @@ export default function SettingsScreen() {
   const [importKeyText, setImportKeyText] = useState('');
   const [importKeyError, setImportKeyError] = useState('');
 
+  const [gdriveClientId, setGDriveClientId] = useState('');
+  const [gdriveClientSecret, setGDriveClientSecret] = useState('');
+  const [gdriveConnected, setGDriveConnected] = useState(false);
+  const [gdriveEmail, setGDriveEmail] = useState<string | null>(null);
+  const [gdriveConnecting, setGDriveConnecting] = useState(false);
+  const [gdriveSyncing, setGDriveSyncing] = useState(false);
+  const [gdriveRestoring, setGDriveRestoring] = useState(false);
+  const [gdriveLastSync, setGDriveLastSync] = useState<string | null>(null);
+  const [gdriveHintExpanded, setGDriveHintExpanded] = useState(false);
+
   const SYNC_INTERVALS = [
     { label: t.settings.syncOff, value: 0 },
     { label: t.settings.sync15m, value: 15 },
@@ -222,6 +233,10 @@ export default function SettingsScreen() {
     isEncryptionEnabled().then(setEncEnabledState);
     getSyncLog().then(setSyncLog);
     hasRecoveryCode().then(setHasRecovery);
+    gdrive.loadClientConfig().then(c => { setGDriveClientId(c.clientId); setGDriveClientSecret(c.clientSecret); });
+    gdrive.isConnected().then(setGDriveConnected);
+    gdrive.getConnectedEmail().then(setGDriveEmail);
+    gdrive.getLastSync().then(setGDriveLastSync);
     getReminderEnabled().then(setReminderEnabled);
     getReminderTime().then(({ hour, minute }) => { setReminderHour(hour); setReminderMinute(minute); });
   }, []);
@@ -416,6 +431,78 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleSaveGDriveCredentials = async () => {
+    await gdrive.saveClientConfig({ clientId: gdriveClientId, clientSecret: gdriveClientSecret });
+    Alert.alert(t.settings.savedAlert);
+  };
+
+  const handleGDriveConnect = async () => {
+    if (!gdriveClientId.trim() || !gdriveClientSecret.trim()) {
+      Alert.alert(t.settings.missingFieldsTitle, t.settings.gdriveCredentialsMissing);
+      return;
+    }
+    setGDriveConnecting(true);
+    try {
+      await gdrive.authenticate(gdriveClientId.trim(), gdriveClientSecret.trim());
+      setGDriveConnected(true);
+      const email = await gdrive.getConnectedEmail();
+      setGDriveEmail(email);
+    } catch (e: any) {
+      Alert.alert(t.settings.gdriveConnectError, e.message ?? t.settings.unknownError);
+    } finally {
+      setGDriveConnecting(false);
+    }
+  };
+
+  const handleGDriveDisconnect = async () => {
+    await gdrive.signOut();
+    setGDriveConnected(false);
+    setGDriveEmail(null);
+    setGDriveLastSync(null);
+  };
+
+  const handleGDriveSync = async () => {
+    setGDriveSyncing(true);
+    try {
+      await gdrive.syncNow();
+      const updated = await gdrive.getLastSync();
+      setGDriveLastSync(updated);
+      Alert.alert(t.settings.gdriveSyncSuccessTitle, t.settings.syncSuccessMsg(updated ?? ''));
+    } catch (e: any) {
+      Alert.alert(t.settings.gdriveSyncFailTitle, e.message ?? t.settings.unknownError);
+    } finally {
+      setGDriveSyncing(false);
+      await refreshLog();
+    }
+  };
+
+  const handleGDriveRestore = () => {
+    Alert.alert(
+      t.settings.gdriveRestoreConfirmTitle,
+      t.settings.gdriveRestoreConfirmMsg,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+            setGDriveRestoring(true);
+            try {
+              await gdrive.restoreNow();
+              await refreshLog();
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
+              ]);
+            } catch (e: any) {
+              await refreshLog();
+              Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+            } finally {
+              setGDriveRestoring(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const saveNextcloud = async () => {
     if (!config.url || !config.username || !config.password) {
       Alert.alert(t.settings.missingFieldsTitle, t.settings.missingFieldsMsg);
@@ -518,7 +605,44 @@ export default function SettingsScreen() {
               </Pressable>
               {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
 
-              <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subAutoSync}</Text>
+              {/* ── Google Drive ── */}
+              <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subGDrive}</Text>
+              <Text style={styles.fieldLabel}>{t.settings.gdriveClientId}</Text>
+              <TextInput style={styles.field} value={gdriveClientId} onChangeText={setGDriveClientId} placeholder="…apps.googleusercontent.com" placeholderTextColor={c.muted} autoCapitalize="none" />
+              <Text style={styles.fieldLabel}>{t.settings.gdriveClientSecret}</Text>
+              <TextInput style={styles.field} value={gdriveClientSecret} onChangeText={setGDriveClientSecret} placeholder="GOCSPX-…" placeholderTextColor={c.muted} secureTextEntry />
+              <Pressable style={styles.saveButton} onPress={handleSaveGDriveCredentials}>
+                <Text style={styles.saveText}>{t.settings.gdriveSaveCredentials}</Text>
+              </Pressable>
+
+              {!gdriveConnected ? (
+                <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
+                  {gdriveConnecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveConnect}</Text>}
+                </Pressable>
+              ) : (
+                <>
+                  <Text style={[styles.lastSync, { marginTop: 6 }]}>{t.settings.gdriveConnectedAs(gdriveEmail ?? '')}</Text>
+                  <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleGDriveDisconnect}>
+                    <Text style={styles.saveText}>{t.settings.gdriveDisconnect}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleGDriveSync} disabled={gdriveSyncing || gdriveRestoring}>
+                    {gdriveSyncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveSyncNow}</Text>}
+                  </Pressable>
+                  <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring}>
+                    {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
+                  </Pressable>
+                  {gdriveLastSync && <Text style={styles.lastSync}>{t.settings.gdriveLastSync}{gdriveLastSync}</Text>}
+                </>
+              )}
+
+              <Pressable style={{ marginTop: 8 }} onPress={() => setGDriveHintExpanded(v => !v)}>
+                <Text style={styles.subLabel}>{t.settings.gdriveSetupHint} {gdriveHintExpanded ? '▾' : '▸'}</Text>
+              </Pressable>
+              {gdriveHintExpanded && (
+                <Text style={[styles.warnText, { marginTop: 4 }]}>{t.settings.gdriveSetupHintText}</Text>
+              )}
+
+              <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subAutoSync}</Text>
               <View style={styles.intervalRow}>
                 {SYNC_INTERVALS.map(({ label, value }) => (
                   <Pressable

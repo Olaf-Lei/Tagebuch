@@ -2,6 +2,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as SecureStore from 'expo-secure-store';
 import { syncNow } from './webdav';
+import { syncNow as gdriveSyncNow } from './googledrive';
 
 export const SYNC_TASK = 'TAGEBUCH_BACKGROUND_SYNC';
 const STORE_INTERVAL = 'bg_sync_interval'; // minutes, 0 = disabled
@@ -9,7 +10,7 @@ const STORE_INTERVAL = 'bg_sync_interval'; // minutes, 0 = disabled
 // Must be defined at module level
 TaskManager.defineTask(SYNC_TASK, async () => {
   try {
-    await syncNow();
+    await Promise.allSettled([syncNow(), gdriveSyncNow()]);
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;
