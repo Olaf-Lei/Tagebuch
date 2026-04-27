@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.14 — 2026-04-27
+- Fix: Kategorien-Farben werden beim Sync korrekt übertragen (INSERT enthielt `color`, UPDATE fehlte komplett)
+
 ## v2.4.13 — 2026-04-27
 - Animierter In-App-Splash-Screen beim Start: Logo federt rein (spring), nach DB-Init kurze Pause, danach fade-out
 - „Über die App": App-Icon jetzt 128×128 mit gold-getöntem Schatten
