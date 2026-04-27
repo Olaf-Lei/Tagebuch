@@ -1,6 +1,6 @@
 {
   "name": "tagebuch",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "license": "GPL-3.0-only",
   "author": "Olaf <olaf@olovenet.de>",
   "main": "expo-router/entry",
@@ -36,6 +36,7 @@
     "expo-sqlite": "^55.0.15",
     "expo-status-bar": "~55.0.5",
     "expo-task-manager": "^55.0.15",
+    "expo-web-browser": "~55.0.14",
     "react": "19.2.0",
     "react-native": "0.83.6",
     "react-native-get-random-values": "^2.0.0",
