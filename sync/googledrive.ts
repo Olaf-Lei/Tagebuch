@@ -13,10 +13,10 @@ import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } fro
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 
+const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 const REDIRECT_URI = 'com.tagebuch.app:/oauth2redirect';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 
-const STORE_CLIENT_ID = 'gdrive_client_id';
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
 const STORE_REFRESH_TOKEN = 'gdrive_refresh_token';
 const STORE_TOKEN_EXPIRY = 'gdrive_token_expiry';
@@ -30,19 +30,6 @@ function _encodeForm(params: Record<string, string>): string {
   return Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
-}
-
-export interface GDriveClientConfig {
-  clientId: string;
-}
-
-export async function loadClientConfig(): Promise<GDriveClientConfig> {
-  const clientId = await SecureStore.getItemAsync(STORE_CLIENT_ID);
-  return { clientId: clientId ?? '' };
-}
-
-export async function saveClientConfig(config: GDriveClientConfig): Promise<void> {
-  await SecureStore.setItemAsync(STORE_CLIENT_ID, config.clientId.trim());
 }
 
 export async function isConnected(): Promise<boolean> {
@@ -75,13 +62,13 @@ function _notifySyncListeners() {
   _syncListeners.forEach((cb) => cb());
 }
 
-async function _refreshAccessToken(clientId: string, refreshToken: string): Promise<string> {
+async function _refreshAccessToken(refreshToken: string): Promise<string> {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: _encodeForm({
       refresh_token: refreshToken,
-      client_id: clientId,
+      client_id: CLIENT_ID,
       grant_type: 'refresh_token',
     }),
   });
@@ -97,17 +84,15 @@ async function _refreshAccessToken(clientId: string, refreshToken: string): Prom
 }
 
 async function _getValidAccessToken(): Promise<string> {
-  const [accessToken, refreshToken, expiryStr, clientId] = await Promise.all([
+  const [accessToken, refreshToken, expiryStr] = await Promise.all([
     SecureStore.getItemAsync(STORE_ACCESS_TOKEN),
     SecureStore.getItemAsync(STORE_REFRESH_TOKEN),
     SecureStore.getItemAsync(STORE_TOKEN_EXPIRY),
-    SecureStore.getItemAsync(STORE_CLIENT_ID),
   ]);
   if (!refreshToken) throw new Error('Nicht mit Google Drive verbunden.');
-  if (!clientId) throw new Error('Client ID fehlt. Bitte in Einstellungen eintragen.');
   const expiry = expiryStr ? Number(expiryStr) : 0;
   if (accessToken && Date.now() < expiry - 60_000) return accessToken;
-  return _refreshAccessToken(clientId, refreshToken);
+  return _refreshAccessToken(refreshToken);
 }
 
 async function _findFile(filename: string, accessToken: string): Promise<string | null> {
@@ -188,10 +173,10 @@ async function _downloadFile(accessToken: string, fileId: string, destPath: stri
   if (result.status !== 200) throw new Error(`Drive-Download fehlgeschlagen: ${result.status}`);
 }
 
-export async function authenticate(clientId: string): Promise<void> {
+export async function authenticate(): Promise<void> {
   const authUrl =
     'https://accounts.google.com/o/oauth2/v2/auth?' +
-    `client_id=${encodeURIComponent(clientId)}&` +
+    `client_id=${encodeURIComponent(CLIENT_ID)}&` +
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
     `response_type=code&` +
     `scope=${encodeURIComponent(SCOPE)}&` +
@@ -210,7 +195,7 @@ export async function authenticate(clientId: string): Promise<void> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: _encodeForm({
       code,
-      client_id: clientId,
+      client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       grant_type: 'authorization_code',
     }),
@@ -226,7 +211,6 @@ export async function authenticate(clientId: string): Promise<void> {
     SecureStore.setItemAsync(STORE_ACCESS_TOKEN, tokens.access_token as string),
     SecureStore.setItemAsync(STORE_REFRESH_TOKEN, (tokens.refresh_token as string) ?? ''),
     SecureStore.setItemAsync(STORE_TOKEN_EXPIRY, String(expiry)),
-    SecureStore.setItemAsync(STORE_CLIENT_ID, clientId),
   ]);
 
   try {

@@ -206,7 +206,6 @@ export default function SettingsScreen() {
   const [importKeyText, setImportKeyText] = useState('');
   const [importKeyError, setImportKeyError] = useState('');
 
-  const [gdriveClientId, setGDriveClientId] = useState('');
   const [gdriveConnected, setGDriveConnected] = useState(false);
   const [gdriveEmail, setGDriveEmail] = useState<string | null>(null);
   const [gdriveConnecting, setGDriveConnecting] = useState(false);
@@ -232,7 +231,6 @@ export default function SettingsScreen() {
     isEncryptionEnabled().then(setEncEnabledState);
     getSyncLog().then(setSyncLog);
     hasRecoveryCode().then(setHasRecovery);
-    gdrive.loadClientConfig().then(c => { setGDriveClientId(c.clientId); });
     gdrive.isConnected().then(setGDriveConnected);
     gdrive.getConnectedEmail().then(setGDriveEmail);
     gdrive.getLastSync().then(setGDriveLastSync);
@@ -430,19 +428,10 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleSaveGDriveCredentials = async () => {
-    await gdrive.saveClientConfig({ clientId: gdriveClientId });
-    Alert.alert(t.settings.savedAlert);
-  };
-
   const handleGDriveConnect = async () => {
-    if (!gdriveClientId.trim()) {
-      Alert.alert(t.settings.missingFieldsTitle, t.settings.gdriveCredentialsMissing);
-      return;
-    }
     setGDriveConnecting(true);
     try {
-      await gdrive.authenticate(gdriveClientId.trim());
+      await gdrive.authenticate();
       setGDriveConnected(true);
       const email = await gdrive.getConnectedEmail();
       setGDriveEmail(email);
@@ -606,12 +595,6 @@ export default function SettingsScreen() {
 
               {/* ── Google Drive ── */}
               <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subGDrive}</Text>
-              <Text style={styles.fieldLabel}>{t.settings.gdriveClientId}</Text>
-              <TextInput style={styles.field} value={gdriveClientId} onChangeText={setGDriveClientId} placeholder="…apps.googleusercontent.com" placeholderTextColor={c.muted} autoCapitalize="none" />
-              <Pressable style={styles.saveButton} onPress={handleSaveGDriveCredentials}>
-                <Text style={styles.saveText}>{t.settings.gdriveSaveCredentials}</Text>
-              </Pressable>
-
               {!gdriveConnected ? (
                 <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
                   {gdriveConnecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveConnect}</Text>}

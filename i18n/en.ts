@@ -69,8 +69,6 @@ export const en: Strings = {
     lastSync: 'Last: ',
 
     subGDrive: 'Google Drive',
-    gdriveClientId: 'OAuth 2.0 Client ID (Android)',
-    gdriveSaveCredentials: 'Save client ID',
     gdriveConnect: 'Connect to Google Drive',
     gdriveConnectedAs: (email: string) => `Connected as ${email}`,
     gdriveDisconnect: 'Disconnect',
@@ -80,7 +78,6 @@ export const en: Strings = {
     gdriveSetupHint: 'Setup',
     gdriveSetupHintText: 'Google Cloud Console → APIs & Services → Enable Drive API → Credentials → Create OAuth 2.0 Client ID → Type: Android → Package name: com.tagebuch.app → enter SHA-1 of your keystore. No client secret required.',
     gdriveConnectError: 'Connection failed',
-    gdriveCredentialsMissing: 'Client ID is required.',
     gdriveRestoreConfirmTitle: 'Restore from Google Drive?',
     gdriveRestoreConfirmMsg: 'All local data will be replaced by the backup.',
     gdriveSyncSuccessTitle: 'Drive sync successful',
