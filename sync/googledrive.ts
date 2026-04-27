@@ -14,7 +14,8 @@ import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 
 const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-const REDIRECT_URI = 'com.tagebuch.app:/oauth2redirect';
+const CLIENT_SECRET = 'YOUR_GOOGLE_CLIENT_SECRET_2';
+const REDIRECT_URI = 'com.googleusercontent.apps.YOUR_GOOGLE_CLIENT_ID:/oauth2redirect';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
@@ -196,6 +197,7 @@ export async function authenticate(): Promise<void> {
     body: _encodeForm({
       code,
       client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
       redirect_uri: REDIRECT_URI,
       grant_type: 'authorization_code',
     }),

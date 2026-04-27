@@ -40,7 +40,7 @@ const COLOR_PICKER_PALETTE = [
 ];
 const isValidHex = (s: string) => /^#[0-9A-Fa-f]{6}$/.test(s);
 
-type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'about';
+type SectionKey = 'inhalte' | 'sync' | 'syncGdrive' | 'syncNextcloud' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'about';
 
 function SectionHeader({
   title, open, onToggle, styles,
@@ -67,6 +67,8 @@ export default function SettingsScreen() {
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     inhalte: true,
     sync: false,
+    syncGdrive: false,
+    syncNextcloud: false,
     sicherheit: false,
     erinnerungen: false,
     darstellung: false,
@@ -149,6 +151,13 @@ export default function SettingsScreen() {
     logActionRow: { flexDirection: 'row', gap: 8 },
     logActionBtn: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: 10, alignItems: 'center' },
     logActionBtnText: { color: c.muted, fontSize: 13 },
+    subSectionHeader: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: c.bg, borderRadius: 8,
+      paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+    },
+    subSectionHeaderText: { fontSize: 12, fontWeight: '600', color: c.text, textTransform: 'uppercase', letterSpacing: 0.6 },
+    subSectionChevron: { fontSize: 14, color: c.muted },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
     modalBox: { backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 12 },
     modalTitle: { fontSize: 17, fontWeight: '700', color: c.text },
@@ -572,56 +581,71 @@ export default function SettingsScreen() {
           <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} styles={headerStyles} />
           {open.sync && (
             <View style={styles.sectionBody}>
-              <Text style={styles.subLabel}>{t.settings.subNextcloud}</Text>
-              <Text style={styles.fieldLabel}>{t.settings.fieldUrl}</Text>
-              <TextInput style={styles.field} value={config.url ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, url: v }))} placeholder="https://…" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" />
-              <Text style={styles.fieldLabel}>{t.settings.fieldUsername}</Text>
-              <TextInput style={styles.field} value={config.username ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, username: v }))} placeholder="user" placeholderTextColor={c.muted} autoCapitalize="none" />
-              <Text style={styles.fieldLabel}>{t.settings.fieldPassword}</Text>
-              <TextInput style={styles.field} value={config.password ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, password: v }))} placeholder="••••••••" placeholderTextColor={c.muted} secureTextEntry />
-              <Text style={styles.fieldLabel}>{t.settings.fieldPath}</Text>
-              <TextInput style={styles.field} value={config.path ?? '/Tagebuch/'} onChangeText={(v) => setConfig((p) => ({ ...p, path: v }))} placeholder="/Tagebuch/" placeholderTextColor={c.muted} autoCapitalize="none" />
-              <Pressable style={styles.saveButton} onPress={saveNextcloud}>
-                <Text style={styles.saveText}>{t.settings.btnSaveCredentials}</Text>
-              </Pressable>
 
-              <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleSync} disabled={syncing || restoring}>
-                {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.btnSyncNow}</Text>}
+              {/* Google Drive */}
+              <Pressable style={styles.subSectionHeader} onPress={() => toggle('syncGdrive')}>
+                <Text style={styles.subSectionHeaderText}>{t.settings.subGDrive}</Text>
+                <Text style={styles.subSectionChevron}>{open.syncGdrive ? '▾' : '▸'}</Text>
               </Pressable>
-              <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring}>
-                {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
-              </Pressable>
-              {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
-
-              {/* ── Google Drive ── */}
-              <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subGDrive}</Text>
-              {!gdriveConnected ? (
-                <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
-                  {gdriveConnecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveConnect}</Text>}
-                </Pressable>
-              ) : (
-                <>
-                  <Text style={[styles.lastSync, { marginTop: 6 }]}>{t.settings.gdriveConnectedAs(gdriveEmail ?? '')}</Text>
-                  <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleGDriveDisconnect}>
-                    <Text style={styles.saveText}>{t.settings.gdriveDisconnect}</Text>
+              {open.syncGdrive && (
+                <View style={{ gap: 8, marginTop: 4 }}>
+                  {!gdriveConnected ? (
+                    <Pressable style={styles.syncButton} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
+                      {gdriveConnecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveConnect}</Text>}
+                    </Pressable>
+                  ) : (
+                    <>
+                      <Text style={[styles.lastSync, { marginTop: 2 }]}>{t.settings.gdriveConnectedAs(gdriveEmail ?? '')}</Text>
+                      <Pressable style={styles.saveButton} onPress={handleGDriveDisconnect}>
+                        <Text style={styles.saveText}>{t.settings.gdriveDisconnect}</Text>
+                      </Pressable>
+                      <Pressable style={styles.syncButton} onPress={handleGDriveSync} disabled={gdriveSyncing || gdriveRestoring}>
+                        {gdriveSyncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveSyncNow}</Text>}
+                      </Pressable>
+                      <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring}>
+                        {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
+                      </Pressable>
+                      {gdriveLastSync && <Text style={styles.lastSync}>{t.settings.gdriveLastSync}{gdriveLastSync}</Text>}
+                    </>
+                  )}
+                  <Pressable onPress={() => setGDriveHintExpanded(v => !v)}>
+                    <Text style={styles.subLabel}>{t.settings.gdriveSetupHint} {gdriveHintExpanded ? '▾' : '▸'}</Text>
                   </Pressable>
-                  <Pressable style={[styles.syncButton, { marginTop: 6 }]} onPress={handleGDriveSync} disabled={gdriveSyncing || gdriveRestoring}>
-                    {gdriveSyncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveSyncNow}</Text>}
-                  </Pressable>
-                  <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring}>
-                    {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
-                  </Pressable>
-                  {gdriveLastSync && <Text style={styles.lastSync}>{t.settings.gdriveLastSync}{gdriveLastSync}</Text>}
-                </>
+                  {gdriveHintExpanded && (
+                    <Text style={styles.warnText}>{t.settings.gdriveSetupHintText}</Text>
+                  )}
+                </View>
               )}
 
-              <Pressable style={{ marginTop: 8 }} onPress={() => setGDriveHintExpanded(v => !v)}>
-                <Text style={styles.subLabel}>{t.settings.gdriveSetupHint} {gdriveHintExpanded ? '▾' : '▸'}</Text>
+              {/* Nextcloud / WebDAV */}
+              <Pressable style={styles.subSectionHeader} onPress={() => toggle('syncNextcloud')}>
+                <Text style={styles.subSectionHeaderText}>{t.settings.subNextcloud}</Text>
+                <Text style={styles.subSectionChevron}>{open.syncNextcloud ? '▾' : '▸'}</Text>
               </Pressable>
-              {gdriveHintExpanded && (
-                <Text style={[styles.warnText, { marginTop: 4 }]}>{t.settings.gdriveSetupHintText}</Text>
+              {open.syncNextcloud && (
+                <View style={{ gap: 8, marginTop: 4 }}>
+                  <Text style={styles.fieldLabel}>{t.settings.fieldUrl}</Text>
+                  <TextInput style={styles.field} value={config.url ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, url: v }))} placeholder="https://…" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" />
+                  <Text style={styles.fieldLabel}>{t.settings.fieldUsername}</Text>
+                  <TextInput style={styles.field} value={config.username ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, username: v }))} placeholder="user" placeholderTextColor={c.muted} autoCapitalize="none" />
+                  <Text style={styles.fieldLabel}>{t.settings.fieldPassword}</Text>
+                  <TextInput style={styles.field} value={config.password ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, password: v }))} placeholder="••••••••" placeholderTextColor={c.muted} secureTextEntry />
+                  <Text style={styles.fieldLabel}>{t.settings.fieldPath}</Text>
+                  <TextInput style={styles.field} value={config.path ?? '/Tagebuch/'} onChangeText={(v) => setConfig((p) => ({ ...p, path: v }))} placeholder="/Tagebuch/" placeholderTextColor={c.muted} autoCapitalize="none" />
+                  <Pressable style={styles.saveButton} onPress={saveNextcloud}>
+                    <Text style={styles.saveText}>{t.settings.btnSaveCredentials}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.syncButton, { marginTop: 2 }]} onPress={handleSync} disabled={syncing || restoring}>
+                    {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.btnSyncNow}</Text>}
+                  </Pressable>
+                  <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring}>
+                    {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
+                  </Pressable>
+                  {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
+                </View>
               )}
 
+              {/* Auto-Sync */}
               <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subAutoSync}</Text>
               <View style={styles.intervalRow}>
                 {SYNC_INTERVALS.map(({ label, value }) => (
@@ -635,6 +659,7 @@ export default function SettingsScreen() {
                 ))}
               </View>
 
+              {/* Sync-Log */}
               <Pressable style={{ marginTop: 10 }} onPress={() => setLogExpanded((v) => !v)}>
                 <Text style={styles.subLabel}>{t.settings.subSyncLog} {logExpanded ? '▾' : '▸'}</Text>
               </Pressable>

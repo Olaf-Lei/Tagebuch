@@ -58,7 +58,7 @@ export const en: Strings = {
     newCategoryPlaceholder: 'New category…',
     colorPickerTitle: 'Pick color',
 
-    subNextcloud: 'Nextcloud',
+    subNextcloud: 'Nextcloud / WebDAV',
     fieldUrl: 'URL (e.g. https://cloud.example.com)',
     fieldUsername: 'Username',
     fieldPassword: 'Password',
