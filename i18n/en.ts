@@ -56,6 +56,7 @@ export const en: Strings = {
     subCategories: 'Categories',
     subTags: 'Tags',
     newCategoryPlaceholder: 'New category…',
+    colorPickerTitle: 'Pick color',
 
     subNextcloud: 'Nextcloud',
     fieldUrl: 'URL (e.g. https://cloud.example.com)',

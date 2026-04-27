@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.4.12 — 2026-04-27
+- Kategorien-Farben: freier Farbwähler in Settings (40-Farben-Raster + Hex-Eingabe); ersetzt das bisherige Weiterschalten durch die Palette
+
 ## v2.4.10 — 2026-04-27
 - Fix: Kategorie- und Tag-Änderungen an Einträgen werden jetzt korrekt auf andere Geräte synchronisiert — Junction-Rows werden vor dem Merge-Update gelöscht und aus der Remote-DB neu importiert (war vorher nur INSERT OR IGNORE, Entfernungen wurden ignoriert)
 

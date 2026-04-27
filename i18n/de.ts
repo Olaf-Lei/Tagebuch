@@ -54,6 +54,7 @@ export const de = {
     subCategories: 'Kategorien',
     subTags: 'Tags',
     newCategoryPlaceholder: 'Neue Kategorie…',
+    colorPickerTitle: 'Farbe wählen',
 
     subNextcloud: 'Nextcloud',
     fieldUrl: 'URL (z. B. https://cloud.example.com)',

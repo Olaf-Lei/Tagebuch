@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import {
   createCategory, deleteCategory, getCategories,
-  renameCategory, updateCategoryColor, CATEGORY_COLORS, type Category,
+  renameCategory, updateCategoryColor, type Category,
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
@@ -24,6 +24,18 @@ import { useBiometric } from '../contexts/BiometricContext';
 import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey, exportEncKey, importEncKey } from '../utils/crypto';
 import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword, generateRecoveryCode, setRecoveryCode, hasRecoveryCode } from '../utils/auth';
 import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
+
+const COLOR_PICKER_PALETTE = [
+  '#FF3B30', '#FF6B6B', '#C94C4C', '#C94C6A', '#FF2D55',
+  '#C94C9D', '#AF52DE', '#9D4CC9', '#8E44AD', '#5856D6',
+  '#007AFF', '#4C9DC9', '#3498DB', '#1A5276', '#5AC8FA',
+  '#4CC9C9', '#1ABC9C', '#34C759', '#4CC984', '#84C94C',
+  '#2ECC71', '#27AE60', '#8BC34A', '#F9A825', '#FFCC00',
+  '#C9A84C', '#FF9500', '#F39C12', '#FF6B00', '#C9844C',
+  '#C9504C', '#D35400', '#C97C4C', '#8E8E93', '#636366',
+  '#48484A', '#3A3A3C', '#1C1C1E', '#AEAEB2', '#E5E5EA',
+];
+const isValidHex = (s: string) => /^#[0-9A-Fa-f]{6}$/.test(s);
 
 type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'about';
 
@@ -144,6 +156,10 @@ export default function SettingsScreen() {
     modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     modalCancel: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 13, alignItems: 'center' },
     modalCancelText: { color: c.muted, fontSize: 15 },
+    colorGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8 },
+    colorGridSwatch: { width: 40, height: 40, borderRadius: 20 },
+    colorGridSwatchSelected: { borderWidth: 3, borderColor: '#fff', transform: [{ scale: 1.15 }] },
+    colorPreview: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: c.border },
   }), [c]);
 
   const headerStyles = { header: styles.sectionHeader, headerText: styles.sectionHeaderText, chevron: styles.sectionChevron };
@@ -154,6 +170,8 @@ export default function SettingsScreen() {
   const [newCatName, setNewCatName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [colorPickerCat, setColorPickerCat] = useState<Category | null>(null);
+  const [colorPickerHex, setColorPickerHex] = useState('#C9A84C');
 
   const [tags, setTags] = useState<Tag[]>([]);
   const [editingTagId, setEditingTagId] = useState<number | null>(null);
@@ -222,10 +240,15 @@ export default function SettingsScreen() {
     getCategories().then(setCategories);
   };
 
-  const cycleColor = async (cat: Category) => {
-    const idx = CATEGORY_COLORS.indexOf(cat.color ?? '');
-    const next = CATEGORY_COLORS[(idx + 1) % CATEGORY_COLORS.length];
-    await updateCategoryColor(cat.id, next);
+  const openColorPicker = (cat: Category) => {
+    setColorPickerCat(cat);
+    setColorPickerHex(cat.color ?? '#C9A84C');
+  };
+
+  const confirmColorPick = async () => {
+    if (!colorPickerCat || !isValidHex(colorPickerHex)) return;
+    await updateCategoryColor(colorPickerCat.id, colorPickerHex.toUpperCase());
+    setColorPickerCat(null);
     getCategories().then(setCategories);
   };
 
@@ -422,7 +445,7 @@ export default function SettingsScreen() {
                     </>
                   ) : (
                     <>
-                      <Pressable style={[styles.colorSwatch, { backgroundColor: cat.color ?? c.accent }]} onPress={() => cycleColor(cat)} />
+                      <Pressable style={[styles.colorSwatch, { backgroundColor: cat.color ?? c.accent }]} onPress={() => openColorPicker(cat)} />
                       <Text style={styles.catName}>{cat.name}</Text>
                       <Pressable style={styles.catAction} onPress={() => { setEditingId(cat.id); setEditingName(cat.name); }}><Text style={styles.mutedText}>✎</Text></Pressable>
                       <Pressable style={styles.catAction} onPress={() => confirmCatDelete(cat)}><Text style={styles.dangerText}>✕</Text></Pressable>
@@ -725,6 +748,53 @@ export default function SettingsScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Color Picker Modal */}
+      <Modal visible={colorPickerCat !== null} transparent animationType="fade" onRequestClose={() => setColorPickerCat(null)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>{t.settings.colorPickerTitle}</Text>
+            <View style={styles.colorGrid}>
+              {COLOR_PICKER_PALETTE.map((col) => (
+                <Pressable
+                  key={col}
+                  style={[
+                    styles.colorGridSwatch,
+                    { backgroundColor: col },
+                    colorPickerHex.toUpperCase() === col.toUpperCase() && styles.colorGridSwatchSelected,
+                  ]}
+                  onPress={() => setColorPickerHex(col)}
+                />
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <View style={[styles.colorPreview, { backgroundColor: isValidHex(colorPickerHex) ? colorPickerHex : c.border }]} />
+              <TextInput
+                style={[styles.modalInput, { flex: 1 }]}
+                value={colorPickerHex}
+                onChangeText={setColorPickerHex}
+                placeholder="#RRGGBB"
+                placeholderTextColor={c.muted}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={7}
+              />
+            </View>
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={() => setColorPickerCat(null)}>
+                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, !isValidHex(colorPickerHex) && { opacity: 0.4 }]}
+                onPress={confirmColorPick}
+                disabled={!isValidHex(colorPickerHex)}
+              >
+                <Text style={styles.modalBtnText}>{t.common.ok}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Password modal */}
       <Modal visible={pwModal !== null} transparent animationType="fade" onRequestClose={closePwModal}>
