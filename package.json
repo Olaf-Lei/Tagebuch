@@ -1,6 +1,6 @@
 {
   "name": "tagebuch",
-  "version": "2.4.14",
+  "version": "2.5.0",
   "license": "GPL-3.0-only",
   "author": "Olaf <olaf@olovenet.de>",
   "main": "expo-router/entry",
