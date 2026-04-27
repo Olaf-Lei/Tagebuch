@@ -5,7 +5,7 @@ Persönliche Tagebuch-App für Android. Schnelle Erfassung von Log-Einträgen �
 ## Funktionen
 
 - **Schnelle Eingabe** — App öffnen, tippen, speichern in unter 5 Sekunden
-- **Kategorien & Tags** — Mehrfach-Kategorisierung und freie Hashtags mit Autocomplete
+- **Kategorien & Tags** — Mehrfach-Kategorisierung mit individuellen Farben, freie Hashtags mit Autocomplete
 - **Laune & Befinden** — je 5 Emoji-Stufen pro Eintrag, optional
 - **GPS-Standort** — automatisch als Stadtname, per Tap entfernbar
 - **Volltextsuche** — mit Suchbegriff-Hervorhebung und Datumfilter (Heute / Woche / Monat / Alles)
@@ -87,7 +87,7 @@ Persönliche Tagebuch-App für Android. Schnelle Erfassung von Log-Einträgen �
 ```sql
 entries          id, timestamp (user-editierbar), text, created_at (immutable), updated_at,
                  mood, health, latitude, longitude, location_name
-categories       id, name UNIQUE
+categories       id, name UNIQUE, color
 tags             id, name UNIQUE
 entry_categories entry_id, category_id
 entry_tags       entry_id, tag_id
