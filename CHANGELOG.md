@@ -1,7 +1,7 @@
 # Changelog
 
 ## v2.5.8 — 2026-04-27
-- Fix: Google Drive OAuth-Redirect von `com.googleusercontent.apps...` auf `tagebuch://oauth2redirect` korrigiert (Unmatched Route-Fehler behoben)
+- Fix: Google Drive OAuth auf Android-Client umgestellt (kein Client Secret, Reverse-Client-ID-Schema)
 
 ## v2.4.14 — 2026-04-27
 - Fix: Kategorien-Farben werden beim Sync korrekt übertragen (INSERT enthielt `color`, UPDATE fehlte komplett)
