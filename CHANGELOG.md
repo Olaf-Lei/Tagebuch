@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.4.13 — 2026-04-27
+- Animierter In-App-Splash-Screen beim Start: Logo federt rein (spring), nach DB-Init kurze Pause, danach fade-out
+- „Über die App": App-Icon jetzt 128×128 mit gold-getöntem Schatten
+
 ## v2.4.12 — 2026-04-27
 - Kategorien-Farben: freier Farbwähler in Settings (40-Farben-Raster + Hex-Eingabe); ersetzt das bisherige Weiterschalten durch die Palette
 

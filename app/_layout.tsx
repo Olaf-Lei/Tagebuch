@@ -1,7 +1,7 @@
 import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { AppState, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, AppState, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
@@ -44,8 +44,18 @@ function AppShell() {
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const logoScale = useRef(new Animated.Value(0.72)).current;
 
   useEffect(() => {
+    Animated.spring(logoScale, {
+      toValue: 1,
+      tension: 100,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+
     initDb().then(() => {
       setReady(true);
       ensureReminderScheduled();
@@ -75,7 +85,26 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: '#0F1B2D' }} />;
+  useEffect(() => {
+    if (!ready) return;
+    Animated.timing(splashOpacity, {
+      toValue: 0,
+      duration: 380,
+      delay: 650,
+      useNativeDriver: true,
+    }).start(() => setShowSplash(false));
+  }, [ready]);
+
+  if (showSplash) {
+    return (
+      <Animated.View style={[splashStyles.container, { opacity: splashOpacity }]}>
+        <Animated.Image
+          source={require('../assets/icon.png')}
+          style={[splashStyles.logo, { transform: [{ scale: logoScale }] }]}
+        />
+      </Animated.View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -89,3 +118,17 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F1B2D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    borderRadius: 28,
+  },
+});

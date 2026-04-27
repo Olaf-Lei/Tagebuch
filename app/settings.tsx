@@ -25,6 +25,8 @@ import { isEncryptionEnabled, setEncryptionEnabled, resetEncryptionKey, exportEn
 import { setFallbackPassword, checkFallbackPassword, hasFallbackPassword, generateRecoveryCode, setRecoveryCode, hasRecoveryCode } from '../utils/auth';
 import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
 
+const DEFAULT_CAT_COLOR = '#C9A84C';
+
 const COLOR_PICKER_PALETTE = [
   '#FF3B30', '#FF6B6B', '#C94C4C', '#C94C6A', '#FF2D55',
   '#C94C9D', '#AF52DE', '#9D4CC9', '#8E44AD', '#5856D6',
@@ -132,8 +134,8 @@ export default function SettingsScreen() {
     warnText: { fontSize: 12, color: c.muted },
     resetBtn: { borderWidth: 1, borderColor: c.danger, borderRadius: 10, padding: 12, alignItems: 'center' },
     resetBtnText: { color: c.danger, fontSize: 14 },
-    aboutBlock: { alignItems: 'center', gap: 4, paddingVertical: 4 },
-    aboutIcon: { width: 72, height: 72, borderRadius: 16, marginBottom: 8 },
+    aboutBlock: { alignItems: 'center', gap: 6, paddingVertical: 8 },
+    aboutIcon: { width: 128, height: 128, borderRadius: 26, marginBottom: 12, elevation: 12, shadowColor: '#C9A84C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
     aboutTitle: { fontSize: 17, fontWeight: '700', color: c.text },
     aboutLine: { fontSize: 13, color: c.muted, textAlign: 'center' },
     recoveryCode: { fontSize: 28, fontWeight: '700', color: c.accent, textAlign: 'center', letterSpacing: 4, fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier', paddingVertical: 8 },
@@ -171,7 +173,7 @@ export default function SettingsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [colorPickerCat, setColorPickerCat] = useState<Category | null>(null);
-  const [colorPickerHex, setColorPickerHex] = useState('#C9A84C');
+  const [colorPickerHex, setColorPickerHex] = useState(DEFAULT_CAT_COLOR);
 
   const [tags, setTags] = useState<Tag[]>([]);
   const [editingTagId, setEditingTagId] = useState<number | null>(null);
@@ -242,12 +244,12 @@ export default function SettingsScreen() {
 
   const openColorPicker = (cat: Category) => {
     setColorPickerCat(cat);
-    setColorPickerHex(cat.color ?? '#C9A84C');
+    setColorPickerHex((cat.color ?? DEFAULT_CAT_COLOR).toUpperCase());
   };
 
   const confirmColorPick = async () => {
     if (!colorPickerCat || !isValidHex(colorPickerHex)) return;
-    await updateCategoryColor(colorPickerCat.id, colorPickerHex.toUpperCase());
+    await updateCategoryColor(colorPickerCat.id, colorPickerHex);
     setColorPickerCat(null);
     getCategories().then(setCategories);
   };
@@ -424,6 +426,8 @@ export default function SettingsScreen() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
+
+  const hexValid = isValidHex(colorPickerHex);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -761,18 +765,18 @@ export default function SettingsScreen() {
                   style={[
                     styles.colorGridSwatch,
                     { backgroundColor: col },
-                    colorPickerHex.toUpperCase() === col.toUpperCase() && styles.colorGridSwatchSelected,
+                    colorPickerHex === col && styles.colorGridSwatchSelected,
                   ]}
                   onPress={() => setColorPickerHex(col)}
                 />
               ))}
             </View>
             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-              <View style={[styles.colorPreview, { backgroundColor: isValidHex(colorPickerHex) ? colorPickerHex : c.border }]} />
+              <View style={[styles.colorPreview, { backgroundColor: hexValid ? colorPickerHex : c.border }]} />
               <TextInput
                 style={[styles.modalInput, { flex: 1 }]}
                 value={colorPickerHex}
-                onChangeText={setColorPickerHex}
+                onChangeText={v => setColorPickerHex(v.toUpperCase())}
                 placeholder="#RRGGBB"
                 placeholderTextColor={c.muted}
                 autoCapitalize="characters"
@@ -785,9 +789,9 @@ export default function SettingsScreen() {
                 <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, !isValidHex(colorPickerHex) && { opacity: 0.4 }]}
+                style={[styles.modalBtn, !hexValid && { opacity: 0.4 }]}
                 onPress={confirmColorPick}
-                disabled={!isValidHex(colorPickerHex)}
+                disabled={!hexValid}
               >
                 <Text style={styles.modalBtnText}>{t.common.ok}</Text>
               </Pressable>
