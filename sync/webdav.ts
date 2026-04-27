@@ -225,6 +225,21 @@ async function _doSync(): Promise<void> {
           FROM remote.entries re
           WHERE re.created_at NOT IN (SELECT created_at FROM entries)
         `);
+        // Kategorien/Tags für remote-überschriebene Einträge zurücksetzen (vor dem UPDATE)
+        await db.execAsync(`
+          DELETE FROM entry_categories WHERE entry_id IN (
+            SELECT le.id FROM entries le
+            JOIN remote.entries re ON re.created_at = le.created_at
+            WHERE re.updated_at > le.updated_at
+          )
+        `);
+        await db.execAsync(`
+          DELETE FROM entry_tags WHERE entry_id IN (
+            SELECT le.id FROM entries le
+            JOIN remote.entries re ON re.created_at = le.created_at
+            WHERE re.updated_at > le.updated_at
+          )
+        `);
         await db.execAsync(`
           UPDATE entries SET
             timestamp=(SELECT re.timestamp FROM remote.entries re WHERE re.created_at=entries.created_at),
