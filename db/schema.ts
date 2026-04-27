@@ -56,6 +56,11 @@ export async function initDb(): Promise<void> {
       tag_id INTEGER REFERENCES tags(id),
       PRIMARY KEY (entry_id, tag_id)
     );
+
+    CREATE TABLE IF NOT EXISTS deleted_entry_ids (
+      created_at INTEGER PRIMARY KEY,
+      deleted_at INTEGER NOT NULL
+    );
   `);
 
   // Seed default categories

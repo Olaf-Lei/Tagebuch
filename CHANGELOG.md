@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.4.9 — 2026-04-27
+- Fix: Gelöschte Einträge werden jetzt beim Sync auf andere Geräte propagiert — Tombstone-Tabelle `deleted_entry_ids` (`created_at` als stabiler Identifier); `deleteEntry()` schreibt Tombstone vor Hard-Delete; Sync-Merge importiert Remote-Tombstones und löscht betroffene lokale Einträge
+- Sync-Button (↻) in der Header-Leiste der Eintragsliste — manueller Trigger, zeigt Fortschritt durch Abdimmen
+- Auto-Refresh der Eintragsliste nach jedem Sync via `addSyncListener`
+
 ## v2.4.8 — 2026-04-26
 - Burger-Menü: Settings-Einstieg als ☰-Icon oben links im Header von `index.tsx`; floating Settings-Button (unten links) entfernt
 

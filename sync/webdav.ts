@@ -71,6 +71,16 @@ export async function getLastSyncMs(): Promise<number | null> {
 }
 
 let _syncInProgress = false;
+const _syncListeners: Set<() => void> = new Set();
+
+export function addSyncListener(cb: () => void): () => void {
+  _syncListeners.add(cb);
+  return () => _syncListeners.delete(cb);
+}
+
+function _notifySyncListeners() {
+  _syncListeners.forEach((cb) => cb());
+}
 
 export async function syncIfConfigured(): Promise<void> {
   const config = await loadConfig();
@@ -83,6 +93,7 @@ export async function syncNow(): Promise<void> {
   _syncInProgress = true;
   try {
     await _doSync();
+    _notifySyncListeners();
   } finally {
     _syncInProgress = false;
   }
@@ -247,6 +258,15 @@ async function _doSync(): Promise<void> {
           JOIN entries le ON le.created_at = re.created_at
           JOIN tags lt ON lt.name = rt.name
         `);
+
+        // Tombstone-Sync: Remote-Löschungen auf lokale DB anwenden
+        const remoteHasTombstones = await db.getFirstAsync<{ cnt: number }>(
+          `SELECT COUNT(*) AS cnt FROM remote.sqlite_master WHERE type='table' AND name='deleted_entry_ids'`
+        );
+        if ((remoteHasTombstones?.cnt ?? 0) > 0) {
+          await db.execAsync(`INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at) SELECT created_at, deleted_at FROM remote.deleted_entry_ids`);
+          await db.execAsync(`DELETE FROM entries WHERE created_at IN (SELECT created_at FROM deleted_entry_ids)`);
+        }
 
         await db.execAsync(`DETACH DATABASE remote`);
         attached = false;

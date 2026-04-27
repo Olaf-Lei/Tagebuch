@@ -163,6 +163,13 @@ export async function updateEntry(id: number, input: EntryInput): Promise<void> 
 
 export async function deleteEntry(id: number): Promise<void> {
   const db = await getDb();
+  const row = await db.getFirstAsync<{ created_at: number }>('SELECT created_at FROM entries WHERE id = ?', [id]);
+  if (row) {
+    await db.runAsync(
+      'INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at) VALUES (?, ?)',
+      [row.created_at, Date.now()]
+    );
+  }
   await db.runAsync(`DELETE FROM entries WHERE id = ?`, [id]);
 }
 

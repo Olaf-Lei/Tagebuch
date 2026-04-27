@@ -1,5 +1,5 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, Pressable,
   StyleSheet, Text, TextInput, View,
@@ -14,6 +14,7 @@ import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 import { useT } from '../i18n';
+import { addSyncListener, syncIfConfigured } from '../sync/webdav';
 
 const HELP_SHOWN_KEY = 'help_shown';
 
@@ -74,7 +75,19 @@ export default function IndexScreen() {
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const allTags = useTags();
+
+  const handleSync = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try { await syncIfConfigured(); } finally { setSyncing(false); }
+  }, [syncing]);
+
+  useEffect(() => {
+    return addSyncListener(() => reload());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -121,6 +134,9 @@ export default function IndexScreen() {
         ),
         headerRight: () => (
           <View style={{ flexDirection: 'row' }}>
+            <Pressable onPress={handleSync} disabled={syncing} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 18, color: syncing ? c.muted : c.accent }}>↻</Text>
+            </Pressable>
             <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
               <Text style={{ fontSize: 17, color: c.muted, fontWeight: '600' }}>?</Text>
             </Pressable>
