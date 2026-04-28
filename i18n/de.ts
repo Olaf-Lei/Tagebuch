@@ -86,6 +86,8 @@ export const de = {
     gdriveFolderLoading: 'Ordner werden geladen…',
     gdriveFolderNone: 'Keine Ordner gefunden',
     gdriveFolderPickTitle: 'Google Drive Ordner',
+    gdriveFolderSelectThis: 'Diesen Ordner wählen',
+    gdriveFolderNoSubfolders: 'Keine Unterordner',
 
     subAutoSync: 'Auto-Sync',
     syncOff: 'Aus',

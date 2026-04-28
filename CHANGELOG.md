@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.5.11 — 2026-04-28
+- Google Drive Ordner-Picker: Baumstruktur statt Flachliste; Navigation Ebene für Ebene mit Breadcrumb, Zurück-Button und „Diesen Ordner wählen"
+
 ## v2.5.8 — 2026-04-27
 - Fix: Google Drive OAuth auf Android-Client umgestellt (kein Client Secret, Reverse-Client-ID-Schema)
 

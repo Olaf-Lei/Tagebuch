@@ -88,6 +88,8 @@ export const en: Strings = {
     gdriveFolderLoading: 'Loading folders…',
     gdriveFolderNone: 'No folders found',
     gdriveFolderPickTitle: 'Google Drive folder',
+    gdriveFolderSelectThis: 'Select this folder',
+    gdriveFolderNoSubfolders: 'No subfolders',
 
     subAutoSync: 'Auto-sync',
     syncOff: 'Off',

@@ -77,9 +77,9 @@ export async function clearDriveFolder(): Promise<void> {
   ]);
 }
 
-export async function listDriveFolders(): Promise<{ id: string; name: string }[]> {
+export async function listDriveFolders(parentId: string = 'root'): Promise<{ id: string; name: string }[]> {
   const accessToken = await _getValidAccessToken();
-  const q = encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const q = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentId}' in parents`);
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=100`,
     { headers: { Authorization: `Bearer ${accessToken}` } },

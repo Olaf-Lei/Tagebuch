@@ -226,6 +226,7 @@ export default function SettingsScreen() {
   const [gdriveFolderModal, setGDriveFolderModal] = useState(false);
   const [gdriveFolders, setGDriveFolders] = useState<{ id: string; name: string }[]>([]);
   const [gdriveFolderLoading, setGDriveFolderLoading] = useState(false);
+  const [gdriveNavStack, setGDriveNavStack] = useState<{ id: string; name: string }[]>([]);
 
   const SYNC_INTERVALS = [
     { label: t.settings.syncOff, value: 0 },
@@ -468,13 +469,43 @@ export default function SettingsScreen() {
   const handleGDriveFolderPick = async () => {
     setGDriveFolderLoading(true);
     setGDriveFolders([]);
+    setGDriveNavStack([]);
     setGDriveFolderModal(true);
     try {
-      const folders = await gdrive.listDriveFolders();
+      const folders = await gdrive.listDriveFolders('root');
       setGDriveFolders(folders);
     } catch (e: any) {
       Alert.alert('Fehler', e.message ?? t.settings.unknownError);
       setGDriveFolderModal(false);
+    } finally {
+      setGDriveFolderLoading(false);
+    }
+  };
+
+  const handleGDriveFolderNavigate = async (folder: { id: string; name: string }) => {
+    setGDriveFolderLoading(true);
+    setGDriveNavStack((prev) => [...prev, folder]);
+    try {
+      const folders = await gdrive.listDriveFolders(folder.id);
+      setGDriveFolders(folders);
+    } catch (e: any) {
+      Alert.alert('Fehler', e.message ?? t.settings.unknownError);
+      setGDriveNavStack((prev) => prev.slice(0, -1));
+    } finally {
+      setGDriveFolderLoading(false);
+    }
+  };
+
+  const handleGDriveFolderBack = async () => {
+    const newStack = gdriveNavStack.slice(0, -1);
+    setGDriveNavStack(newStack);
+    setGDriveFolderLoading(true);
+    try {
+      const parentId = newStack.length > 0 ? newStack[newStack.length - 1].id : 'root';
+      const folders = await gdrive.listDriveFolders(parentId);
+      setGDriveFolders(folders);
+    } catch (e: any) {
+      Alert.alert('Fehler', e.message ?? t.settings.unknownError);
     } finally {
       setGDriveFolderLoading(false);
     }
@@ -1047,8 +1078,15 @@ export default function SettingsScreen() {
 
       <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { maxHeight: '70%' }]}>
+          <View style={[styles.modalBox, { maxHeight: '75%' }]}>
             <Text style={styles.modalTitle}>{t.settings.gdriveFolderPickTitle}</Text>
+            {/* Breadcrumb */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 8, gap: 2 }}>
+              <Text style={[styles.mutedText, { fontSize: 12 }]}>📁 {t.settings.gdriveFolderRoot}</Text>
+              {gdriveNavStack.map((f, i) => (
+                <Text key={f.id} style={[styles.mutedText, { fontSize: 12 }]}> › {f.name}</Text>
+              ))}
+            </View>
             {gdriveFolderLoading ? (
               <View style={{ alignItems: 'center', padding: 16 }}>
                 <ActivityIndicator color={c.accent} />
@@ -1056,25 +1094,42 @@ export default function SettingsScreen() {
               </View>
             ) : (
               <FlatList
-                data={[{ id: null, name: t.settings.gdriveFolderRoot }, ...gdriveFolders]}
-                keyExtractor={(item) => item.id ?? '__root__'}
-                ListEmptyComponent={<Text style={styles.mutedText}>{t.settings.gdriveFolderNone}</Text>}
+                data={gdriveFolders}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={<Text style={[styles.mutedText, { paddingVertical: 12 }]}>{t.settings.gdriveFolderNoSubfolders}</Text>}
                 renderItem={({ item }) => (
                   <Pressable
-                    style={({ pressed }) => [{ paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
-                    onPress={() => handleGDriveFolderSelect(item.id, item.name)}
+                    style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                    onPress={() => handleGDriveFolderNavigate(item)}
                   >
-                    <Text style={[styles.catName, item.id === (gdriveFolder?.id ?? null) && { color: c.accent }]}>
-                      {item.id === null ? '📁 ' : '📂 '}{item.name}
+                    <Text style={[styles.catName, item.id === gdriveFolder?.id && { color: c.accent }]}>
+                      📂 {item.name}
                     </Text>
+                    <Text style={[styles.mutedText, { fontSize: 16 }]}>›</Text>
                   </Pressable>
                 )}
               />
             )}
-            <View style={styles.modalBtnRow}>
-              <Pressable style={styles.modalCancel} onPress={() => setGDriveFolderModal(false)}>
-                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+            <View style={[styles.modalBtnRow, { flexDirection: 'column', gap: 8 }]}>
+              <Pressable
+                style={styles.modalBtn}
+                onPress={() => {
+                  const cur = gdriveNavStack[gdriveNavStack.length - 1] ?? null;
+                  handleGDriveFolderSelect(cur?.id ?? null, cur?.name ?? t.settings.gdriveFolderRoot);
+                }}
+              >
+                <Text style={styles.modalBtnText}>{t.settings.gdriveFolderSelectThis}</Text>
               </Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {gdriveNavStack.length > 0 && (
+                  <Pressable style={[styles.modalCancel, { flex: 1 }]} onPress={handleGDriveFolderBack}>
+                    <Text style={styles.modalCancelText}>← Zurück</Text>
+                  </Pressable>
+                )}
+                <Pressable style={[styles.modalCancel, { flex: 1 }]} onPress={() => setGDriveFolderModal(false)}>
+                  <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
