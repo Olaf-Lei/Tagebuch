@@ -265,6 +265,10 @@ export const en: Strings = {
     step6Title: 'Security',
     step6Icon: '🔒',
     step6Text: 'Enable biometric lock under Settings → Security.\n\nThe app locks on start or after 15 seconds in the background. Set a fallback password and recovery code to always maintain access.',
+
+    step7Title: 'Views & map',
+    step7Icon: '🗺️',
+    step7Text: 'The 📊 button in the top right opens a menu with three views: Statistics, Calendar, and Map.\n\nEntries with a GPS location show a tappable 📍 badge — tap it to jump straight to the map.',
   },
 
   lock: {

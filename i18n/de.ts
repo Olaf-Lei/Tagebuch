@@ -263,6 +263,10 @@ export const de = {
     step6Title: 'Sicherheit',
     step6Icon: '🔒',
     step6Text: 'Aktiviere den Biometrie-Lock unter Einstellungen → Sicherheit.\n\nDie App sperrt beim Start oder nach 15 Sekunden im Hintergrund. Richte ein Fallback-Passwort und einen Recovery-Code ein, um immer Zugang zu haben.',
+
+    step7Title: 'Ansichten & Karte',
+    step7Icon: '🗺️',
+    step7Text: 'Der 📊-Button oben rechts öffnet ein Menü mit drei Ansichten: Statistiken, Kalender und Karte.\n\nEinträge mit GPS-Standort zeigen einen tippbaren 📍-Badge — tippe darauf, um direkt zur Karte zu springen.',
   },
 
   lock: {

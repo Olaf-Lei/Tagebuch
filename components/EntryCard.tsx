@@ -88,7 +88,7 @@ export function EntryCard({ entry, highlight }: Props) {
       ) : (
         <Text style={styles.preview} numberOfLines={3}>{entry.text}</Text>
       )}
-      {(entry.categories.length > 0 || entry.tags.length > 0) && (
+      {(entry.categories.length > 0 || entry.tags.length > 0 || entry.latitude != null) && (
         <View style={styles.badges}>
           {entry.categories.map((cat) => {
             const col = cat.color ?? c.accent;
@@ -103,10 +103,13 @@ export function EntryCard({ entry, highlight }: Props) {
               <Text style={styles.tagText}>#{t}</Text>
             </View>
           ))}
-          {entry.locationName && (
-            <View style={styles.locationBadge}>
-              <Text style={styles.locationText}>📍 {entry.locationName}</Text>
-            </View>
+          {entry.latitude != null && (
+            <Pressable
+              style={({ pressed }) => [styles.locationBadge, pressed && { opacity: 0.7 }]}
+              onPress={() => router.push('/map')}
+            >
+              <Text style={styles.locationText}>📍 {entry.locationName ?? '…'}</Text>
+            </Pressable>
           )}
         </View>
       )}

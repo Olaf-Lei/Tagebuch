@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.5.16 — 2026-04-28
+- Header: 📊/📅/🗺️-Buttons zu einem einzigen 📊-Button zusammengefasst; Tippen öffnet Bubble-Menü mit Statistiken, Kalender und Karte
+- EntryCard: Ort-Badge (📍) ist jetzt tippbar und öffnet die Karte; Badge erscheint auch bei Einträgen mit Koordinaten aber ohne Ortsnamen
+- Hilfe-Tour: neuer Schritt 7 „Ansichten & Karte" erklärt den 📊-Button und den tippbaren Ort-Badge
+
 ## v2.5.15 — 2026-04-28
 - Responsives Layout: ab 700px Breite automatisch breite Ansicht (Querformat, ChromeOS, freies Fenster)
 - Kalender: ab 700px Kalender links, Tages-Einträge rechts nebeneinander

@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Pressable,
+  ActivityIndicator, FlatList, Image, Modal, Pressable,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,6 +77,7 @@ export default function IndexScreen() {
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [showViewMenu, setShowViewMenu] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const allTags = useTags();
 
@@ -142,14 +143,8 @@ export default function IndexScreen() {
             <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
               <Text style={{ fontSize: 17, color: c.muted, fontWeight: '600' }}>?</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/stats')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+            <Pressable onPress={() => setShowViewMenu(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
               <Text style={{ fontSize: 19, color: c.accent }}>📊</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/calendar')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={{ fontSize: 19, color: c.accent }}>📅</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/map')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={{ fontSize: 19, color: c.accent }}>🗺️</Text>
             </Pressable>
           </View>
         ),
@@ -215,7 +210,39 @@ export default function IndexScreen() {
       <Pressable style={styles.fab} onPress={() => router.push('/new')}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
-<HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+
+      <Modal visible={showViewMenu} transparent animationType="fade" onRequestClose={() => setShowViewMenu(false)}>
+        <Pressable style={{ flex: 1 }} onPress={() => setShowViewMenu(false)}>
+          <View style={{
+            position: 'absolute', top: 54, right: 8,
+            backgroundColor: c.surface, borderRadius: 14, elevation: 10,
+            shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8,
+            borderWidth: 1, borderColor: c.border, minWidth: 180, overflow: 'hidden',
+          }}>
+            {([
+              { label: t.nav.stats, icon: '📊', route: '/stats' },
+              { label: t.nav.calendar, icon: '📅', route: '/calendar' },
+              { label: t.nav.map, icon: '🗺️', route: '/map' },
+            ] as const).map(({ label, icon, route }, i, arr) => (
+              <Pressable
+                key={route}
+                onPress={() => { setShowViewMenu(false); router.push(route); }}
+                style={({ pressed }) => [{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  paddingHorizontal: 16, paddingVertical: 14,
+                  borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: c.border,
+                  backgroundColor: pressed ? c.border : 'transparent',
+                }]}
+              >
+                <Text style={{ fontSize: 20 }}>{icon}</Text>
+                <Text style={{ fontSize: 15, color: c.text }}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
     </SafeAreaView>
   );
 }
