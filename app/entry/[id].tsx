@@ -12,6 +12,7 @@ import { TimestampPicker } from '../../components/TimestampPicker';
 import { HEALTH_EMOJIS, MOOD_EMOJIS } from '../../components/qualifiers';
 import { captureLocation, type GeoTag } from '../../utils/location';
 import { useColors } from '../../components/theme';
+import { useLayout } from '../../hooks/useLayout';
 import { getCategories, type Category } from '../../db/categories';
 import { deleteEntry, getEntry, updateEntry } from '../../db/entries';
 import { getTags } from '../../db/tags';
@@ -23,6 +24,7 @@ export default function EditEntryScreen() {
   const router = useRouter();
   const c = useColors();
   const t = useT();
+  const { isWide } = useLayout();
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     flex: { flex: 1 },
@@ -147,7 +149,7 @@ export default function EditEntryScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, isWide && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}
           keyboardShouldPersistTaps="handled"
         >
           <TimestampPicker value={timestamp} onChange={setTimestamp} />

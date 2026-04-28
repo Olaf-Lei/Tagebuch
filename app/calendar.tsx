@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EntryCard } from '../components/EntryCard';
 import { useColors } from '../components/theme';
+import { useLayout } from '../hooks/useLayout';
 import { getEntries, getEntryDatesInMonth, type Entry } from '../db/entries';
 import { useT } from '../i18n';
 
@@ -19,6 +20,7 @@ function buildGrid(year: number, month: number): (number | null)[] {
 export default function CalendarScreen() {
   const c = useColors();
   const t = useT();
+  const { isWide } = useLayout();
   const today = new Date();
 
   const [year, setYear] = useState(today.getFullYear());
@@ -61,6 +63,9 @@ export default function CalendarScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
+    splitRow: { flex: 1, flexDirection: 'row' },
+    calendarPanel: { borderRightWidth: 1, borderRightColor: c.border },
+    entriesPanel: { flex: 1 },
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 10,
@@ -89,8 +94,8 @@ export default function CalendarScreen() {
     empty: { textAlign: 'center', color: c.muted, marginTop: 32, fontSize: 14 },
   }), [c]);
 
-  return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+  const calendarGrid = (
+    <>
       <View style={styles.header}>
         <Pressable style={styles.navBtn} onPress={prevMonth}>
           <Text style={styles.navText}>‹</Text>
@@ -100,11 +105,9 @@ export default function CalendarScreen() {
           <Text style={styles.navText}>›</Text>
         </Pressable>
       </View>
-
       <View style={styles.weekRow}>
         {t.calendar.weekdays.map((d) => <Text key={d} style={styles.weekDay}>{d}</Text>)}
       </View>
-
       <View style={styles.grid}>
         {grid.map((day, i) => {
           if (day === null) return <View key={`empty-${i}`} style={styles.cell} />;
@@ -114,18 +117,10 @@ export default function CalendarScreen() {
           return (
             <View key={day} style={styles.cell}>
               <Pressable
-                style={[
-                  styles.dayBtn,
-                  selected && styles.dayBtnSelected,
-                  !selected && todayDay && styles.dayBtnToday,
-                ]}
+                style={[styles.dayBtn, selected && styles.dayBtnSelected, !selected && todayDay && styles.dayBtnToday]}
                 onPress={() => setSelectedDay(selected ? null : day)}
               >
-                <Text style={[
-                  styles.dayNum,
-                  selected && styles.dayNumSelected,
-                  !selected && todayDay && styles.dayNumToday,
-                ]}>
+                <Text style={[styles.dayNum, selected && styles.dayNumSelected, !selected && todayDay && styles.dayNumToday]}>
                   {day}
                 </Text>
               </Pressable>
@@ -134,23 +129,42 @@ export default function CalendarScreen() {
           );
         })}
       </View>
+    </>
+  );
 
-      <View style={styles.divider} />
+  const entriesList = (
+    <FlatList
+      data={dayEntries}
+      keyExtractor={(e) => String(e.id)}
+      renderItem={({ item }) => <EntryCard entry={item} />}
+      contentContainerStyle={styles.list}
+      ListHeaderComponent={
+        selectedDay ? <Text style={styles.dayHeader}>{dayLabel(year, month, selectedDay)}</Text> : null
+      }
+      ListEmptyComponent={
+        selectedDay
+          ? <Text style={styles.empty}>{t.calendar.noEntries}</Text>
+          : <Text style={styles.empty}>{t.calendar.tapHint}</Text>
+      }
+    />
+  );
 
-      <FlatList
-        data={dayEntries}
-        keyExtractor={(e) => String(e.id)}
-        renderItem={({ item }) => <EntryCard entry={item} />}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          selectedDay ? <Text style={styles.dayHeader}>{dayLabel(year, month, selectedDay)}</Text> : null
-        }
-        ListEmptyComponent={
-          selectedDay
-            ? <Text style={styles.empty}>{t.calendar.noEntries}</Text>
-            : <Text style={styles.empty}>{t.calendar.tapHint}</Text>
-        }
-      />
+  return (
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      {isWide ? (
+        <View style={styles.splitRow}>
+          <View style={[styles.calendarPanel, { width: 364 }]}>
+            <ScrollView>{calendarGrid}</ScrollView>
+          </View>
+          <View style={styles.entriesPanel}>{entriesList}</View>
+        </View>
+      ) : (
+        <>
+          {calendarGrid}
+          <View style={styles.divider} />
+          {entriesList}
+        </>
+      )}
     </SafeAreaView>
   );
 }

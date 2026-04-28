@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.5.15 — 2026-04-28
+- Responsives Layout: ab 700px Breite automatisch breite Ansicht (Querformat, ChromeOS, freies Fenster)
+- Kalender: ab 700px Kalender links, Tages-Einträge rechts nebeneinander
+- Statistiken: ab 700px Blöcke in zwei Spalten, alle vier Stat-Karten in einer Reihe
+- Eintrag erstellen/bearbeiten: ab 700px maximal 680px zentriert
+- Eintragslist: Filter-Bar und Liste maximal 720px zentriert
+
 ## v2.5.14 — 2026-04-28
 - Neuer Screen „Karte": alle Einträge mit Standort als Pins auf OpenStreetMap (Leaflet + MarkerCluster)
 - Zeitfilter (Heute / Woche / Monat / Alles), Tap auf Marker öffnet Popup mit Datum + Vorschau + „Öffnen"-Button

@@ -5,6 +5,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLayout } from '../hooks/useLayout';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
@@ -42,6 +43,7 @@ export default function NewEntryScreen() {
     headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
 
+  const { isWide } = useLayout();
   const inputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -98,7 +100,7 @@ export default function NewEntryScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, isWide && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}
           keyboardShouldPersistTaps="handled"
         >
           <TimestampPicker value={timestamp} onChange={setTimestamp} />

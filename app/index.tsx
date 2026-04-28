@@ -10,6 +10,7 @@ import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
 import { HelpModal } from '../components/HelpModal';
 import { useColors } from '../components/theme';
+import { useLayout } from '../hooks/useLayout';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
@@ -22,6 +23,7 @@ export default function IndexScreen() {
   const router = useRouter();
   const c = useColors();
   const t = useT();
+  const { isWide } = useLayout();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const fabBottom = Math.max(bottomInset, 16) + 12;
   const styles = useMemo(() => StyleSheet.create({
@@ -152,47 +154,49 @@ export default function IndexScreen() {
           </View>
         ),
       }} />
-      <View style={styles.filterBar}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t.list.searchPlaceholder}
-          placeholderTextColor={c.muted}
-          clearButtonMode="while-editing"
-        />
-      </View>
-      <View style={styles.filterRow}>
-        <DropdownPicker
-          options={categories}
-          selected={selectedCategories}
-          onChange={setSelectedCategories}
-          placeholder={t.list.filterCategories}
-          multi
-        />
-        {allTags.length > 0 && (
+      <View style={isWide ? { maxWidth: 720, alignSelf: 'center', width: '100%' } : undefined}>
+        <View style={styles.filterBar}>
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t.list.searchPlaceholder}
+            placeholderTextColor={c.muted}
+            clearButtonMode="while-editing"
+          />
+        </View>
+        <View style={styles.filterRow}>
           <DropdownPicker
-            options={allTags}
-            selected={selectedTags}
-            onChange={setSelectedTags}
-            placeholder={t.list.filterTags}
+            options={categories}
+            selected={selectedCategories}
+            onChange={setSelectedCategories}
+            placeholder={t.list.filterCategories}
             multi
           />
-        )}
-      </View>
-      <View style={styles.dateBar}>
-        <View style={styles.segmented}>
-          {DATE_RANGES.map(({ key, label }) => (
-            <Pressable
-              key={key}
-              style={[styles.segment, dateRange === key && styles.segmentActive]}
-              onPress={() => setDateRange(key)}
-            >
-              <Text style={[styles.segmentText, dateRange === key && styles.segmentTextActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
+          {allTags.length > 0 && (
+            <DropdownPicker
+              options={allTags}
+              selected={selectedTags}
+              onChange={setSelectedTags}
+              placeholder={t.list.filterTags}
+              multi
+            />
+          )}
+        </View>
+        <View style={styles.dateBar}>
+          <View style={styles.segmented}>
+            {DATE_RANGES.map(({ key, label }) => (
+              <Pressable
+                key={key}
+                style={[styles.segment, dateRange === key && styles.segmentActive]}
+                onPress={() => setDateRange(key)}
+              >
+                <Text style={[styles.segmentText, dateRange === key && styles.segmentTextActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
       {loading ? (
@@ -202,7 +206,7 @@ export default function IndexScreen() {
           data={entries}
           keyExtractor={(e) => String(e.id)}
           renderItem={({ item }) => <EntryCard entry={item} highlight={search} />}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, isWide && { maxWidth: 720, alignSelf: 'center', width: '100%' }]}
           ListEmptyComponent={
             <Text style={styles.empty}>{t.list.empty}</Text>
           }

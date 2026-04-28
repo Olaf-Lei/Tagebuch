@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
+import { useLayout } from '../hooks/useLayout';
 import { getStats, getMoodHealthTrend, type Stats, type TrendPoint, type PeriodGroupBy } from '../db/stats';
 import { useT } from '../i18n';
 
@@ -296,6 +297,7 @@ function BarChart({ items, c, labelWidth = 72 }: {
 export default function StatsScreen() {
   const c = useColors();
   const t = useT();
+  const { isWide } = useLayout();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('month');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -336,6 +338,8 @@ export default function StatsScreen() {
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     content: { padding: 16, gap: 20, paddingBottom: 40 },
+    wideContent: { padding: 16, paddingBottom: 40, flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' },
+    wideBlock: { flexBasis: '47%', flexGrow: 1, minWidth: 280 },
     filterRow: { flexDirection: 'row', gap: 6 },
     chip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
@@ -430,9 +434,9 @@ export default function StatsScreen() {
       {loading ? (
         <View style={styles.loader}><ActivityIndicator color={c.accent} /></View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={isWide ? styles.wideContent : styles.content}>
 
-          <View style={styles.cardRow}>
+          <View style={[styles.cardRow, isWide && { flexBasis: '100%' }]}>
             <View style={styles.card}>
               <Text style={styles.cardNum}>{stats?.total ?? 0}</Text>
               <Text style={styles.cardLabel}>{t.stats.cardEntries}</Text>
@@ -441,9 +445,7 @@ export default function StatsScreen() {
               <Text style={styles.cardNum}>{stats?.activeDays ?? 0}</Text>
               <Text style={styles.cardLabel}>{t.stats.cardActiveDays}</Text>
             </View>
-          </View>
-          {activeFilter !== 'day' && (
-            <View style={styles.cardRow}>
+            {activeFilter !== 'day' && <>
               <View style={styles.card}>
                 <Text style={styles.cardNum}>{stats?.currentStreak ?? 0}</Text>
                 <Text style={styles.cardLabel}>{t.stats.cardStreak}</Text>
@@ -452,10 +454,10 @@ export default function StatsScreen() {
                 <Text style={styles.cardNum}>{stats?.longestStreak ?? 0}</Text>
                 <Text style={styles.cardLabel}>{t.stats.cardRecord}</Text>
               </View>
-            </View>
-          )}
+            </>}
+          </View>
 
-          <View>
+          <View style={isWide && styles.wideBlock}>
             <Text style={styles.section}>{t.stats.sectionMoodHealth}</Text>
             <View style={[styles.block, { paddingLeft: 24 }]}>
               <TrendChart
@@ -468,7 +470,7 @@ export default function StatsScreen() {
           </View>
 
           {activeFilter !== 'day' && (
-            <View>
+            <View style={isWide && styles.wideBlock}>
               <Text style={styles.section}>{t.stats.sectionActivity}</Text>
               <View style={styles.block}>
                 <Heatmap
@@ -480,7 +482,7 @@ export default function StatsScreen() {
           )}
 
           {periodItems.length > 0 && (
-            <View>
+            <View style={isWide && styles.wideBlock}>
               <Text style={styles.section}>{t.stats.sectionPerPeriod}</Text>
               <View style={styles.block}>
                 <BarChart items={periodItems} c={c} />
@@ -489,7 +491,7 @@ export default function StatsScreen() {
           )}
 
           {catItems.length > 0 && (
-            <View>
+            <View style={isWide && styles.wideBlock}>
               <Text style={styles.section}>{t.stats.sectionCategories}</Text>
               <View style={styles.block}>
                 <BarChart items={catItems} c={c} labelWidth={110} />
@@ -498,7 +500,7 @@ export default function StatsScreen() {
           )}
 
           {tagItems.length > 0 && (
-            <View>
+            <View style={isWide && styles.wideBlock}>
               <Text style={styles.section}>{t.stats.sectionTags}</Text>
               <View style={styles.block}>
                 <BarChart items={tagItems} c={c} labelWidth={110} />
@@ -507,7 +509,7 @@ export default function StatsScreen() {
           )}
 
           {stats?.total === 0 && (
-            <Text style={styles.empty}>{t.stats.noEntries}</Text>
+            <Text style={[styles.empty, isWide && { flexBasis: '100%' }]}>{t.stats.noEntries}</Text>
           )}
 
         </ScrollView>
