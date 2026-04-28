@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.5.13 — 2026-04-28
+- Tastatur überdeckt Felder nicht mehr: DropdownPicker schließt Tastatur vor dem Öffnen, TagInput scrollt bei erscheinenden Suggestions erneut ans Ende
+
 ## v2.5.12 — 2026-04-28
 - Google Drive Ordner-Picker: Button-Sichtbarkeit repariert (flexShrink + KeyboardAvoidingView)
 - Google Drive Ordner-Picker: Neuen Ordner direkt aus dem Picker anlegen

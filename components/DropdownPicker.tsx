@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View,
+  Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View,
 } from 'react-native';
 import { useColors } from './theme';
 
@@ -73,7 +73,7 @@ export function DropdownPicker({ options, selected, onChange, placeholder, multi
 
   return (
     <>
-      <Pressable style={[styles.trigger, open && styles.triggerOpen]} onPress={() => setOpen(true)}>
+      <Pressable style={[styles.trigger, open && styles.triggerOpen]} onPress={() => { Keyboard.dismiss(); setOpen(true); }}>
         {label
           ? <Text style={styles.triggerText} numberOfLines={1}>{label}</Text>
           : <Text style={styles.triggerPlaceholder} numberOfLines={1}>{placeholder}</Text>

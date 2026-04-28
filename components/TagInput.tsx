@@ -81,7 +81,11 @@ export function TagInput({ selectedTagIds, selectedTagNames, onChange, onFocus }
         />
       </View>
       {suggestions.length > 0 && (
-        <ScrollView style={styles.suggestions} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.suggestions}
+          keyboardShouldPersistTaps="handled"
+          onLayout={() => onFocus?.()}
+        >
           {suggestions.map((s) => (
             <Pressable key={s.id} style={styles.suggestion} onPress={() => addTagByName(s.name)}>
               <Text style={styles.suggestionText}>#{s.name}</Text>
