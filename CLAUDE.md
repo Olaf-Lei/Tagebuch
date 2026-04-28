@@ -124,6 +124,9 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 - Specs als Code schreiben (SQL, Dateiname:Zeile, Pseudocode) statt Prosa
 - Kein Cleanup, kein Refactoring außerhalb des beauftragten Schritts
 - Nach dem Feature: Backlog aktualisieren, `npm run bump`, committen und pushen
+- Nach jedem Fix/Feature mitteilen, ob `full` oder `quick` gebaut werden muss, und den genauen Befehl angeben:
+  - `--quick` (default): nur JS-Änderungen (`.ts`, `.tsx`, Assets, i18n, Sync-Logik) → `./bauen.sh`
+  - `--full`: native Abhängigkeiten geändert (`package.json` Deps, `app.json` plugins/permissions, neue native Module) → `./bauen.sh --full`
 
 ## Screens
 
@@ -292,7 +295,9 @@ Installiertes Tooling:
 
 ### Offen (nach Priorität)
 
-1. **Querformat / ChromeOS** *(Niedrig/Groß)* — adaptives Layout für landscape-Orientierung; zweispaltiges Layout wo sinnvoll; Nischen-Zielgruppe
+1. **Custom Qualifiers** *(Hoch/Mittel)* — user-definierte 1–5-Bewertungen (z.B. „Rücken", „Schlaf") mit wählbaren Emoji-Presets; ersetzt fixe mood/health-Spalten; Migration bestehender Daten; neue Sektion in Settings; Trend-Charts in Stats
+2. **Standort-Karte** *(Mittel/Klein)* — neuer Screen `map.tsx`; WebView + Leaflet.js (Quick Build, ChromeOS-kompatibel); Pins pro Eintrag, Tap → Eintragsliste; Zeitfilter
+3. **Responsives Layout / Querformat** *(Mittel/Mittel)* — `hooks/useLayout.ts` mit `isWide = width >= 700`; maxWidth-Container auf allen Screens; Stats-Charts wrappen; Calendar split-view; Settings zwei Spalten; kein Fork, kein Navigationswechsel
 
 ### Erledigt
 - **Kategorien-Farben** — `color TEXT` in `categories`, Palette + freier Hex-Picker in Settings, Badges in EntryCard und DropdownPicker
@@ -304,3 +309,4 @@ Installiertes Tooling:
 - Bilder/Anhänge
 - Gamification (Streaks etc.)
 - Android Widget (zu eng an generierten `android/`-Ordner gekoppelt)
+- Web-Client (React + sql.js + WebDAV) — zu großer separater Stack
