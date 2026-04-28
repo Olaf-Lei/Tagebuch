@@ -15,7 +15,7 @@ import { mergeRemoteDb } from './mergeDb';
 
 const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 const REDIRECT_URI = 'com.googleusercontent.apps.YOUR_GOOGLE_CLIENT_ID:/oauth2redirect';
-const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email';
 
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
 const STORE_REFRESH_TOKEN = 'gdrive_refresh_token';

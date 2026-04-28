@@ -449,6 +449,7 @@ export default function SettingsScreen() {
       setGDriveConnected(true);
       const email = await gdrive.getConnectedEmail();
       setGDriveEmail(email);
+      handleGDriveFolderPick();
     } catch (e: any) {
       Alert.alert(t.settings.gdriveConnectError, e.message ?? t.settings.unknownError);
     } finally {
