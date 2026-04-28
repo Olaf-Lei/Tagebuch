@@ -146,6 +146,9 @@ export default function IndexScreen() {
             <Pressable onPress={() => router.push('/calendar')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
               <Text style={{ fontSize: 19, color: c.accent }}>📅</Text>
             </Pressable>
+            <Pressable onPress={() => router.push('/map')} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 19, color: c.accent }}>🗺️</Text>
+            </Pressable>
           </View>
         ),
       }} />

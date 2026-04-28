@@ -8,6 +8,16 @@ export const de = {
     settings: 'Einstellungen',
     calendar: 'Kalender',
     stats: 'Statistiken',
+    map: 'Karte',
+  },
+
+  map: {
+    noEntries: 'Keine Einträge mit Standort im gewählten Zeitraum.',
+    dateAll: 'Alles',
+    dateToday: 'Heute',
+    dateWeek: 'Woche',
+    dateMonth: 'Monat',
+    loading: 'Karte wird geladen…',
   },
 
   common: {

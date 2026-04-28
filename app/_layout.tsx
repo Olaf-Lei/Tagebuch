@@ -38,6 +38,7 @@ function AppShell() {
         <Stack.Screen name="settings" options={{ title: t.nav.settings }} />
         <Stack.Screen name="calendar" options={{ title: t.nav.calendar }} />
         <Stack.Screen name="stats" options={{ title: t.nav.stats }} />
+        <Stack.Screen name="map" options={{ title: t.nav.map }} />
         <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
       </Stack>
     </>

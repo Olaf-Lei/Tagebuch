@@ -296,10 +296,11 @@ Installiertes Tooling:
 ### Offen (nach Priorität)
 
 1. **Custom Qualifiers** *(Hoch/Mittel)* — user-definierte 1–5-Bewertungen (z.B. „Rücken", „Schlaf") mit wählbaren Emoji-Presets; ersetzt fixe mood/health-Spalten; Migration bestehender Daten; neue Sektion in Settings; Trend-Charts in Stats
-2. **Standort-Karte** *(Mittel/Klein)* — neuer Screen `map.tsx`; WebView + Leaflet.js (Quick Build, ChromeOS-kompatibel); Pins pro Eintrag, Tap → Eintragsliste; Zeitfilter
+2. ~~**Standort-Karte**~~ ✓ erledigt
 3. **Responsives Layout / Querformat** *(Mittel/Mittel)* — `hooks/useLayout.ts` mit `isWide = width >= 700`; maxWidth-Container auf allen Screens; Stats-Charts wrappen; Calendar split-view; Settings zwei Spalten; kein Fork, kein Navigationswechsel
 
 ### Erledigt
+- **Standort-Karte** — `map.tsx` mit WebView + Leaflet + MarkerCluster; Zeitfilter; Tap → Entry öffnen
 - **Kategorien-Farben** — `color TEXT` in `categories`, Palette + freier Hex-Picker in Settings, Badges in EntryCard und DropdownPicker
 - **Burger-Menü** — Settings-Icon oben links im Header von `index.tsx`
 - **Sync-Löschpropagierung, Auto-Refresh**

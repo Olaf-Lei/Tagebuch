@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.5.14 — 2026-04-28
+- Neuer Screen „Karte": alle Einträge mit Standort als Pins auf OpenStreetMap (Leaflet + MarkerCluster)
+- Zeitfilter (Heute / Woche / Monat / Alles), Tap auf Marker öffnet Popup mit Datum + Vorschau + „Öffnen"-Button
+- 🗺️-Button im Hauptscreen-Header
+
 ## v2.5.13 — 2026-04-28
 - Tastatur überdeckt Felder nicht mehr: DropdownPicker schließt Tastatur vor dem Öffnen, TagInput scrollt bei erscheinenden Suggestions erneut ans Ende
 

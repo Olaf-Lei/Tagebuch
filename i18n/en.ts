@@ -10,6 +10,16 @@ export const en: Strings = {
     settings: 'Settings',
     calendar: 'Calendar',
     stats: 'Statistics',
+    map: 'Map',
+  },
+
+  map: {
+    noEntries: 'No entries with location in the selected period.',
+    dateAll: 'All',
+    dateToday: 'Today',
+    dateWeek: 'Week',
+    dateMonth: 'Month',
+    loading: 'Loading map…',
   },
 
   common: {

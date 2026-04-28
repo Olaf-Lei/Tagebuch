@@ -161,6 +161,37 @@ export async function updateEntry(id: number, input: EntryInput): Promise<void> 
   await setEntryRelations(id, input.categoryIds, input.tagIds);
 }
 
+export interface LocationEntry {
+  id: number;
+  timestamp: number;
+  text: string;
+  latitude: number;
+  longitude: number;
+  locationName: string | null;
+}
+
+export async function getEntriesWithLocation(opts?: {
+  startTime?: number;
+  endTime?: number;
+}): Promise<LocationEntry[]> {
+  const db = await getDb();
+  const conditions = ['latitude IS NOT NULL AND longitude IS NOT NULL'];
+  const params: number[] = [];
+  if (opts?.startTime !== undefined) {
+    conditions.push('timestamp >= ?');
+    params.push(opts.startTime);
+  }
+  if (opts?.endTime !== undefined) {
+    conditions.push('timestamp <= ?');
+    params.push(opts.endTime);
+  }
+  return db.getAllAsync<LocationEntry>(
+    `SELECT id, timestamp, text, latitude, longitude, location_name as locationName
+     FROM entries WHERE ${conditions.join(' AND ')} ORDER BY timestamp DESC`,
+    params
+  );
+}
+
 export async function deleteEntry(id: number): Promise<void> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ created_at: number }>('SELECT created_at FROM entries WHERE id = ?', [id]);
