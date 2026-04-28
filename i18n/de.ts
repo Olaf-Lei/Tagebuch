@@ -88,6 +88,10 @@ export const de = {
     gdriveFolderPickTitle: 'Google Drive Ordner',
     gdriveFolderSelectThis: 'Diesen Ordner wählen',
     gdriveFolderNoSubfolders: 'Keine Unterordner',
+    gdriveFolderNewBtn: '+ Neuen Ordner anlegen',
+    gdriveFolderNewPlaceholder: 'Ordnername',
+    gdriveFolderNewCreate: 'Anlegen',
+    syncEncryptionHint: '⚠️ Die Datenbank wird unverschlüsselt hochgeladen. Aktiviere AES-Verschlüsselung unter Sicherheit für mehr Schutz.',
 
     subAutoSync: 'Auto-Sync',
     syncOff: 'Aus',

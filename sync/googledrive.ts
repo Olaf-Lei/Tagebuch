@@ -77,6 +77,18 @@ export async function clearDriveFolder(): Promise<void> {
   ]);
 }
 
+export async function createDriveFolder(name: string, parentId: string = 'root'): Promise<{ id: string; name: string }> {
+  const accessToken = await _getValidAccessToken();
+  const response = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  if (!response.ok) throw new Error(`Ordner anlegen fehlgeschlagen: ${response.status}`);
+  const data = await response.json();
+  return { id: data.id as string, name: data.name as string };
+}
+
 export async function listDriveFolders(parentId: string = 'root'): Promise<{ id: string; name: string }[]> {
   const accessToken = await _getValidAccessToken();
   const q = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentId}' in parents`);

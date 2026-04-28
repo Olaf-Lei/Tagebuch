@@ -227,6 +227,9 @@ export default function SettingsScreen() {
   const [gdriveFolders, setGDriveFolders] = useState<{ id: string; name: string }[]>([]);
   const [gdriveFolderLoading, setGDriveFolderLoading] = useState(false);
   const [gdriveNavStack, setGDriveNavStack] = useState<{ id: string; name: string }[]>([]);
+  const [gdriveNewFolderMode, setGDriveNewFolderMode] = useState(false);
+  const [gdriveNewFolderName, setGDriveNewFolderName] = useState('');
+  const [gdriveNewFolderCreating, setGDriveNewFolderCreating] = useState(false);
 
   const SYNC_INTERVALS = [
     { label: t.settings.syncOff, value: 0 },
@@ -470,6 +473,8 @@ export default function SettingsScreen() {
     setGDriveFolderLoading(true);
     setGDriveFolders([]);
     setGDriveNavStack([]);
+    setGDriveNewFolderMode(false);
+    setGDriveNewFolderName('');
     setGDriveFolderModal(true);
     try {
       const folders = await gdrive.listDriveFolders('root');
@@ -508,6 +513,23 @@ export default function SettingsScreen() {
       Alert.alert('Fehler', e.message ?? t.settings.unknownError);
     } finally {
       setGDriveFolderLoading(false);
+    }
+  };
+
+  const handleGDriveFolderCreate = async () => {
+    const name = gdriveNewFolderName.trim();
+    if (!name) return;
+    setGDriveNewFolderCreating(true);
+    try {
+      const parentId = gdriveNavStack[gdriveNavStack.length - 1]?.id ?? 'root';
+      const newFolder = await gdrive.createDriveFolder(name, parentId);
+      setGDriveNewFolderMode(false);
+      setGDriveNewFolderName('');
+      await handleGDriveFolderNavigate(newFolder);
+    } catch (e: any) {
+      Alert.alert('Fehler', e.message ?? t.settings.unknownError);
+    } finally {
+      setGDriveNewFolderCreating(false);
     }
   };
 
@@ -653,6 +675,7 @@ export default function SettingsScreen() {
               </Pressable>
               {open.syncGdrive && (
                 <View style={{ gap: 8, marginTop: 4 }}>
+                  {!encEnabled && <Text style={styles.warnText}>{t.settings.syncEncryptionHint}</Text>}
                   {!gdriveConnected ? (
                     <Pressable style={styles.syncButton} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
                       {gdriveConnecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveConnect}</Text>}
@@ -694,6 +717,7 @@ export default function SettingsScreen() {
               </Pressable>
               {open.syncNextcloud && (
                 <View style={{ gap: 8, marginTop: 4 }}>
+                  {!encEnabled && <Text style={styles.warnText}>{t.settings.syncEncryptionHint}</Text>}
                   <Text style={styles.fieldLabel}>{t.settings.fieldUrl}</Text>
                   <TextInput style={styles.field} value={config.url ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, url: v }))} placeholder="https://…" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" />
                   <Text style={styles.fieldLabel}>{t.settings.fieldUsername}</Text>
@@ -1077,40 +1101,71 @@ export default function SettingsScreen() {
       </Modal>
 
       <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { maxHeight: '75%' }]}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalBox, { maxHeight: '82%' }]}>
             <Text style={styles.modalTitle}>{t.settings.gdriveFolderPickTitle}</Text>
             {/* Breadcrumb */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 8, gap: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
               <Text style={[styles.mutedText, { fontSize: 12 }]}>📁 {t.settings.gdriveFolderRoot}</Text>
-              {gdriveNavStack.map((f, i) => (
+              {gdriveNavStack.map((f) => (
                 <Text key={f.id} style={[styles.mutedText, { fontSize: 12 }]}> › {f.name}</Text>
               ))}
             </View>
-            {gdriveFolderLoading ? (
-              <View style={{ alignItems: 'center', padding: 16 }}>
-                <ActivityIndicator color={c.accent} />
-                <Text style={[styles.mutedText, { marginTop: 8 }]}>{t.settings.gdriveFolderLoading}</Text>
+            {/* Folder list — shrinks to leave room for buttons */}
+            <View style={{ flexShrink: 1, minHeight: 60 }}>
+              {gdriveFolderLoading ? (
+                <View style={{ alignItems: 'center', padding: 16 }}>
+                  <ActivityIndicator color={c.accent} />
+                  <Text style={[styles.mutedText, { marginTop: 8 }]}>{t.settings.gdriveFolderLoading}</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={gdriveFolders}
+                  keyExtractor={(item) => item.id}
+                  ListEmptyComponent={<Text style={[styles.mutedText, { paddingVertical: 12 }]}>{t.settings.gdriveFolderNoSubfolders}</Text>}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                      onPress={() => handleGDriveFolderNavigate(item)}
+                    >
+                      <Text style={[styles.catName, item.id === gdriveFolder?.id && { color: c.accent }]}>📂 {item.name}</Text>
+                      <Text style={[styles.mutedText, { fontSize: 16 }]}>›</Text>
+                    </Pressable>
+                  )}
+                />
+              )}
+            </View>
+            {/* Neuen Ordner anlegen */}
+            {gdriveNewFolderMode ? (
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.modalInput, { flex: 1 }]}
+                  value={gdriveNewFolderName}
+                  onChangeText={setGDriveNewFolderName}
+                  placeholder={t.settings.gdriveFolderNewPlaceholder}
+                  placeholderTextColor={c.muted}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleGDriveFolderCreate}
+                />
+                <Pressable
+                  style={[styles.modalBtn, { flex: 0, paddingHorizontal: 16 }]}
+                  onPress={handleGDriveFolderCreate}
+                  disabled={gdriveNewFolderCreating || !gdriveNewFolderName.trim()}
+                >
+                  {gdriveNewFolderCreating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalBtnText}>{t.settings.gdriveFolderNewCreate}</Text>}
+                </Pressable>
+                <Pressable onPress={() => { setGDriveNewFolderMode(false); setGDriveNewFolderName(''); }}>
+                  <Text style={[styles.modalCancelText, { paddingHorizontal: 4 }]}>✕</Text>
+                </Pressable>
               </View>
             ) : (
-              <FlatList
-                data={gdriveFolders}
-                keyExtractor={(item) => item.id}
-                ListEmptyComponent={<Text style={[styles.mutedText, { paddingVertical: 12 }]}>{t.settings.gdriveFolderNoSubfolders}</Text>}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
-                    onPress={() => handleGDriveFolderNavigate(item)}
-                  >
-                    <Text style={[styles.catName, item.id === gdriveFolder?.id && { color: c.accent }]}>
-                      📂 {item.name}
-                    </Text>
-                    <Text style={[styles.mutedText, { fontSize: 16 }]}>›</Text>
-                  </Pressable>
-                )}
-              />
+              <Pressable onPress={() => setGDriveNewFolderMode(true)} disabled={gdriveFolderLoading}>
+                <Text style={[styles.accentText, { fontSize: 13 }]}>{t.settings.gdriveFolderNewBtn}</Text>
+              </Pressable>
             )}
-            <View style={[styles.modalBtnRow, { flexDirection: 'column', gap: 8 }]}>
+            {/* Action buttons — always visible */}
+            <View style={{ gap: 8, flexShrink: 0 }}>
               <Pressable
                 style={styles.modalBtn}
                 onPress={() => {
@@ -1132,7 +1187,7 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

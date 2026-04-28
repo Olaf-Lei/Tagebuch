@@ -90,6 +90,10 @@ export const en: Strings = {
     gdriveFolderPickTitle: 'Google Drive folder',
     gdriveFolderSelectThis: 'Select this folder',
     gdriveFolderNoSubfolders: 'No subfolders',
+    gdriveFolderNewBtn: '+ New folder',
+    gdriveFolderNewPlaceholder: 'Folder name',
+    gdriveFolderNewCreate: 'Create',
+    syncEncryptionHint: '⚠️ The database will be uploaded unencrypted. Enable AES encryption under Security for better protection.',
 
     subAutoSync: 'Auto-sync',
     syncOff: 'Off',

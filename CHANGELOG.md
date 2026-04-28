@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.5.12 — 2026-04-28
+- Google Drive Ordner-Picker: Button-Sichtbarkeit repariert (flexShrink + KeyboardAvoidingView)
+- Google Drive Ordner-Picker: Neuen Ordner direkt aus dem Picker anlegen
+- Sync-Sektionen (GDrive + Nextcloud): Hinweis wenn Verschlüsselung deaktiviert ist
+
 ## v2.5.11 — 2026-04-28
 - Google Drive Ordner-Picker: Baumstruktur statt Flachliste; Navigation Ebene für Ebene mit Breadcrumb, Zurück-Button und „Diesen Ordner wählen"
 
