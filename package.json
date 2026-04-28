@@ -1,6 +1,6 @@
 {
   "name": "tagebuch",
-  "version": "2.5.13",
+  "version": "2.5.14",
   "license": "GPL-3.0-only",
   "author": "Olaf <olaf@olovenet.de>",
   "main": "expo-router/entry",
@@ -41,7 +41,8 @@
     "react-native": "0.83.6",
     "react-native-get-random-values": "^2.0.0",
     "react-native-safe-area-context": "~5.6.2",
-    "react-native-screens": "~4.23.0"
+    "react-native-screens": "~4.23.0",
+    "react-native-webview": "13.16.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.10",
