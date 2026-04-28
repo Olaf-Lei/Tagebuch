@@ -80,6 +80,12 @@ export const de = {
     gdriveRestoreConfirmMsg: 'Alle lokalen Daten werden durch das Backup ersetzt.',
     gdriveSyncSuccessTitle: 'Drive Sync erfolgreich',
     gdriveSyncFailTitle: 'Drive Sync fehlgeschlagen',
+    gdriveFolderLabel: 'Zielordner',
+    gdriveFolderRoot: 'Meine Ablage (Root)',
+    gdriveFolderPick: 'Ordner wählen',
+    gdriveFolderLoading: 'Ordner werden geladen…',
+    gdriveFolderNone: 'Keine Ordner gefunden',
+    gdriveFolderPickTitle: 'Google Drive Ordner',
 
     subAutoSync: 'Auto-Sync',
     syncOff: 'Aus',

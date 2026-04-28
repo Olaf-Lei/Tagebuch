@@ -82,6 +82,12 @@ export const en: Strings = {
     gdriveRestoreConfirmMsg: 'All local data will be replaced by the backup.',
     gdriveSyncSuccessTitle: 'Drive sync successful',
     gdriveSyncFailTitle: 'Drive sync failed',
+    gdriveFolderLabel: 'Target folder',
+    gdriveFolderRoot: 'My Drive (Root)',
+    gdriveFolderPick: 'Choose folder',
+    gdriveFolderLoading: 'Loading folders…',
+    gdriveFolderNone: 'No folders found',
+    gdriveFolderPickTitle: 'Google Drive folder',
 
     subAutoSync: 'Auto-sync',
     syncOff: 'Off',

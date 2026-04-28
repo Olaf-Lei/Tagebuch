@@ -3,7 +3,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Clipboard, Image, KeyboardAvoidingView, Modal, Platform,
+  ActivityIndicator, Alert, Clipboard, FlatList, Image, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -222,6 +222,10 @@ export default function SettingsScreen() {
   const [gdriveRestoring, setGDriveRestoring] = useState(false);
   const [gdriveLastSync, setGDriveLastSync] = useState<string | null>(null);
   const [gdriveHintExpanded, setGDriveHintExpanded] = useState(false);
+  const [gdriveFolder, setGDriveFolder] = useState<{ id: string; name: string } | null>(null);
+  const [gdriveFolderModal, setGDriveFolderModal] = useState(false);
+  const [gdriveFolders, setGDriveFolders] = useState<{ id: string; name: string }[]>([]);
+  const [gdriveFolderLoading, setGDriveFolderLoading] = useState(false);
 
   const SYNC_INTERVALS = [
     { label: t.settings.syncOff, value: 0 },
@@ -243,6 +247,7 @@ export default function SettingsScreen() {
     gdrive.isConnected().then(setGDriveConnected);
     gdrive.getConnectedEmail().then(setGDriveEmail);
     gdrive.getLastSync().then(setGDriveLastSync);
+    gdrive.getDriveFolder().then(setGDriveFolder);
     getReminderEnabled().then(setReminderEnabled);
     getReminderTime().then(({ hour, minute }) => { setReminderHour(hour); setReminderMinute(minute); });
   }, []);
@@ -456,6 +461,33 @@ export default function SettingsScreen() {
     setGDriveConnected(false);
     setGDriveEmail(null);
     setGDriveLastSync(null);
+    setGDriveFolder(null);
+  };
+
+  const handleGDriveFolderPick = async () => {
+    setGDriveFolderLoading(true);
+    setGDriveFolders([]);
+    setGDriveFolderModal(true);
+    try {
+      const folders = await gdrive.listDriveFolders();
+      setGDriveFolders(folders);
+    } catch (e: any) {
+      Alert.alert('Fehler', e.message ?? t.settings.unknownError);
+      setGDriveFolderModal(false);
+    } finally {
+      setGDriveFolderLoading(false);
+    }
+  };
+
+  const handleGDriveFolderSelect = async (id: string | null, name: string) => {
+    setGDriveFolderModal(false);
+    if (id === null) {
+      await gdrive.clearDriveFolder();
+      setGDriveFolder(null);
+    } else {
+      await gdrive.setDriveFolder(id, name);
+      setGDriveFolder({ id, name });
+    }
   };
 
   const handleGDriveSync = async () => {
@@ -596,6 +628,12 @@ export default function SettingsScreen() {
                   ) : (
                     <>
                       <Text style={[styles.lastSync, { marginTop: 2 }]}>{t.settings.gdriveConnectedAs(gdriveEmail ?? '')}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.lastSync, { flex: 1 }]}>{t.settings.gdriveFolderLabel}: {gdriveFolder?.name ?? t.settings.gdriveFolderRoot}</Text>
+                        <Pressable onPress={handleGDriveFolderPick}>
+                          <Text style={styles.accentText}>{t.settings.gdriveFolderPick}</Text>
+                        </Pressable>
+                      </View>
                       <Pressable style={styles.saveButton} onPress={handleGDriveDisconnect}>
                         <Text style={styles.saveText}>{t.settings.gdriveDisconnect}</Text>
                       </Pressable>
@@ -1004,6 +1042,41 @@ export default function SettingsScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: '70%' }]}>
+            <Text style={styles.modalTitle}>{t.settings.gdriveFolderPickTitle}</Text>
+            {gdriveFolderLoading ? (
+              <View style={{ alignItems: 'center', padding: 16 }}>
+                <ActivityIndicator color={c.accent} />
+                <Text style={[styles.mutedText, { marginTop: 8 }]}>{t.settings.gdriveFolderLoading}</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={[{ id: null, name: t.settings.gdriveFolderRoot }, ...gdriveFolders]}
+                keyExtractor={(item) => item.id ?? '__root__'}
+                ListEmptyComponent={<Text style={styles.mutedText}>{t.settings.gdriveFolderNone}</Text>}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={({ pressed }) => [{ paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                    onPress={() => handleGDriveFolderSelect(item.id, item.name)}
+                  >
+                    <Text style={[styles.catName, item.id === (gdriveFolder?.id ?? null) && { color: c.accent }]}>
+                      {item.id === null ? '📁 ' : '📂 '}{item.name}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            )}
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={() => setGDriveFolderModal(false)}>
+                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

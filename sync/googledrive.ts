@@ -25,6 +25,8 @@ const STORE_FILE_ID_ENC = 'gdrive_file_id_enc';
 const STORE_LAST_SYNC = 'gdrive_last_sync';
 const STORE_LAST_SYNC_MS = 'gdrive_last_sync_ms';
 const STORE_EMAIL = 'gdrive_email';
+const STORE_FOLDER_ID = 'gdrive_folder_id';
+const STORE_FOLDER_NAME = 'gdrive_folder_name';
 
 function _encodeForm(params: Record<string, string>): string {
   return Object.entries(params)
@@ -48,6 +50,43 @@ export async function getLastSync(): Promise<string | null> {
 export async function getLastSyncMs(): Promise<number | null> {
   const v = await SecureStore.getItemAsync(STORE_LAST_SYNC_MS);
   return v ? Number(v) : null;
+}
+
+export async function getDriveFolder(): Promise<{ id: string; name: string } | null> {
+  const id = await SecureStore.getItemAsync(STORE_FOLDER_ID);
+  const name = await SecureStore.getItemAsync(STORE_FOLDER_NAME);
+  if (!id || !name) return null;
+  return { id, name };
+}
+
+export async function setDriveFolder(id: string, name: string): Promise<void> {
+  await Promise.all([
+    SecureStore.setItemAsync(STORE_FOLDER_ID, id),
+    SecureStore.setItemAsync(STORE_FOLDER_NAME, name),
+    SecureStore.deleteItemAsync(STORE_FILE_ID_DB).catch(() => {}),
+    SecureStore.deleteItemAsync(STORE_FILE_ID_ENC).catch(() => {}),
+  ]);
+}
+
+export async function clearDriveFolder(): Promise<void> {
+  await Promise.all([
+    SecureStore.deleteItemAsync(STORE_FOLDER_ID).catch(() => {}),
+    SecureStore.deleteItemAsync(STORE_FOLDER_NAME).catch(() => {}),
+    SecureStore.deleteItemAsync(STORE_FILE_ID_DB).catch(() => {}),
+    SecureStore.deleteItemAsync(STORE_FILE_ID_ENC).catch(() => {}),
+  ]);
+}
+
+export async function listDriveFolders(): Promise<{ id: string; name: string }[]> {
+  const accessToken = await _getValidAccessToken();
+  const q = encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=100`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!response.ok) throw new Error(`Ordner-Liste fehlgeschlagen: ${response.status}`);
+  const data = await response.json();
+  return (data.files ?? []) as { id: string; name: string }[];
 }
 
 let _syncInProgress = false;
@@ -95,8 +134,10 @@ async function _getValidAccessToken(): Promise<string> {
   return _refreshAccessToken(refreshToken);
 }
 
-async function _findFile(filename: string, accessToken: string): Promise<string | null> {
-  const q = encodeURIComponent(`name='${filename}' and trashed=false`);
+async function _findFile(filename: string, accessToken: string, folderId?: string): Promise<string | null> {
+  let query = `name='${filename}' and trashed=false`;
+  if (folderId) query += ` and '${folderId}' in parents`;
+  const q = encodeURIComponent(query);
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -110,10 +151,13 @@ async function _getResumableUploadUrl(
   accessToken: string,
   filename: string,
   fileId: string | null,
+  folderId?: string,
 ): Promise<string> {
   const url = fileId
     ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=resumable`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
+  const metadata: Record<string, unknown> = { name: filename, mimeType: 'application/octet-stream' };
+  if (!fileId && folderId) metadata.parents = [folderId];
   const response = await fetch(url, {
     method: fileId ? 'PATCH' : 'POST',
     headers: {
@@ -121,7 +165,7 @@ async function _getResumableUploadUrl(
       'Content-Type': 'application/json; charset=UTF-8',
       'X-Upload-Content-Type': 'application/octet-stream',
     },
-    body: JSON.stringify({ name: filename, mimeType: 'application/octet-stream' }),
+    body: JSON.stringify(metadata),
   });
   if (!response.ok) {
     const text = await response.text();
@@ -137,16 +181,17 @@ async function _uploadFile(
   localPath: string,
   filename: string,
   fileIdStoreKey: string,
+  folderId?: string,
 ): Promise<void> {
   let fileId = await SecureStore.getItemAsync(fileIdStoreKey);
   let uploadUrl: string;
   try {
-    uploadUrl = await _getResumableUploadUrl(accessToken, filename, fileId);
+    uploadUrl = await _getResumableUploadUrl(accessToken, filename, fileId, folderId);
   } catch (e: any) {
     if (fileId && String(e.message).includes('404')) {
       await SecureStore.deleteItemAsync(fileIdStoreKey).catch(() => {});
       fileId = null;
-      uploadUrl = await _getResumableUploadUrl(accessToken, filename, null);
+      uploadUrl = await _getResumableUploadUrl(accessToken, filename, null, folderId);
     } else {
       throw e;
     }
@@ -258,6 +303,9 @@ async function _doSync(): Promise<void> {
   await appendLog('info', 'Google Drive Sync gestartet');
   const accessToken = await _getValidAccessToken();
 
+  const folderData = await getDriveFolder();
+  const folderId = folderData?.id;
+
   const rawDbPath = await getDbPath();
   const dbDir = rawDbPath.substring(0, rawDbPath.lastIndexOf('/') + 1);
   const tempDownRaw = `${dbDir}tagebuch_gdrive_merge.tmp`;
@@ -268,13 +316,13 @@ async function _doSync(): Promise<void> {
   let remoteIsEnc = false;
 
   await appendLog('info', 'Suche Remote-Backup in Google Drive…');
-  remoteFileId = await SecureStore.getItemAsync(STORE_FILE_ID_ENC) ?? await _findFile('tagebuch.db.enc', accessToken);
+  remoteFileId = await SecureStore.getItemAsync(STORE_FILE_ID_ENC) ?? await _findFile('tagebuch.db.enc', accessToken, folderId);
   if (remoteFileId) {
     remoteIsEnc = true;
     await SecureStore.setItemAsync(STORE_FILE_ID_ENC, remoteFileId);
     await appendLog('info', 'Verschlüsselte Remote-DB gefunden.');
   } else {
-    remoteFileId = await SecureStore.getItemAsync(STORE_FILE_ID_DB) ?? await _findFile('tagebuch.db', accessToken);
+    remoteFileId = await SecureStore.getItemAsync(STORE_FILE_ID_DB) ?? await _findFile('tagebuch.db', accessToken, folderId);
     if (remoteFileId) {
       await SecureStore.setItemAsync(STORE_FILE_ID_DB, remoteFileId);
       await appendLog('info', 'Unverschlüsselte Remote-DB gefunden.');
@@ -321,7 +369,7 @@ async function _doSync(): Promise<void> {
 
   await appendLog('info', `Upload: ${uploadFilename}`);
   try {
-    await _uploadFile(accessToken, uploadPath, uploadFilename, fileIdStoreKey);
+    await _uploadFile(accessToken, uploadPath, uploadFilename, fileIdStoreKey, folderId);
   } catch (e: any) {
     const msg = `Upload fehlgeschlagen: ${e?.message ?? String(e)}`;
     await appendLog('error', msg);
