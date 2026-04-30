@@ -61,6 +61,22 @@ export async function initDb(): Promise<void> {
       created_at INTEGER PRIMARY KEY,
       deleted_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS qualifiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      emoji_preset TEXT NOT NULL DEFAULT 'mood',
+      position INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      deleted INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS entry_qualifiers (
+      entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+      qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE,
+      value INTEGER NOT NULL,
+      PRIMARY KEY (entry_id, qualifier_id)
+    );
   `);
 
   // Seed default categories
@@ -68,6 +84,29 @@ export async function initDb(): Promise<void> {
     INSERT OR IGNORE INTO categories (name) VALUES
       ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
   `);
+
+  // Seed default qualifiers (idempotent)
+  await db.execAsync(`
+    INSERT OR IGNORE INTO qualifiers (name, emoji_preset, position) VALUES
+      ('Laune', 'mood', 0),
+      ('Befinden', 'health', 1);
+  `);
+
+  // Migrate mood/health → entry_qualifiers (idempotent via PRIMARY KEY)
+  try {
+    await db.execAsync(`
+      INSERT OR IGNORE INTO entry_qualifiers (entry_id, qualifier_id, value)
+      SELECT e.id, q.id, e.mood FROM entries e, qualifiers q
+      WHERE q.name = 'Laune' AND e.mood IS NOT NULL;
+    `);
+  } catch {}
+  try {
+    await db.execAsync(`
+      INSERT OR IGNORE INTO entry_qualifiers (entry_id, qualifier_id, value)
+      SELECT e.id, q.id, e.health FROM entries e, qualifiers q
+      WHERE q.name = 'Befinden' AND e.health IS NOT NULL;
+    `);
+  } catch {}
 
   // Migration: add qualifier and geo columns if not present
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN mood INTEGER;'); } catch {}

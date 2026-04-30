@@ -16,10 +16,9 @@ export interface Stats {
   perTag: NameCount[];
 }
 
-export interface TrendPoint {
-  label: string;
-  avgMood: number | null;
-  avgHealth: number | null;
+export interface QualifierTrendSeries {
+  qualifier: { id: number; name: string; emoji_preset: string };
+  points: { label: string; avg: number | null }[];
 }
 
 function localDateStr(d: Date): string {
@@ -123,14 +122,25 @@ export async function getStats(from: number, to: number, groupBy: PeriodGroupBy)
   return { total, activeDays, currentStreak, longestStreak, perDay, perPeriod, perCategory, perTag };
 }
 
-export async function getMoodHealthTrend(from: number, to: number, groupBy: PeriodGroupBy): Promise<TrendPoint[]> {
+export async function getQualifierTrend(from: number, to: number, groupBy: PeriodGroupBy): Promise<QualifierTrendSeries[]> {
   const db = await getDb();
   const expr = periodSql(groupBy);
-  return db.getAllAsync<TrendPoint>(
-    `SELECT ${expr} as label, AVG(mood) as avgMood, AVG(health) as avgHealth
-     FROM entries
-     WHERE timestamp >= ? AND timestamp <= ? AND (mood IS NOT NULL OR health IS NOT NULL)
-     GROUP BY label ORDER BY label`,
-    [from, to]
+
+  const qualifiers = await db.getAllAsync<{ id: number; name: string; emoji_preset: string }>(
+    'SELECT id, name, emoji_preset FROM qualifiers WHERE deleted = 0 AND active = 1 ORDER BY position, id'
   );
+
+  const results: QualifierTrendSeries[] = [];
+  for (const q of qualifiers) {
+    const points = await db.getAllAsync<{ label: string; avg: number | null }>(
+      `SELECT ${expr} as label, AVG(eq.value) as avg
+       FROM entry_qualifiers eq
+       JOIN entries e ON e.id = eq.entry_id
+       WHERE eq.qualifier_id = ? AND e.timestamp >= ? AND e.timestamp <= ?
+       GROUP BY label ORDER BY label`,
+      [q.id, from, to]
+    );
+    results.push({ qualifier: q, points });
+  }
+  return results;
 }

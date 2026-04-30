@@ -14,6 +14,7 @@ import { useLayout } from '../hooks/useLayout';
 import { getCategories, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
+import { useQualifiers } from '../hooks/useQualifiers';
 import { useT } from '../i18n';
 import { addSyncListener, syncIfConfigured } from '../sync/webdav';
 
@@ -80,6 +81,7 @@ export default function IndexScreen() {
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const allTags = useTags();
+  const qualifiers = useQualifiers();
 
   const handleSync = useCallback(async () => {
     if (syncing) return;
@@ -200,7 +202,7 @@ export default function IndexScreen() {
         <FlatList
           data={entries}
           keyExtractor={(e) => String(e.id)}
-          renderItem={({ item }) => <EntryCard entry={item} highlight={search} />}
+          renderItem={({ item }) => <EntryCard entry={item} highlight={search} qualifiers={qualifiers} />}
           contentContainerStyle={[styles.list, isWide && { maxWidth: 720, alignSelf: 'center', width: '100%' }]}
           ListEmptyComponent={
             <Text style={styles.empty}>{t.list.empty}</Text>

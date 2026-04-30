@@ -9,7 +9,8 @@ import { DropdownPicker } from '../../components/DropdownPicker';
 import { QualifierPicker } from '../../components/QualifierPicker';
 import { TagInput } from '../../components/TagInput';
 import { TimestampPicker } from '../../components/TimestampPicker';
-import { HEALTH_EMOJIS, MOOD_EMOJIS } from '../../components/qualifiers';
+import { EMOJI_PRESETS } from '../../components/qualifiers';
+import { useQualifiers } from '../../hooks/useQualifiers';
 import { captureLocation, type GeoTag } from '../../utils/location';
 import { useColors } from '../../components/theme';
 import { useLayout } from '../../hooks/useLayout';
@@ -57,9 +58,9 @@ export default function EditEntryScreen() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
-  const [mood, setMood] = useState<number | null>(null);
-  const [health, setHealth] = useState<number | null>(null);
+  const [qualifierValues, setQualifierValues] = useState<Record<number, number>>({});
   const [geoTag, setGeoTag] = useState<GeoTag | null>(null);
+  const qualifiers = useQualifiers();
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -74,8 +75,7 @@ export default function EditEntryScreen() {
 
       setTimestamp(entry.timestamp);
       setText(entry.text);
-      setMood(entry.mood);
-      setHealth(entry.health);
+      setQualifierValues(entry.qualifierValues);
       if (entry.latitude && entry.longitude && entry.locationName) {
         setGeoTag({ latitude: entry.latitude, longitude: entry.longitude, locationName: entry.locationName });
       }
@@ -101,8 +101,7 @@ export default function EditEntryScreen() {
       text: text.trim(),
       categoryIds: selectedCategoryIds,
       tagIds: selectedTagIds,
-      mood,
-      health,
+      qualifierValues,
       latitude: geoTag?.latitude ?? null,
       longitude: geoTag?.longitude ?? null,
       locationName: geoTag?.locationName ?? null,
@@ -164,8 +163,23 @@ export default function EditEntryScreen() {
             placeholderTextColor={c.muted}
           />
 
-          <QualifierPicker label={t.entry.labelMood} emojis={MOOD_EMOJIS} value={mood} onChange={setMood} />
-          <QualifierPicker label={t.entry.labelHealth} emojis={HEALTH_EMOJIS} value={health} onChange={setHealth} />
+          {qualifiers.map((q) => {
+            const preset = EMOJI_PRESETS[q.emoji_preset];
+            if (!preset) return null;
+            return (
+              <QualifierPicker
+                key={q.id}
+                label={q.name}
+                emojis={preset.emojis}
+                value={qualifierValues[q.id] ?? null}
+                onChange={(v) => setQualifierValues((prev) => {
+                  const next = { ...prev };
+                  if (v === null) delete next[q.id]; else next[q.id] = v;
+                  return next;
+                })}
+              />
+            );
+          })}
           <Pressable
             style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
             onPress={async () => {

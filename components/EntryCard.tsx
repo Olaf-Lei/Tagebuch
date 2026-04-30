@@ -2,12 +2,14 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Entry } from '../db/entries';
-import { HEALTH_EMOJIS, MOOD_EMOJIS, emojiForLevel } from './qualifiers';
+import { EMOJI_PRESETS, emojiForLevel } from './qualifiers';
+import type { Qualifier } from '../db/qualifiers';
 import { useColors } from './theme';
 
 interface Props {
   entry: Entry;
   highlight?: string;
+  qualifiers?: Qualifier[];
 }
 
 function formatDate(ts: number): string {
@@ -43,7 +45,7 @@ function HighlightedText({
   );
 }
 
-export function EntryCard({ entry, highlight }: Props) {
+export function EntryCard({ entry, highlight, qualifiers = [] }: Props) {
   const router = useRouter();
   const c = useColors();
   const styles = useMemo(() => StyleSheet.create({
@@ -70,10 +72,15 @@ export function EntryCard({ entry, highlight }: Props) {
     >
       <View style={styles.headerRow}>
         <Text style={styles.timestamp}>{formatDate(entry.timestamp)}</Text>
-        {(entry.mood || entry.health) ? (
+        {Object.keys(entry.qualifierValues).length > 0 && qualifiers.length > 0 ? (
           <View style={styles.qualifiers}>
-            {entry.mood ? <Text style={styles.qualifierEmoji}>{emojiForLevel(MOOD_EMOJIS, entry.mood)}</Text> : null}
-            {entry.health ? <Text style={styles.qualifierEmoji}>{emojiForLevel(HEALTH_EMOJIS, entry.health)}</Text> : null}
+            {qualifiers.map((q) => {
+              const val = entry.qualifierValues[q.id];
+              if (!val) return null;
+              const preset = EMOJI_PRESETS[q.emoji_preset];
+              const emoji = preset ? emojiForLevel(preset.emojis, val) : null;
+              return emoji ? <Text key={q.id} style={styles.qualifierEmoji}>{emoji}</Text> : null;
+            })}
           </View>
         ) : null}
       </View>

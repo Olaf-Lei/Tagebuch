@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
-import { getStats, getMoodHealthTrend, type Stats, type TrendPoint, type PeriodGroupBy } from '../db/stats';
+import { getStats, getQualifierTrend, type Stats, type QualifierTrendSeries, type PeriodGroupBy } from '../db/stats';
+import { EMOJI_PRESETS } from '../components/qualifiers';
 import { useT } from '../i18n';
 
 // ── Filter ────────────────────────────────────────────────────────────────────
@@ -70,14 +71,14 @@ function formatPeriodLabel(label: string, locale: string, weekPrefix: string): s
   return label;
 }
 
-// ── Trend chart (two curves, no SVG) ─────────────────────────────────────────
+// ── Trend chart (multi-curve, no SVG) ────────────────────────────────────────
 
-function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
-  trend: TrendPoint[];
+const QUALIFIER_COLORS = ['#C9A84C', '#4CAF50', '#2196F3', '#FF5722', '#9C27B0', '#FF9800'];
+
+function TrendChart({ series, c, noDataLabel }: {
+  series: QualifierTrendSeries[];
   c: ReturnType<typeof useColors>;
   noDataLabel: string;
-  legendMood: string;
-  legendHealth: string;
 }) {
   const [chartWidth, setChartWidth] = useState(0);
   const CHART_H = 130;
@@ -85,10 +86,8 @@ function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
   const PAD_BOTTOM = 22;
   const INNER_H = CHART_H - PAD_TOP - PAD_BOTTOM;
 
-  const hasMood = trend.some(p => p.avgMood !== null);
-  const hasHealth = trend.some(p => p.avgHealth !== null);
-
-  if (!hasMood && !hasHealth) {
+  const hasAnyData = series.some(s => s.points.some(p => p.avg !== null));
+  if (!hasAnyData) {
     return (
       <Text style={{ fontSize: 13, color: c.muted, textAlign: 'center', paddingVertical: 24 }}>
         {noDataLabel}
@@ -96,12 +95,10 @@ function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
     );
   }
 
-  const n = Math.max(trend.length - 1, 1);
+  const allLabels = [...new Set(series.flatMap(s => s.points.map(p => p.label)))].sort();
+  const n = Math.max(allLabels.length - 1, 1);
   const toX = (i: number) => (i / n) * chartWidth;
   const toY = (v: number) => PAD_TOP + INNER_H - ((v - 1) / 4) * INNER_H;
-
-  const MOOD_COLOR = c.accent;
-  const HEALTH_COLOR = '#4CAF50';
 
   const renderCurve = (pts: { i: number; v: number }[], color: string) => {
     if (pts.length === 0) return null;
@@ -136,16 +133,13 @@ function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
     );
   };
 
-  const moodPts = trend.map((p, i) => p.avgMood !== null ? { i, v: p.avgMood as number } : null).filter(Boolean) as { i: number; v: number }[];
-  const healthPts = trend.map((p, i) => p.avgHealth !== null ? { i, v: p.avgHealth as number } : null).filter(Boolean) as { i: number; v: number }[];
-
   const xLabels: { i: number; label: string }[] = [];
-  if (trend.length >= 1) xLabels.push({ i: 0, label: trend[0].label });
-  if (trend.length >= 3) {
-    const mid = Math.floor((trend.length - 1) / 2);
-    xLabels.push({ i: mid, label: trend[mid].label });
+  if (allLabels.length >= 1) xLabels.push({ i: 0, label: allLabels[0] });
+  if (allLabels.length >= 3) {
+    const mid = Math.floor((allLabels.length - 1) / 2);
+    xLabels.push({ i: mid, label: allLabels[mid] });
   }
-  if (trend.length >= 2) xLabels.push({ i: trend.length - 1, label: trend[trend.length - 1].label });
+  if (allLabels.length >= 2) xLabels.push({ i: allLabels.length - 1, label: allLabels[allLabels.length - 1] });
 
   return (
     <View>
@@ -159,8 +153,16 @@ function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
                 backgroundColor: c.border, opacity: v % 2 === 1 ? 0.6 : 0.25,
               }} />
             ))}
-            {renderCurve(moodPts, MOOD_COLOR)}
-            {renderCurve(healthPts, HEALTH_COLOR)}
+            {series.map((s, si) => {
+              const color = QUALIFIER_COLORS[si % QUALIFIER_COLORS.length];
+              const pts = allLabels
+                .map((label, i) => {
+                  const p = s.points.find(p => p.label === label);
+                  return p && p.avg != null ? { i, v: p.avg } : null;
+                })
+                .filter(Boolean) as { i: number; v: number }[];
+              return <React.Fragment key={s.qualifier.id}>{renderCurve(pts, color)}</React.Fragment>;
+            })}
             {xLabels.map(({ i, label }) => (
               <Text key={i} style={{
                 position: 'absolute',
@@ -177,19 +179,20 @@ function TrendChart({ trend, c, noDataLabel, legendMood, legendHealth }: {
           </View>
         )}
       </View>
-      <View style={{ flexDirection: 'row', gap: 16, justifyContent: 'center', marginTop: 6 }}>
-        {hasMood && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <View style={{ width: 14, height: 3, backgroundColor: MOOD_COLOR, borderRadius: 1.5 }} />
-            <Text style={{ fontSize: 11, color: c.muted }}>{legendMood}</Text>
-          </View>
-        )}
-        {hasHealth && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <View style={{ width: 14, height: 3, backgroundColor: HEALTH_COLOR, borderRadius: 1.5 }} />
-            <Text style={{ fontSize: 11, color: c.muted }}>{legendHealth}</Text>
-          </View>
-        )}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 6 }}>
+        {series.map((s, si) => {
+          if (!s.points.some(p => p.avg != null)) return null;
+          const preset = EMOJI_PRESETS[s.qualifier.emoji_preset];
+          const color = QUALIFIER_COLORS[si % QUALIFIER_COLORS.length];
+          return (
+            <View key={s.qualifier.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 14, height: 3, backgroundColor: color, borderRadius: 1.5 }} />
+              <Text style={{ fontSize: 11, color: c.muted }}>
+                {preset?.emojis[2]} {s.qualifier.name}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -307,7 +310,7 @@ export default function StatsScreen() {
   const [dateError, setDateError] = useState('');
 
   const [stats, setStats] = useState<Stats | null>(null);
-  const [trend, setTrend] = useState<TrendPoint[]>([]);
+  const [trendSeries, setTrendSeries] = useState<QualifierTrendSeries[]>([]);
   const [loading, setLoading] = useState(true);
 
   const FILTERS: { key: FilterKey; label: string }[] = [
@@ -327,10 +330,10 @@ export default function StatsScreen() {
     setLoading(true);
     Promise.all([
       getStats(range.from, range.to, range.groupBy),
-      getMoodHealthTrend(range.from, range.to, range.trendGroupBy),
-    ]).then(([s, tr]) => {
+      getQualifierTrend(range.from, range.to, range.trendGroupBy),
+    ]).then(([s, ts]) => {
       setStats(s);
-      setTrend(tr);
+      setTrendSeries(ts);
       setLoading(false);
     });
   }, [range]);
@@ -457,17 +460,14 @@ export default function StatsScreen() {
             </>}
           </View>
 
-          <View style={isWide && styles.wideBlock}>
-            <Text style={styles.section}>{t.stats.sectionMoodHealth}</Text>
-            <View style={[styles.block, { paddingLeft: 24 }]}>
-              <TrendChart
-                trend={trend} c={c}
-                noDataLabel={t.stats.noMoodData}
-                legendMood={t.stats.legendMood}
-                legendHealth={t.stats.legendHealth}
-              />
+          {trendSeries.length > 0 && (
+            <View style={isWide && styles.wideBlock}>
+              <Text style={styles.section}>{t.stats.sectionQualifiers}</Text>
+              <View style={[styles.block, { paddingLeft: 24 }]}>
+                <TrendChart series={trendSeries} c={c} noDataLabel={t.stats.noMoodData} />
+              </View>
             </View>
-          </View>
+          )}
 
           {activeFilter !== 'day' && (
             <View style={isWide && styles.wideBlock}>

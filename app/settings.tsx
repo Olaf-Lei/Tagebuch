@@ -16,6 +16,11 @@ import {
   renameCategory, updateCategoryColor, type Category,
 } from '../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
+import {
+  getQualifiers, createQualifier, updateQualifier,
+  setQualifierActive, deleteQualifier, type Qualifier,
+} from '../db/qualifiers';
+import { EMOJI_PRESETS } from '../components/qualifiers';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
@@ -189,6 +194,13 @@ export default function SettingsScreen() {
   const [editingTagId, setEditingTagId] = useState<number | null>(null);
   const [editingTagName, setEditingTagName] = useState('');
 
+  const [qualifiers, setQualifiers] = useState<Qualifier[]>([]);
+  const [newQualName, setNewQualName] = useState('');
+  const [newQualPreset, setNewQualPreset] = useState('mood');
+  const [editingQualId, setEditingQualId] = useState<number | null>(null);
+  const [editingQualName, setEditingQualName] = useState('');
+  const [editingQualPreset, setEditingQualPreset] = useState('mood');
+
   const [config, setConfig] = useState<Partial<WebDavConfig>>({});
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -242,6 +254,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     getCategories().then(setCategories);
     getTags().then(setTags);
+    getQualifiers().then(setQualifiers);
     loadConfig().then(setConfig);
     getLastSync().then(setLastSync);
     getAutoSyncInterval().then(setAutoSyncIntervalState);
@@ -303,6 +316,28 @@ export default function SettingsScreen() {
       { text: t.common.cancel, style: 'cancel' },
       { text: t.common.delete, style: 'destructive', onPress: async () => { await deleteTag(tag.id); getTags().then(setTags); } },
     ]);
+  };
+
+  const addQualifier = async () => {
+    if (!newQualName.trim()) return;
+    await createQualifier(newQualName.trim(), newQualPreset);
+    setNewQualName('');
+    setNewQualPreset('mood');
+    getQualifiers().then(setQualifiers);
+  };
+
+  const confirmQualDelete = (q: Qualifier) => {
+    Alert.alert(t.settings.deleteQualifierTitle(q.name), t.settings.deleteQualifierMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      { text: t.common.delete, style: 'destructive', onPress: async () => { await deleteQualifier(q.id); getQualifiers().then(setQualifiers); } },
+    ]);
+  };
+
+  const saveQualEdit = async () => {
+    if (editingQualId === null) return;
+    await updateQualifier(editingQualId, editingQualName, editingQualPreset);
+    setEditingQualId(null);
+    getQualifiers().then(setQualifiers);
   };
 
   const handleBioToggle = async (v: boolean) => {
@@ -660,6 +695,62 @@ export default function SettingsScreen() {
                   ))}
                 </>
               )}
+
+              <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subQualifiers}</Text>
+              {qualifiers.map((q) => (
+                <View key={q.id} style={styles.catRow}>
+                  {editingQualId === q.id ? (
+                    <>
+                      <TextInput style={styles.catInput} value={editingQualName} onChangeText={setEditingQualName} onSubmitEditing={saveQualEdit} autoFocus />
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }}>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
+                            <Pressable key={key} onPress={() => setEditingQualPreset(key)}
+                              style={{ padding: 6, borderRadius: 8, backgroundColor: editingQualPreset === key ? c.accent + '33' : 'transparent' }}>
+                              <Text style={{ fontSize: 16 }}>{preset.emojis[2]}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </ScrollView>
+                      <Pressable style={styles.catAction} onPress={saveQualEdit}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
+                      <Pressable style={styles.catAction} onPress={() => setEditingQualId(null)}><Text style={styles.mutedText}>✕</Text></Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 18, marginRight: 4 }}>{EMOJI_PRESETS[q.emoji_preset]?.emojis[2]}</Text>
+                      <Text style={styles.catName}>{q.name}</Text>
+                      <Switch
+                        value={q.active === 1}
+                        onValueChange={async (v) => { await setQualifierActive(q.id, v); getQualifiers().then(setQualifiers); }}
+                        trackColor={{ false: c.border, true: c.accent + '88' }}
+                        thumbColor={q.active === 1 ? c.accent : c.muted}
+                      />
+                      <Pressable style={styles.catAction} onPress={() => { setEditingQualId(q.id); setEditingQualName(q.name); setEditingQualPreset(q.emoji_preset); }}><Text style={styles.mutedText}>✎</Text></Pressable>
+                      <Pressable style={styles.catAction} onPress={() => confirmQualDelete(q)}><Text style={styles.dangerText}>✕</Text></Pressable>
+                    </>
+                  )}
+                </View>
+              ))}
+              <View style={styles.addRow}>
+                <TextInput
+                  style={[styles.addInput, { flex: 0.6 }]} value={newQualName} onChangeText={setNewQualName}
+                  placeholder={t.settings.newQualifierPlaceholder} placeholderTextColor={c.muted}
+                  onSubmitEditing={addQualifier} returnKeyType="done"
+                />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 0.4 }}>
+                  <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                    {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
+                      <Pressable key={key} onPress={() => setNewQualPreset(key)}
+                        style={{ padding: 6, borderRadius: 8, backgroundColor: newQualPreset === key ? c.accent + '33' : 'transparent' }}>
+                        <Text style={{ fontSize: 18 }}>{preset.emojis[2]}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+                <Pressable style={styles.addButton} onPress={addQualifier}>
+                  <Text style={styles.addButtonText}>＋</Text>
+                </Pressable>
+              </View>
             </View>
           )}
 

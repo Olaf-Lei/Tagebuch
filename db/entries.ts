@@ -1,4 +1,5 @@
 import { getDb } from './schema';
+import { getEntryQualifierValues, setEntryQualifierValues } from './qualifiers';
 
 export interface EntryCategory {
   name: string;
@@ -11,8 +12,7 @@ export interface Entry {
   text: string;
   created_at: number;
   updated_at: number;
-  mood: number | null;
-  health: number | null;
+  qualifierValues: Record<number, number>;
   latitude: number | null;
   longitude: number | null;
   locationName: string | null;
@@ -25,8 +25,7 @@ export interface EntryInput {
   text: string;
   categoryIds: number[];
   tagIds: number[];
-  mood?: number | null;
-  health?: number | null;
+  qualifierValues?: Record<number, number>;
   latitude?: number | null;
   longitude?: number | null;
   locationName?: string | null;
@@ -54,7 +53,7 @@ export async function getEntries(opts?: {
 
   let query = `
     SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at,
-      e.mood, e.health, e.latitude, e.longitude, e.location_name as locationName
+      e.latitude, e.longitude, e.location_name as locationName
     FROM entries e
   `;
   const joins: string[] = [];
@@ -88,19 +87,23 @@ export async function getEntries(opts?: {
   if (conditions.length > 0) query += ` WHERE ` + conditions.join(` AND `);
   query += ` ORDER BY e.timestamp DESC`;
 
-  const rows = await db.getAllAsync<Omit<Entry, 'categories' | 'tags'>>(query, params);
+  const rows = await db.getAllAsync<Omit<Entry, 'categories' | 'tags' | 'qualifierValues'>>(query, params);
 
   return Promise.all(rows.map(async (row) => {
-    const categories = await db.getAllAsync<EntryCategory>(
-      `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
-      [row.id]
-    );
-    const tags = await db.getAllAsync<{ name: string }>(
-      `SELECT t.name FROM tags t JOIN entry_tags et ON t.id = et.tag_id WHERE et.entry_id = ?`,
-      [row.id]
-    );
+    const [categories, tags, qualifierValues] = await Promise.all([
+      db.getAllAsync<EntryCategory>(
+        `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+        [row.id]
+      ),
+      db.getAllAsync<{ name: string }>(
+        `SELECT t.name FROM tags t JOIN entry_tags et ON t.id = et.tag_id WHERE et.entry_id = ?`,
+        [row.id]
+      ),
+      getEntryQualifierValues(row.id),
+    ]);
     return {
       ...row,
+      qualifierValues,
       categories,
       tags: tags.map((t) => t.name),
     };
@@ -109,23 +112,27 @@ export async function getEntries(opts?: {
 
 export async function getEntry(id: number): Promise<Entry | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<Omit<Entry, 'categories' | 'tags'>>(
-    `SELECT id, timestamp, text, created_at, updated_at, mood, health,
+  const row = await db.getFirstAsync<Omit<Entry, 'categories' | 'tags' | 'qualifierValues'>>(
+    `SELECT id, timestamp, text, created_at, updated_at,
       latitude, longitude, location_name as locationName FROM entries WHERE id = ?`,
     [id]
   );
   if (!row) return null;
 
-  const categories = await db.getAllAsync<EntryCategory>(
-    `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
-    [id]
-  );
-  const tags = await db.getAllAsync<{ name: string }>(
-    `SELECT t.name FROM tags t JOIN entry_tags et ON t.id = et.tag_id WHERE et.entry_id = ?`,
-    [id]
-  );
+  const [categories, tags, qualifierValues] = await Promise.all([
+    db.getAllAsync<EntryCategory>(
+      `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+      [id]
+    ),
+    db.getAllAsync<{ name: string }>(
+      `SELECT t.name FROM tags t JOIN entry_tags et ON t.id = et.tag_id WHERE et.entry_id = ?`,
+      [id]
+    ),
+    getEntryQualifierValues(id),
+  ]);
   return {
     ...row,
+    qualifierValues,
     categories,
     tags: tags.map((t) => t.name),
   };
@@ -135,14 +142,14 @@ export async function createEntry(input: EntryInput): Promise<number> {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    `INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health, latitude, longitude, location_name)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO entries (timestamp, text, created_at, updated_at, latitude, longitude, location_name)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [input.timestamp, input.text, now, now,
-     input.mood ?? null, input.health ?? null,
      input.latitude ?? null, input.longitude ?? null, input.locationName ?? null]
   );
   const id = result.lastInsertRowId;
   await setEntryRelations(id, input.categoryIds, input.tagIds);
+  if (input.qualifierValues) await setEntryQualifierValues(id, input.qualifierValues);
   return id;
 }
 
@@ -151,14 +158,14 @@ export async function updateEntry(id: number, input: EntryInput): Promise<void> 
   const now = Date.now();
   await db.runAsync(
     `UPDATE entries SET timestamp = ?, text = ?, updated_at = ?,
-     mood = ?, health = ?, latitude = ?, longitude = ?, location_name = ? WHERE id = ?`,
+     latitude = ?, longitude = ?, location_name = ? WHERE id = ?`,
     [input.timestamp, input.text, now,
-     input.mood ?? null, input.health ?? null,
      input.latitude ?? null, input.longitude ?? null, input.locationName ?? null, id]
   );
   await db.runAsync(`DELETE FROM entry_categories WHERE entry_id = ?`, [id]);
   await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [id]);
   await setEntryRelations(id, input.categoryIds, input.tagIds);
+  await setEntryQualifierValues(id, input.qualifierValues ?? {});
 }
 
 export interface LocationEntry {
