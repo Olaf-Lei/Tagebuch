@@ -295,11 +295,10 @@ Installiertes Tooling:
 
 ### Offen (nach Priorität)
 
-1. **Custom Qualifiers** *(Hoch/Mittel)* — user-definierte 1–5-Bewertungen (z.B. „Rücken", „Schlaf") mit wählbaren Emoji-Presets; ersetzt fixe mood/health-Spalten; Migration bestehender Daten; neue Sektion in Settings; Trend-Charts in Stats
-2. ~~**Standort-Karte**~~ ✓ erledigt
-3. ~~**Responsives Layout / Querformat**~~ ✓ erledigt
+*Keine offenen Punkte.*
 
 ### Erledigt
+- **Custom Qualifiers** — `qualifiers` + `entry_qualifiers` Tabellen; Migration mood/health; EMOJI_PRESETS; dynamische QualifierPicker in Formularen; generischer TrendChart in Stats; Verwaltung in Settings › Inhalte
 - **Responsives Layout** — `hooks/useLayout.ts`, `isWide >= 700px`; Calendar split-view; Stats zwei Spalten; Formulare + Liste maxWidth zentriert
 - **Standort-Karte** — `map.tsx` mit WebView + Leaflet + MarkerCluster; Zeitfilter; Tap → Entry öffnen
 - **Kategorien-Farben** — `color TEXT` in `categories`, Palette + freier Hex-Picker in Settings, Badges in EntryCard und DropdownPicker
