@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
-import { getStats, getQualifierTrend, type Stats, type QualifierTrendSeries, type PeriodGroupBy } from '../db/stats';
+import { getStats, getQualifierTrend, getPreviousPeriodCount, getQualifierStats, getHourDistribution, getWeekdayDistribution, getAvgTextLength, getQualifierByCategory, type Stats, type QualifierTrendSeries, type QualifierDistribution, type QualifierByCat, type PeriodGroupBy } from '../db/stats';
 import { EMOJI_PRESETS } from '../components/qualifiers';
 import { useT } from '../i18n';
 
@@ -295,6 +295,160 @@ function BarChart({ items, c, labelWidth = 72 }: {
   );
 }
 
+// ── Mini bar chart (vertikal, für Stunden/Wochentage) ─────────────────────────
+
+function MiniBarChart({ data, xLabels, c, barColor }: {
+  data: number[];
+  xLabels: (string | null)[];
+  c: ReturnType<typeof useColors>;
+  barColor: string;
+}) {
+  const BAR_MAX_H = 56;
+  const maxCount = Math.max(...data, 1);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+      {data.map((count, i) => {
+        const barH = count > 0 ? Math.max((count / maxCount) * BAR_MAX_H, 3) : 0;
+        const label = xLabels[i] ?? null;
+        return (
+          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{ height: BAR_MAX_H, justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+              <View style={{
+                width: '80%', height: barH,
+                backgroundColor: count > 0 ? barColor : 'transparent',
+                borderRadius: 2,
+              }} />
+            </View>
+            <Text style={{ fontSize: 8, color: label ? c.muted : 'transparent', marginTop: 3, textAlign: 'center' }}>
+              {label ?? '.'}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ── Distribution chart ────────────────────────────────────────────────────────
+
+function DistributionChart({ distributions, c }: {
+  distributions: QualifierDistribution[];
+  c: ReturnType<typeof useColors>;
+}) {
+  const BAR_MAX_H = 48;
+  const hasData = distributions.some(qd => qd.dist.some(v => v > 0));
+  if (!hasData) return null;
+
+  return (
+    <View style={{ gap: 20 }}>
+      {distributions.map((qd, qi) => {
+        if (qd.dist.every(v => v === 0)) return null;
+        const preset = EMOJI_PRESETS[qd.qualifier.emoji_preset];
+        const color = QUALIFIER_COLORS[qi % QUALIFIER_COLORS.length];
+        const maxCount = Math.max(...qd.dist, 1);
+        return (
+          <View key={qd.qualifier.id} style={{ gap: 8 }}>
+            <Text style={{ fontSize: 12, color: c.muted, fontWeight: '600' }}>
+              {preset?.icon ?? ''}{' '}{qd.qualifier.name}
+              {qd.avg != null
+                ? <Text style={{ color, fontWeight: '700' }}> · Ø {qd.avg.toFixed(1)}</Text>
+                : null}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {qd.dist.map((count, i) => {
+                const emoji = preset?.emojis[i] ?? String(i + 1);
+                const barH = count > 0 ? Math.max((count / maxCount) * BAR_MAX_H, 6) : 0;
+                return (
+                  <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: count > 0 ? c.muted : 'transparent', marginBottom: 3 }}>
+                      {count}
+                    </Text>
+                    <View style={{ height: BAR_MAX_H, justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+                      <View style={{
+                        width: '72%', height: barH,
+                        backgroundColor: count > 0 ? color : 'transparent',
+                        borderRadius: 3, opacity: 0.6 + i * 0.08,
+                      }} />
+                    </View>
+                    <Text style={{ fontSize: 18, marginTop: 4 }}>{emoji}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ── Qualifier × Kategorie Tabelle ─────────────────────────────────────────────
+
+function QualifierCatTable({ data, c }: {
+  data: QualifierByCat[];
+  c: ReturnType<typeof useColors>;
+}) {
+  const qualifiers = useMemo(() => {
+    const seen = new Map<number, { qualifier_id: number; name: string; emoji_preset: string }>();
+    for (const cat of data) {
+      for (const qa of cat.qualifierAvgs) {
+        if (!seen.has(qa.qualifier_id)) seen.set(qa.qualifier_id, qa);
+      }
+    }
+    return Array.from(seen.values());
+  }, [data]);
+
+  if (data.length < 2 || qualifiers.length === 0) return null;
+
+  return (
+    <View style={{ gap: 0 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingBottom: 6, borderBottomWidth: 1, borderColor: c.border }}>
+        <View style={{ flex: 2 }} />
+        {qualifiers.map(q => {
+          const preset = EMOJI_PRESETS[q.emoji_preset];
+          return (
+            <View key={q.qualifier_id} style={{ flex: 1, alignItems: 'center', gap: 1 }}>
+              <Text style={{ fontSize: 14 }}>{preset?.icon}</Text>
+              <Text style={{ fontSize: 8, color: c.muted, textAlign: 'center' }} numberOfLines={1}>{q.name}</Text>
+            </View>
+          );
+        })}
+      </View>
+      {data.map((cat, ci) => {
+        const avgMap = new Map(cat.qualifierAvgs.map(qa => [qa.qualifier_id, qa.avg]));
+        return (
+          <View key={cat.category.id} style={{
+            flexDirection: 'row', alignItems: 'center', paddingVertical: 8,
+            borderBottomWidth: ci < data.length - 1 ? 1 : 0, borderColor: c.border + '44',
+          }}>
+            <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.category.color ?? c.accent }} />
+              <Text style={{ fontSize: 12, color: c.text, flex: 1 }} numberOfLines={1}>{cat.category.name}</Text>
+            </View>
+            {qualifiers.map(q => {
+              const avg = avgMap.get(q.qualifier_id);
+              const preset = EMOJI_PRESETS[q.emoji_preset];
+              const emoji = avg != null ? preset?.emojis[Math.min(4, Math.max(0, Math.round(avg) - 1))] : null;
+              return (
+                <View key={q.qualifier_id} style={{ flex: 1, alignItems: 'center', gap: 1 }}>
+                  {emoji != null ? (
+                    <>
+                      <Text style={{ fontSize: 16 }}>{emoji}</Text>
+                      <Text style={{ fontSize: 9, color: c.muted }}>{avg!.toFixed(1)}</Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: c.border }}>–</Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function StatsScreen() {
@@ -311,6 +465,12 @@ export default function StatsScreen() {
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [trendSeries, setTrendSeries] = useState<QualifierTrendSeries[]>([]);
+  const [qualDistributions, setQualDistributions] = useState<QualifierDistribution[]>([]);
+  const [hourDist, setHourDist] = useState<number[]>([]);
+  const [weekdayDist, setWeekdayDist] = useState<number[]>([]);
+  const [avgTextLen, setAvgTextLen] = useState<number | null>(null);
+  const [qualByCat, setQualByCat] = useState<QualifierByCat[]>([]);
+  const [prevCount, setPrevCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const FILTERS: { key: FilterKey; label: string }[] = [
@@ -331,9 +491,21 @@ export default function StatsScreen() {
     Promise.all([
       getStats(range.from, range.to, range.groupBy),
       getQualifierTrend(range.from, range.to, range.trendGroupBy),
-    ]).then(([s, ts]) => {
+      getQualifierStats(range.from, range.to),
+      getPreviousPeriodCount(range.from, range.to),
+      getHourDistribution(range.from, range.to),
+      getWeekdayDistribution(range.from, range.to),
+      getAvgTextLength(range.from, range.to),
+      getQualifierByCategory(range.from, range.to),
+    ]).then(([s, ts, qd, pc, hd, wd, atl, qbc]) => {
       setStats(s);
       setTrendSeries(ts);
+      setQualDistributions(qd);
+      setPrevCount(pc);
+      setHourDist(hd);
+      setWeekdayDist(wd);
+      setAvgTextLen(atl);
+      setQualByCat(qbc);
       setLoading(false);
     });
   }, [range]);
@@ -357,6 +529,12 @@ export default function StatsScreen() {
     card: { flex: 1, backgroundColor: c.surface, borderRadius: 12, padding: 14, alignItems: 'center', gap: 4 },
     cardNum: { fontSize: 28, fontWeight: '700', color: c.accent },
     cardLabel: { fontSize: 12, color: c.muted, textAlign: 'center' },
+    cardDelta: { fontSize: 10, textAlign: 'center', marginTop: -2 },
+    qualAvgRow: {
+      flexDirection: 'row', backgroundColor: c.surface,
+      borderRadius: 12, padding: 12, justifyContent: 'space-around', flexWrap: 'wrap', gap: 8,
+    },
+    qualAvgItem: { alignItems: 'center', gap: 2, minWidth: 60 },
     section: { fontSize: 11, fontWeight: '700', color: c.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
     block: { backgroundColor: c.surface, borderRadius: 12, padding: 14 },
     loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -410,6 +588,22 @@ export default function StatsScreen() {
   const catItems = stats?.perCategory.map(x => ({ label: x.name, count: x.count, color: x.color })) ?? [];
   const tagItems = stats?.perTag.map(x => ({ label: `#${x.name}`, count: x.count })) ?? [];
 
+  const qualifierAvgs = useMemo(() =>
+    trendSeries
+      .map((s, idx) => {
+        const validPts = s.points.filter(p => p.avg != null);
+        if (!validPts.length) return null;
+        const avg = validPts.reduce((sum, p) => sum + p.avg!, 0) / validPts.length;
+        return { qualifier: s.qualifier, avg, colorIdx: idx };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null),
+    [trendSeries]
+  );
+
+  const prevDelta = stats != null && prevCount != null ? stats.total - prevCount : null;
+
+  const hourLabels = Array.from({ length: 24 }, (_, i) => i % 6 === 0 ? `${i}h` : null);
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}
@@ -443,6 +637,11 @@ export default function StatsScreen() {
             <View style={styles.card}>
               <Text style={styles.cardNum}>{stats?.total ?? 0}</Text>
               <Text style={styles.cardLabel}>{t.stats.cardEntries}</Text>
+              {prevDelta != null && (
+                <Text style={[styles.cardDelta, { color: prevDelta > 0 ? '#4CAF50' : prevDelta < 0 ? c.danger : c.muted }]}>
+                  {t.stats.comparePrev(prevDelta)}
+                </Text>
+              )}
             </View>
             <View style={styles.card}>
               <Text style={styles.cardNum}>{stats?.activeDays ?? 0}</Text>
@@ -460,11 +659,40 @@ export default function StatsScreen() {
             </>}
           </View>
 
+          {qualifierAvgs.length > 0 && (
+            <View style={[isWide && { flexBasis: '100%' }]}>
+              <View style={styles.qualAvgRow}>
+                {qualifierAvgs.map(({ qualifier, avg, colorIdx }) => {
+                  const preset = EMOJI_PRESETS[qualifier.emoji_preset];
+                  const level = Math.min(5, Math.max(1, Math.round(avg)));
+                  const emoji = preset?.emojis[level - 1] ?? '–';
+                  const color = QUALIFIER_COLORS[colorIdx % QUALIFIER_COLORS.length];
+                  return (
+                    <View key={qualifier.id} style={styles.qualAvgItem}>
+                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color }}>{avg.toFixed(1)}</Text>
+                      <Text style={{ fontSize: 10, color: c.muted, textAlign: 'center' }}>{qualifier.name}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {trendSeries.length > 0 && (
             <View style={isWide && styles.wideBlock}>
               <Text style={styles.section}>{t.stats.sectionQualifiers}</Text>
               <View style={[styles.block, { paddingLeft: 24 }]}>
                 <TrendChart series={trendSeries} c={c} noDataLabel={t.stats.noMoodData} />
+              </View>
+            </View>
+          )}
+
+          {qualDistributions.some(qd => qd.dist.some(v => v > 0)) && (
+            <View style={isWide && styles.wideBlock}>
+              <Text style={styles.section}>{t.stats.sectionQualifierDist}</Text>
+              <View style={styles.block}>
+                <DistributionChart distributions={qualDistributions} c={c} />
               </View>
             </View>
           )}
@@ -477,6 +705,34 @@ export default function StatsScreen() {
                   perDay={stats?.perDay ?? []} from={range.from} to={range.to} c={c}
                   labelLow={t.stats.heatmapLow} labelHigh={t.stats.heatmapHigh}
                 />
+              </View>
+            </View>
+          )}
+
+          {(hourDist.some(v => v > 0) || avgTextLen != null) && (
+            <View style={isWide && styles.wideBlock}>
+              <Text style={styles.section}>{t.stats.sectionPattern}</Text>
+              <View style={[styles.block, { gap: 16 }]}>
+                {avgTextLen != null && stats != null && stats.total > 0 && (
+                  <Text style={{ fontSize: 12, color: c.muted }}>
+                    {t.stats.labelAvgTextLen}:{' '}
+                    <Text style={{ color: c.text, fontWeight: '600' }}>
+                      {Math.round(avgTextLen)} {t.stats.labelChars}
+                    </Text>
+                  </Text>
+                )}
+                {hourDist.some(v => v > 0) && (
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: c.muted, fontWeight: '600' }}>{t.stats.labelHourDist}</Text>
+                    <MiniBarChart data={hourDist} xLabels={hourLabels} c={c} barColor={c.accent} />
+                  </View>
+                )}
+                {activeFilter !== 'day' && weekdayDist.some(v => v > 0) && (
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: c.muted, fontWeight: '600' }}>{t.stats.labelWeekdayDist}</Text>
+                    <MiniBarChart data={weekdayDist} xLabels={t.calendar.weekdays} c={c} barColor={c.accent} />
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -495,6 +751,15 @@ export default function StatsScreen() {
               <Text style={styles.section}>{t.stats.sectionCategories}</Text>
               <View style={styles.block}>
                 <BarChart items={catItems} c={c} labelWidth={110} />
+              </View>
+            </View>
+          )}
+
+          {qualByCat.length >= 2 && (
+            <View style={[isWide && styles.wideBlock, { flexBasis: isWide ? '100%' : undefined }]}>
+              <Text style={styles.section}>{t.stats.sectionQualifierByCat}</Text>
+              <View style={styles.block}>
+                <QualifierCatTable data={qualByCat} c={c} />
               </View>
             </View>
           )}

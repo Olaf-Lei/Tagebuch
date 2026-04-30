@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.6.1 — 2026-04-30
+- Statistiken: Vorperioden-Vergleich unter der Eintragsanzahl-Karte (+/− ggü. Vorperiode)
+- Statistiken: Qualifier-Übersichtsleiste (Ø-Wert + Emoji pro aktivem Qualifier)
+- Statistiken: Neue Sektion „Bewertungsverteilung" — Mini-Histogramm pro Qualifier (Stufen 1–5)
+- Statistiken: Neue Sektion „Muster" — Tageszeit-Verteilung (24 Säulen), Wochentag-Verteilung (Mo–So), Ø Textlänge
+- Statistiken: Neue Sektion „Bewertungen nach Kategorie" — Tabelle Emoji-Ø pro Kategorie × Qualifier
+
 ## v2.5.16 — 2026-04-28
 - Header: 📊/📅/🗺️-Buttons zu einem einzigen 📊-Button zusammengefasst; Tippen öffnet Bubble-Menü mit Statistiken, Kalender und Karte
 - EntryCard: Ort-Badge (📍) ist jetzt tippbar und öffnet die Karte; Badge erscheint auch bei Einträgen mit Koordinaten aber ohne Ortsnamen

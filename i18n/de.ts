@@ -221,6 +221,13 @@ export const de = {
     cardStreak: 'Tage\nSerie',
     cardRecord: 'Tage\nRekord',
     sectionQualifiers: 'Bewertungen',
+    sectionQualifierDist: 'Bewertungsverteilung',
+    sectionQualifierByCat: 'Bewertungen nach Kategorie',
+    sectionPattern: 'Muster',
+    labelAvgTextLen: 'Ø Textlänge',
+    labelChars: 'Zeichen',
+    labelHourDist: 'Tageszeit',
+    labelWeekdayDist: 'Wochentag',
     sectionActivity: 'Aktivität',
     sectionPerPeriod: 'Einträge pro Zeitraum',
     sectionCategories: 'Top-Kategorien',
@@ -240,6 +247,7 @@ export const de = {
     dateErrorTo: 'Ungültiges Bis-Datum (TT.MM.JJJJ)',
     dateErrorOrder: 'Von muss vor Bis liegen',
     btnApply: 'Anwenden',
+    comparePrev: (n: number) => n > 0 ? `+${n} ggü. Vorperiode` : n < 0 ? `${n} ggü. Vorperiode` : '= gleich',
   },
 
   help: {

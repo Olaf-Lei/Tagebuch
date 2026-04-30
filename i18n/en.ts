@@ -223,6 +223,13 @@ export const en: Strings = {
     cardStreak: 'Day\nstreak',
     cardRecord: 'Day\nrecord',
     sectionQualifiers: 'Ratings',
+    sectionQualifierDist: 'Rating distribution',
+    sectionQualifierByCat: 'Ratings by category',
+    sectionPattern: 'Patterns',
+    labelAvgTextLen: 'Avg. length',
+    labelChars: 'chars',
+    labelHourDist: 'Time of day',
+    labelWeekdayDist: 'Weekday',
     sectionActivity: 'Activity',
     sectionPerPeriod: 'Entries per period',
     sectionCategories: 'Top categories',
@@ -242,6 +249,7 @@ export const en: Strings = {
     dateErrorTo: 'Invalid to date (DD.MM.YYYY)',
     dateErrorOrder: 'From must be before To',
     btnApply: 'Apply',
+    comparePrev: (n: number) => n > 0 ? `+${n} vs. prev period` : n < 0 ? `${n} vs. prev period` : '= same',
   },
 
   help: {
