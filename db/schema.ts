@@ -93,12 +93,17 @@ export async function initDb(): Promise<void> {
       ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
   `);
 
-  // Seed default qualifiers (idempotent)
+  // Seed default qualifiers (idempotent insert)
   await db.execAsync(`
     INSERT OR IGNORE INTO qualifiers (name, emoji_preset, position) VALUES
       ('Laune', 'mood', 0),
       ('Befinden', 'health', 1);
   `);
+  // Korrektur: emoji_preset für Default-Qualifiers sicherstellen (INSERT OR IGNORE überschreibt nie)
+  try {
+    await db.execAsync(`UPDATE qualifiers SET emoji_preset = 'mood'   WHERE name = 'Laune'    AND emoji_preset != 'mood';`);
+    await db.execAsync(`UPDATE qualifiers SET emoji_preset = 'health' WHERE name = 'Befinden' AND emoji_preset != 'health';`);
+  } catch {}
 
   // Migrate mood/health → entry_qualifiers (idempotent via PRIMARY KEY)
   try {

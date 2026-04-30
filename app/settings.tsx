@@ -718,81 +718,88 @@ export default function SettingsScreen() {
               )}
 
               <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subQualifiers}</Text>
-              {qualifiers.map((q) => (
-                <View key={q.id} style={styles.catRow}>
-                  {editingQualId === q.id ? (
-                    <>
-                      <TextInput style={styles.catInput} value={editingQualName} onChangeText={setEditingQualName} onSubmitEditing={saveQualEdit} autoFocus />
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }}>
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
-                            <Pressable key={key} onPress={() => setEditingQualPreset(key)}
-                              style={{ padding: 6, borderRadius: 8, backgroundColor: editingQualPreset === key ? c.accent + '33' : 'transparent' }}>
-                              <Text style={{ fontSize: 16 }}>{preset.icon}</Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </ScrollView>
-                      <Pressable style={styles.catAction} onPress={saveQualEdit}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
+              {qualifiers.map((q) =>
+                editingQualId === q.id ? (
+                  <View key={q.id} style={{ backgroundColor: c.bg, borderRadius: 10, padding: 12, gap: 8 }}>
+                    <TextInput style={[styles.catInput, { marginHorizontal: 0 }]} value={editingQualName} onChangeText={setEditingQualName} autoFocus returnKeyType="done" />
+                    <View style={{ gap: 4 }}>
+                      {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
+                        <Pressable key={key} onPress={() => setEditingQualPreset(key)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
+                            backgroundColor: editingQualPreset === key ? c.accent + '22' : 'transparent',
+                            borderWidth: 1, borderColor: editingQualPreset === key ? c.accent : 'transparent' }}>
+                          <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
+                          {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
+                        </Pressable>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                       <Pressable style={styles.catAction} onPress={() => setEditingQualId(null)}><Text style={styles.mutedText}>✕</Text></Pressable>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={{ fontSize: 18, marginRight: 4 }}>{EMOJI_PRESETS[q.emoji_preset]?.icon}</Text>
-                      <Text style={styles.catName}>{q.name}</Text>
-                      <Switch
-                        value={q.active === 1}
-                        onValueChange={async (v) => { await setQualifierActive(q.id, v); getQualifiers().then(setQualifiers); }}
-                        trackColor={{ false: c.border, true: c.accent + '88' }}
-                        thumbColor={q.active === 1 ? c.accent : c.muted}
-                      />
-                      <Pressable style={styles.catAction} onPress={() => { setEditingQualId(q.id); setEditingQualName(q.name); setEditingQualPreset(q.emoji_preset); }}><Text style={styles.mutedText}>✎</Text></Pressable>
-                      <Pressable style={styles.catAction} onPress={() => confirmQualDelete(q)}><Text style={styles.dangerText}>✕</Text></Pressable>
-                    </>
-                  )}
-                </View>
-              ))}
+                      <Pressable style={styles.catAction} onPress={saveQualEdit}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <View key={q.id} style={styles.catRow}>
+                    <View style={{ flexDirection: 'row', gap: 1, marginRight: 6 }}>
+                      {(EMOJI_PRESETS[q.emoji_preset]?.emojis ?? ['❓','❓','❓','❓','❓']).map((e, i) => (
+                        <Text key={i} style={{ fontSize: 13 }}>{e}</Text>
+                      ))}
+                    </View>
+                    <Text style={[styles.catName, { fontSize: 13 }]}>{q.name}</Text>
+                    <Switch
+                      value={q.active === 1}
+                      onValueChange={async (v) => { await setQualifierActive(q.id, v); getQualifiers().then(setQualifiers); }}
+                      trackColor={{ false: c.border, true: c.accent + '88' }}
+                      thumbColor={q.active === 1 ? c.accent : c.muted}
+                    />
+                    <Pressable style={styles.catAction} onPress={() => { setEditingQualId(q.id); setEditingQualName(q.name); setEditingQualPreset(q.emoji_preset); }}><Text style={styles.mutedText}>✎</Text></Pressable>
+                    <Pressable style={styles.catAction} onPress={() => confirmQualDelete(q)}><Text style={styles.dangerText}>✕</Text></Pressable>
+                  </View>
+                )
+              )}
               {/* Schnell-Hinzufügen: Presets die noch nicht existieren */}
               {(() => {
-                const existing = new Set(qualifiers.map(q => q.emoji_preset + '|' + q.name));
                 const available = Object.entries(EMOJI_PRESETS).filter(
-                  ([key, preset]) => !qualifiers.some(q => q.name === preset.label)
+                  ([, preset]) => !qualifiers.some(q => q.name === preset.label)
                 );
                 if (available.length === 0) return null;
                 return (
                   <View style={{ marginTop: 8, gap: 6 }}>
                     <Text style={styles.subLabel}>{t.settings.qualifierQuickAdd}</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <View style={{ gap: 4 }}>
                       {available.map(([key, preset]) => (
                         <Pressable key={key}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: c.border }}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: c.border }}
                           onPress={async () => { await createQualifier(preset.label, key); getQualifiers().then(setQualifiers); }}>
-                          <Text style={{ fontSize: 15 }}>{preset.icon}</Text>
-                          <Text style={{ fontSize: 13, color: c.text }}>+ {preset.label}</Text>
+                          <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
+                          {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
+                          <Text style={{ marginLeft: 4, fontSize: 12, color: c.accent }}>＋</Text>
                         </Pressable>
                       ))}
                     </View>
                   </View>
                 );
               })()}
-              <View style={[styles.addRow, { marginTop: 8 }]}>
+              {/* Neuen Qualifier mit eigenem Namen anlegen */}
+              <View style={{ gap: 4, marginTop: 8 }}>
                 <TextInput
-                  style={[styles.addInput, { flex: 0.6 }]} value={newQualName} onChangeText={setNewQualName}
+                  style={styles.addInput} value={newQualName} onChangeText={setNewQualName}
                   placeholder={t.settings.newQualifierPlaceholder} placeholderTextColor={c.muted}
-                  onSubmitEditing={addQualifier} returnKeyType="done"
+                  returnKeyType="done"
                 />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 0.4 }}>
-                  <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-                    {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
-                      <Pressable key={key} onPress={() => setNewQualPreset(key)}
-                        style={{ padding: 6, borderRadius: 8, backgroundColor: newQualPreset === key ? c.accent + '33' : 'transparent' }}>
-                        <Text style={{ fontSize: 18 }}>{preset.icon}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-                <Pressable style={styles.addButton} onPress={addQualifier}>
-                  <Text style={styles.addButtonText}>＋</Text>
+                <View style={{ gap: 4 }}>
+                  {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
+                    <Pressable key={key} onPress={() => setNewQualPreset(key)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
+                        backgroundColor: newQualPreset === key ? c.accent + '22' : 'transparent',
+                        borderWidth: 1, borderColor: newQualPreset === key ? c.accent : 'transparent' }}>
+                      <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
+                      {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable style={[styles.addButton, { alignSelf: 'flex-end', width: 'auto', paddingHorizontal: 20 }]} onPress={addQualifier} disabled={!newQualName.trim()}>
+                  <Text style={styles.addButtonText}>＋ {newQualName.trim() || t.settings.newQualifierPlaceholder}</Text>
                 </Pressable>
               </View>
             </View>

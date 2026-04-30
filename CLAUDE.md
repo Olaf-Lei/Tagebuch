@@ -23,7 +23,8 @@ Ein Eintrag = Zeitstempel + Freitext + Kategorien + Tags. Keine Formulare, keine
 ```sql
 CREATE TABLE categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
+  name TEXT NOT NULL UNIQUE,
+  color TEXT                        -- Hex-Farbe für Badge-Anzeige
 );
 
 CREATE TABLE tags (
@@ -33,15 +34,14 @@ CREATE TABLE tags (
 
 CREATE TABLE entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  timestamp INTEGER NOT NULL,      -- Unix-Zeit, vom User editierbar
+  timestamp INTEGER NOT NULL,       -- Unix-Zeit, vom User editierbar
   text TEXT NOT NULL,
-  created_at INTEGER NOT NULL,     -- gesetzt beim Anlegen, nie ändern
+  created_at INTEGER NOT NULL,      -- gesetzt beim Anlegen, nie ändern
   updated_at INTEGER NOT NULL,
-  mood INTEGER,                    -- 1–5, nullable
-  health INTEGER,                  -- 1–5, nullable
   latitude REAL,
   longitude REAL,
   location_name TEXT
+  -- mood/health-Spalten existieren noch für Migration, werden aber nicht mehr genutzt
 );
 
 CREATE TABLE entry_categories (
@@ -55,9 +55,33 @@ CREATE TABLE entry_tags (
   tag_id INTEGER REFERENCES tags(id),
   PRIMARY KEY (entry_id, tag_id)
 );
+
+-- Custom Qualifiers: user-definierte 1–5-Bewertungen
+CREATE TABLE qualifiers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  emoji_preset TEXT NOT NULL DEFAULT 'mood',  -- Schlüssel in EMOJI_PRESETS
+  position INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  deleted INTEGER NOT NULL DEFAULT 0          -- Soft-Delete
+);
+
+CREATE TABLE entry_qualifiers (
+  entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+  qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE,
+  value INTEGER NOT NULL,                     -- 1–5
+  PRIMARY KEY (entry_id, qualifier_id)
+);
+
+-- Kategorie → Qualifier-Bindung: gebundene Qualifiers erscheinen oben im Formular
+CREATE TABLE category_qualifiers (
+  category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+  qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE,
+  PRIMARY KEY (category_id, qualifier_id)
+);
 ```
 
-Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — idempotent, sicher bei Updates.
+Neue Spalten/Tabellen per Migration (try/catch) in `db/schema.ts` — idempotent, sicher bei Updates.
 
 ## Projektstruktur
 
@@ -73,10 +97,10 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
   EntryCard.tsx
   TagInput.tsx
   DropdownPicker.tsx    -- Material Exposed Dropdown (single + multi)
-  QualifierPicker.tsx   -- Emoji-Reihe für Laune/Befinden
+  QualifierPicker.tsx   -- Emoji-Reihe für dynamische Qualifiers (1–5 Stufen)
   TimestampPicker.tsx
   HelpModal.tsx         -- Schritt-für-Schritt-Tour (nummeriete Hilfe-Screens)
-  qualifiers.ts         -- MOOD_EMOJIS, HEALTH_EMOJIS, emojiForLevel()
+  qualifiers.ts         -- EMOJI_PRESETS (mood/health/sleep/energy/pain/stress), emojiForLevel()
   theme.ts              -- useColors(), Dark/Light Palette
 /contexts
   BiometricContext.tsx  -- Lock-Screen als Overlay (App-State bleibt erhalten)
@@ -88,10 +112,11 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
   index.ts              -- useT() Hook → gibt typisierten String-Record zurück
 /db
   schema.ts             -- SQL-Definitionen + Migrationen + closeDb()
-  entries.ts            -- CRUD Entries (inkl. mood/health/geo)
+  entries.ts            -- CRUD Entries (qualifierValues: Record<number,number>)
   tags.ts               -- CRUD Tags (upsert bei Neueingabe)
-  categories.ts         -- CRUD Categories
-  stats.ts              -- Aggregierte Statistiken (inkl. getCategoryUsage, getTagUsage)
+  categories.ts         -- CRUD Categories (inkl. color)
+  qualifiers.ts         -- CRUD Qualifiers + category_qualifiers + getQualifiersForCategories()
+  stats.ts              -- Aggregierte Statistiken + getQualifierTrend()
 /sync
   webdav.ts             -- Nextcloud WebDAV Sync + Restore
   backgroundSync.ts     -- Konfigurierbares Auto-Sync-Intervall
@@ -105,6 +130,8 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 /hooks
   useEntries.ts
   useTags.ts
+  useQualifiers.ts      -- aktive Qualifiers ohne Kategorie-Kontext (EntryCard, index.tsx)
+  useLayout.ts          -- isWide, formMaxWidth, listMaxWidth
 ```
 
 ## Coding-Regeln
@@ -141,7 +168,9 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 ### new.tsx / entry/[id].tsx – Eintrag erstellen/bearbeiten
 - Timestamp: auto = jetzt, per Tap editierbar
 - Freitext (mehrzeilig, Autofokus beim Öffnen)
-- QualifierPicker: Laune (😞→😄) und Befinden (🤒→💪), je 5 Emoji-Stufen
+- QualifierPicker: dynamisch — kategorie-gebundene Qualifiers oben, dann globale
+  - Sichtbare Qualifiers = global (kein Kategorie-Link) ∪ Qualifiers der gewählten Kategorien
+  - Beim Abwählen einer Kategorie: deren Qualifier-Werte werden gelöscht
 - Standort-Pill: tippt GPS, zeigt Stadtname, Tap zum Entfernen
 - Kategorien: Multi-Select Dropdown
 - Tags: Freitexteingabe mit Autocomplete
@@ -149,7 +178,10 @@ Neue Spalten werden per Migration (try/catch) in `db/schema.ts` ergänzt — ide
 
 ### settings.tsx – Einstellungen
 Sektionen sind einklappbar (Accordion). Gliederung:
-- **Inhalte**: Kategorien und Tags verwalten (hinzufügen, umbenennen, löschen)
+- **Inhalte**: Kategorien (Farbe + 📊-Button für Qualifier-Zuweisung), Tags, Bewertungen verwalten
+  - Kategorien: Farb-Swatch, 📊-Button öffnet Qualifier-Modal, Umbenennen, Löschen
+  - Bewertungen: Liste mit aktiven/inaktiven Qualifiers, Schnell-Hinzufügen-Chips für nicht angelegte Presets
+  - Preset-Picker zeigt alle 5 Emojis des Presets inline
 - **Sync & Backup**: Nextcloud URL/User/PW/Pfad, Sync-Button, Restore-Button, letzter Sync-Zeitstempel, Auto-Sync-Intervall, Sync-Log (einklappbar)
 - **Sicherheit**: Biometrie-Lock (aktivieren/deaktivieren, Passwort ändern, Reset per Biometrie), Verschlüsselung (AES vor Upload, Schlüssel zurücksetzen)
 - **Erinnerungen**: Tägliche Benachrichtigung aktivieren, Uhrzeit wählen
@@ -160,7 +192,7 @@ Sektionen sind einklappbar (Accordion). Gliederung:
 ### stats.tsx – Statistiken
 - Globaler Zeitfilter (Tag / Woche / Monat / Jahr / Frei)
 - Eintragsanzahl gesamt / im Zeitraum
-- Laune- und Befinden-Trend als Doppelliniendiagramm
+- Qualifier-Trend: n Kurven (eine pro aktiver Qualifier), Farbpalette, Icon + Name als Legende
 - Heatmap der Eintragsfrequenz (adaptive Granularität)
 - Balkendiagramm Einträge pro Periode
 - Kategorien-Rang: Balkendiagramm der meistgenutzten Kategorien im Zeitraum
