@@ -24,7 +24,7 @@ export default function IndexScreen() {
   const router = useRouter();
   const c = useColors();
   const t = useT();
-  const { isWide } = useLayout();
+  const { isWide, listMaxWidth } = useLayout();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const fabBottom = Math.max(bottomInset, 16) + 12;
   const styles = useMemo(() => StyleSheet.create({
@@ -151,7 +151,7 @@ export default function IndexScreen() {
           </View>
         ),
       }} />
-      <View style={isWide ? { maxWidth: 720, alignSelf: 'center', width: '100%' } : undefined}>
+      <View style={listMaxWidth ? { maxWidth: listMaxWidth, alignSelf: 'center', width: '100%' } : undefined}>
         <View style={styles.filterBar}>
           <TextInput
             style={styles.searchInput}
@@ -203,7 +203,7 @@ export default function IndexScreen() {
           data={entries}
           keyExtractor={(e) => String(e.id)}
           renderItem={({ item }) => <EntryCard entry={item} highlight={search} qualifiers={qualifiers} />}
-          contentContainerStyle={[styles.list, isWide && { maxWidth: 720, alignSelf: 'center', width: '100%' }]}
+          contentContainerStyle={[styles.list, listMaxWidth != null && { maxWidth: listMaxWidth, alignSelf: 'center', width: '100%' }]}
           ListEmptyComponent={
             <Text style={styles.empty}>{t.list.empty}</Text>
           }

@@ -300,7 +300,7 @@ function BarChart({ items, c, labelWidth = 72 }: {
 export default function StatsScreen() {
   const c = useColors();
   const t = useT();
-  const { isWide } = useLayout();
+  const { isWide, listMaxWidth } = useLayout();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('month');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -341,8 +341,8 @@ export default function StatsScreen() {
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     content: { padding: 16, gap: 20, paddingBottom: 40 },
-    wideContent: { padding: 16, paddingBottom: 40, flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' },
-    wideBlock: { flexBasis: '47%', flexGrow: 1, minWidth: 280 },
+    wideContent: { padding: 16, paddingBottom: 40, flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start', alignSelf: 'center', width: '100%' },
+    wideBlock: { flexBasis: '47%', flexGrow: 1, minWidth: 320 },
     filterRow: { flexDirection: 'row', gap: 6 },
     chip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
@@ -437,7 +437,7 @@ export default function StatsScreen() {
       {loading ? (
         <View style={styles.loader}><ActivityIndicator color={c.accent} /></View>
       ) : (
-        <ScrollView contentContainerStyle={isWide ? styles.wideContent : styles.content}>
+        <ScrollView contentContainerStyle={[isWide ? styles.wideContent : styles.content, isWide && listMaxWidth != null && { maxWidth: listMaxWidth }]}>
 
           <View style={[styles.cardRow, isWide && { flexBasis: '100%' }]}>
             <View style={styles.card}>

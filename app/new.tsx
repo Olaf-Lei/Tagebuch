@@ -44,7 +44,7 @@ export default function NewEntryScreen() {
     headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
 
-  const { isWide } = useLayout();
+  const { isWide, formMaxWidth } = useLayout();
   const inputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -100,7 +100,7 @@ export default function NewEntryScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.content, isWide && { maxWidth: 680, alignSelf: 'center', width: '100%' }]}
+          contentContainerStyle={[styles.content, formMaxWidth != null && { maxWidth: formMaxWidth, alignSelf: 'center', width: '100%' }]}
           keyboardShouldPersistTaps="handled"
         >
           <TimestampPicker value={timestamp} onChange={setTimestamp} />
