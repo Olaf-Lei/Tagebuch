@@ -108,10 +108,10 @@ export default function SettingsScreen() {
     colorSwatch: { width: 22, height: 22, borderRadius: 11 },
     catName: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8 },
     catInput: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8, borderBottomWidth: 1, borderColor: c.accent },
-    catAction: { padding: 13, margin: -5 },
-    accentText: { color: c.accent, fontSize: 14 },
-    mutedText: { color: c.muted, fontSize: 16 },
-    dangerText: { color: c.danger, fontSize: 16 },
+    catAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    accentText: { color: c.accent, fontSize: 15 },
+    mutedText: { color: c.muted, fontSize: 22 },
+    dangerText: { color: c.danger, fontSize: 22 },
     addRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     addInput: {
       flex: 1, backgroundColor: c.bg, borderRadius: 8,
@@ -728,7 +728,7 @@ export default function SettingsScreen() {
                           {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
                             <Pressable key={key} onPress={() => setEditingQualPreset(key)}
                               style={{ padding: 6, borderRadius: 8, backgroundColor: editingQualPreset === key ? c.accent + '33' : 'transparent' }}>
-                              <Text style={{ fontSize: 16 }}>{preset.emojis[2]}</Text>
+                              <Text style={{ fontSize: 16 }}>{preset.icon}</Text>
                             </Pressable>
                           ))}
                         </View>
@@ -738,7 +738,7 @@ export default function SettingsScreen() {
                     </>
                   ) : (
                     <>
-                      <Text style={{ fontSize: 18, marginRight: 4 }}>{EMOJI_PRESETS[q.emoji_preset]?.emojis[2]}</Text>
+                      <Text style={{ fontSize: 18, marginRight: 4 }}>{EMOJI_PRESETS[q.emoji_preset]?.icon}</Text>
                       <Text style={styles.catName}>{q.name}</Text>
                       <Switch
                         value={q.active === 1}
@@ -767,7 +767,7 @@ export default function SettingsScreen() {
                         <Pressable key={key}
                           style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: c.border }}
                           onPress={async () => { await createQualifier(preset.label, key); getQualifiers().then(setQualifiers); }}>
-                          <Text style={{ fontSize: 15 }}>{preset.emojis[2]}</Text>
+                          <Text style={{ fontSize: 15 }}>{preset.icon}</Text>
                           <Text style={{ fontSize: 13, color: c.text }}>+ {preset.label}</Text>
                         </Pressable>
                       ))}
@@ -786,7 +786,7 @@ export default function SettingsScreen() {
                     {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
                       <Pressable key={key} onPress={() => setNewQualPreset(key)}
                         style={{ padding: 6, borderRadius: 8, backgroundColor: newQualPreset === key ? c.accent + '33' : 'transparent' }}>
-                        <Text style={{ fontSize: 18 }}>{preset.emojis[2]}</Text>
+                        <Text style={{ fontSize: 18 }}>{preset.icon}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -1127,7 +1127,7 @@ export default function SettingsScreen() {
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}
                     onPress={() => setCatQualSelected(prev => checked ? prev.filter(id => id !== q.id) : [...prev, q.id])}>
                     <Text style={{ fontSize: 20 }}>{checked ? '☑' : '☐'}</Text>
-                    <Text style={{ fontSize: 17 }}>{preset?.emojis[2]}</Text>
+                    <Text style={{ fontSize: 17 }}>{preset?.icon}</Text>
                     <Text style={{ fontSize: 15, color: c.text }}>{q.name}</Text>
                   </Pressable>
                 );

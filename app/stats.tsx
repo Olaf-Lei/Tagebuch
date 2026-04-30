@@ -188,7 +188,7 @@ function TrendChart({ series, c, noDataLabel }: {
             <View key={s.qualifier.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <View style={{ width: 14, height: 3, backgroundColor: color, borderRadius: 1.5 }} />
               <Text style={{ fontSize: 11, color: c.muted }}>
-                {preset?.emojis[2]} {s.qualifier.name}
+                {preset?.icon} {s.qualifier.name}
               </Text>
             </View>
           );

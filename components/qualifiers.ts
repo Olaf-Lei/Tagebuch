@@ -6,11 +6,11 @@ export function emojiForLevel(emojis: string[], level: number | null): string | 
   return emojis[level - 1];
 }
 
-export const EMOJI_PRESETS: Record<string, { label: string; emojis: string[] }> = {
-  mood:   { label: 'Laune',    emojis: ['😞', '😕', '😐', '🙂', '😄'] },
-  health: { label: 'Befinden', emojis: ['🤒', '😔', '😐', '🙂', '💪'] },
-  sleep:  { label: 'Schlaf',   emojis: ['😴', '😪', '😐', '🌙', '✨'] },
-  energy: { label: 'Energie',  emojis: ['🪫', '😩', '😐', '⚡', '🚀'] },
-  pain:   { label: 'Schmerz',  emojis: ['🔥', '😣', '😐', '😌', '✅'] },
-  stress: { label: 'Stress',   emojis: ['🤯', '😤', '😐', '😌', '🧘'] },
+export const EMOJI_PRESETS: Record<string, { label: string; icon: string; emojis: string[] }> = {
+  mood:   { label: 'Laune',    icon: '🌤️', emojis: ['😢', '😕', '😐', '🙂', '😄'] },
+  health: { label: 'Befinden', icon: '💪',  emojis: ['🤒', '🤧', '😐', '😊', '💪'] },
+  sleep:  { label: 'Schlaf',   icon: '💤',  emojis: ['😫', '😪', '😑', '😌', '🌟'] },
+  energy: { label: 'Energie',  icon: '⚡',  emojis: ['🪫', '😩', '🌀', '⚡', '🚀'] },
+  pain:   { label: 'Schmerz',  icon: '🩹',  emojis: ['😖', '😣', '😬', '😌', '✅'] },
+  stress: { label: 'Stress',   icon: '🧘',  emojis: ['🤯', '😤', '😬', '😌', '🧘'] },
 };
