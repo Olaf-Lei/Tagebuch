@@ -18,7 +18,9 @@ import {
 import { getTags, renameTag, deleteTag, type Tag } from '../db/tags';
 import {
   getQualifiers, createQualifier, updateQualifier,
-  setQualifierActive, deleteQualifier, type Qualifier,
+  setQualifierActive, deleteQualifier,
+  getCategoryQualifierIds, setCategoryQualifiers,
+  type Qualifier,
 } from '../db/qualifiers';
 import { EMOJI_PRESETS } from '../components/qualifiers';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
@@ -201,6 +203,10 @@ export default function SettingsScreen() {
   const [editingQualName, setEditingQualName] = useState('');
   const [editingQualPreset, setEditingQualPreset] = useState('mood');
 
+  // Kategorie → Qualifier-Link
+  const [catQualModal, setCatQualModal] = useState<Category | null>(null);
+  const [catQualSelected, setCatQualSelected] = useState<number[]>([]);
+
   const [config, setConfig] = useState<Partial<WebDavConfig>>({});
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -338,6 +344,18 @@ export default function SettingsScreen() {
     await updateQualifier(editingQualId, editingQualName, editingQualPreset);
     setEditingQualId(null);
     getQualifiers().then(setQualifiers);
+  };
+
+  const openCatQualModal = async (cat: Category) => {
+    const ids = await getCategoryQualifierIds(cat.id);
+    setCatQualSelected(ids);
+    setCatQualModal(cat);
+  };
+
+  const saveCatQualModal = async () => {
+    if (!catQualModal) return;
+    await setCategoryQualifiers(catQualModal.id, catQualSelected);
+    setCatQualModal(null);
   };
 
   const handleBioToggle = async (v: boolean) => {
@@ -656,6 +674,9 @@ export default function SettingsScreen() {
                     <>
                       <Pressable style={[styles.colorSwatch, { backgroundColor: cat.color ?? c.accent }]} onPress={() => openColorPicker(cat)} />
                       <Text style={styles.catName}>{cat.name}</Text>
+                      <Pressable style={styles.catAction} onPress={() => openCatQualModal(cat)}>
+                        <Text style={{ fontSize: 15, color: c.muted }}>📊</Text>
+                      </Pressable>
                       <Pressable style={styles.catAction} onPress={() => { setEditingId(cat.id); setEditingName(cat.name); }}><Text style={styles.mutedText}>✎</Text></Pressable>
                       <Pressable style={styles.catAction} onPress={() => confirmCatDelete(cat)}><Text style={styles.dangerText}>✕</Text></Pressable>
                     </>
@@ -731,7 +752,30 @@ export default function SettingsScreen() {
                   )}
                 </View>
               ))}
-              <View style={styles.addRow}>
+              {/* Schnell-Hinzufügen: Presets die noch nicht existieren */}
+              {(() => {
+                const existing = new Set(qualifiers.map(q => q.emoji_preset + '|' + q.name));
+                const available = Object.entries(EMOJI_PRESETS).filter(
+                  ([key, preset]) => !qualifiers.some(q => q.name === preset.label)
+                );
+                if (available.length === 0) return null;
+                return (
+                  <View style={{ marginTop: 8, gap: 6 }}>
+                    <Text style={styles.subLabel}>{t.settings.qualifierQuickAdd}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {available.map(([key, preset]) => (
+                        <Pressable key={key}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: c.border }}
+                          onPress={async () => { await createQualifier(preset.label, key); getQualifiers().then(setQualifiers); }}>
+                          <Text style={{ fontSize: 15 }}>{preset.emojis[2]}</Text>
+                          <Text style={{ fontSize: 13, color: c.text }}>+ {preset.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
+              <View style={[styles.addRow, { marginTop: 8 }]}>
                 <TextInput
                   style={[styles.addInput, { flex: 0.6 }]} value={newQualName} onChangeText={setNewQualName}
                   placeholder={t.settings.newQualifierPlaceholder} placeholderTextColor={c.muted}
@@ -1068,6 +1112,39 @@ export default function SettingsScreen() {
       </KeyboardAvoidingView>
 
       {/* Color Picker Modal */}
+      {/* ── Kategorie-Qualifier-Modal ── */}
+      <Modal visible={catQualModal !== null} transparent animationType="fade" onRequestClose={() => setCatQualModal(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setCatQualModal(null)}>
+          <Pressable onPress={e => e.stopPropagation()}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>{catQualModal ? t.settings.categoryQualifiersTitle(catQualModal.name) : ''}</Text>
+              <Text style={[styles.warnText, { marginBottom: 4 }]}>{t.settings.categoryQualifiersHint}</Text>
+              {qualifiers.map((q) => {
+                const preset = EMOJI_PRESETS[q.emoji_preset];
+                const checked = catQualSelected.includes(q.id);
+                return (
+                  <Pressable key={q.id}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}
+                    onPress={() => setCatQualSelected(prev => checked ? prev.filter(id => id !== q.id) : [...prev, q.id])}>
+                    <Text style={{ fontSize: 20 }}>{checked ? '☑' : '☐'}</Text>
+                    <Text style={{ fontSize: 17 }}>{preset?.emojis[2]}</Text>
+                    <Text style={{ fontSize: 15, color: c.text }}>{q.name}</Text>
+                  </Pressable>
+                );
+              })}
+              <View style={[styles.modalBtnRow, { marginTop: 8 }]}>
+                <Pressable style={styles.modalCancel} onPress={() => setCatQualModal(null)}>
+                  <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+                </Pressable>
+                <Pressable style={styles.modalBtn} onPress={saveCatQualModal}>
+                  <Text style={styles.modalBtnText}>{t.common.save}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={colorPickerCat !== null} transparent animationType="fade" onRequestClose={() => setColorPickerCat(null)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalBox}>

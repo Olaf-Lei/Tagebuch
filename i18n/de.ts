@@ -69,6 +69,9 @@ export const de = {
     qualifierPresetLabel: 'Emoji-Set',
     deleteQualifierTitle: (name: string) => `„${name}" löschen?`,
     deleteQualifierMsg: 'Historische Bewertungen bleiben erhalten.',
+    qualifierQuickAdd: 'Schnell hinzufügen',
+    categoryQualifiersTitle: (name: string) => `Bewertungen für „${name}"`,
+    categoryQualifiersHint: 'Diese Bewertungen erscheinen ganz oben, wenn die Kategorie ausgewählt ist.',
     colorPickerTitle: 'Farbe wählen',
 
     subNextcloud: 'Nextcloud / WebDAV',

@@ -71,6 +71,9 @@ export const en: Strings = {
     qualifierPresetLabel: 'Emoji set',
     deleteQualifierTitle: (name: string) => `Delete "${name}"?`,
     deleteQualifierMsg: 'Historical ratings are preserved.',
+    qualifierQuickAdd: 'Quick add',
+    categoryQualifiersTitle: (name: string) => `Ratings for "${name}"`,
+    categoryQualifiersHint: 'These ratings appear at the top when the category is selected.',
     colorPickerTitle: 'Pick color',
 
     subNextcloud: 'Nextcloud / WebDAV',

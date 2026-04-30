@@ -11,7 +11,7 @@ import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
 import { TimestampPicker } from '../components/TimestampPicker';
 import { EMOJI_PRESETS } from '../components/qualifiers';
-import { useQualifiers } from '../hooks/useQualifiers';
+import { getQualifiersForCategories, type Qualifier } from '../db/qualifiers';
 import { captureLocation, type GeoTag } from '../utils/location';
 import { useColors } from '../components/theme';
 import { getCategories, type Category } from '../db/categories';
@@ -55,8 +55,8 @@ export default function NewEntryScreen() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
   const [qualifierValues, setQualifierValues] = useState<Record<number, number>>({});
+  const [visibleQualifiers, setVisibleQualifiers] = useState<Qualifier[]>([]);
   const [geoTag, setGeoTag] = useState<GeoTag | null>(null);
-  const qualifiers = useQualifiers();
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -64,6 +64,21 @@ export default function NewEntryScreen() {
     getCategories().then(setCategories);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  useEffect(() => {
+    getQualifiersForCategories(selectedCategoryIds).then((qs) => {
+      setVisibleQualifiers(qs);
+      // Werte von Qualifiern die nicht mehr sichtbar sind, löschen
+      setQualifierValues((prev) => {
+        const visibleIds = new Set(qs.map(q => q.id));
+        const next = { ...prev };
+        for (const id of Object.keys(next)) {
+          if (!visibleIds.has(Number(id))) delete next[Number(id)];
+        }
+        return next;
+      });
+    });
+  }, [selectedCategoryIds]);
 
   const save = async () => {
     if (!text.trim() || saving) return;
@@ -116,7 +131,7 @@ export default function NewEntryScreen() {
             textAlignVertical="top"
           />
 
-          {qualifiers.map((q) => {
+          {visibleQualifiers.map((q) => {
             const preset = EMOJI_PRESETS[q.emoji_preset];
             if (!preset) return null;
             return (

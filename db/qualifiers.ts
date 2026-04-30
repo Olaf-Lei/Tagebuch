@@ -80,6 +80,52 @@ export async function getEntryQualifierValues(entryId: number): Promise<Record<n
   return result;
 }
 
+export async function getCategoryQualifierIds(categoryId: number): Promise<number[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ qualifier_id: number }>(
+    'SELECT qualifier_id FROM category_qualifiers WHERE category_id = ?',
+    [categoryId]
+  );
+  return rows.map(r => r.qualifier_id);
+}
+
+export async function setCategoryQualifiers(categoryId: number, qualifierIds: number[]): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM category_qualifiers WHERE category_id = ?', [categoryId]);
+  for (const qid of qualifierIds) {
+    await db.runAsync(
+      'INSERT OR IGNORE INTO category_qualifiers (category_id, qualifier_id) VALUES (?, ?)',
+      [categoryId, qid]
+    );
+  }
+}
+
+/** Qualifiers für das Formular: kategorie-gebundene zuerst, dann globale (ohne Kategorie-Link). */
+export async function getQualifiersForCategories(categoryIds: number[]): Promise<Qualifier[]> {
+  const db = await getDb();
+
+  const categoryLinked: Qualifier[] = categoryIds.length > 0
+    ? await db.getAllAsync<Qualifier>(
+        `SELECT DISTINCT q.id, q.name, q.emoji_preset, q.position, q.active
+         FROM qualifiers q JOIN category_qualifiers cq ON cq.qualifier_id = q.id
+         WHERE q.deleted = 0 AND q.active = 1
+           AND cq.category_id IN (${categoryIds.map(() => '?').join(',')})
+         ORDER BY q.position, q.id`,
+        categoryIds
+      )
+    : [];
+
+  const global = await db.getAllAsync<Qualifier>(
+    `SELECT id, name, emoji_preset, position, active FROM qualifiers
+     WHERE deleted = 0 AND active = 1
+       AND NOT EXISTS (SELECT 1 FROM category_qualifiers cq WHERE cq.qualifier_id = id)
+     ORDER BY position, id`
+  );
+
+  const linkedIds = new Set(categoryLinked.map(q => q.id));
+  return [...categoryLinked, ...global.filter(q => !linkedIds.has(q.id))];
+}
+
 export async function setEntryQualifierValues(
   entryId: number,
   values: Record<number, number>
