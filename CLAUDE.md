@@ -330,6 +330,7 @@ Installiertes Tooling:
 *Keine offenen Punkte.*
 
 ### Erledigt
+- **Web-Client** — `web/` Verzeichnis; React + Vite + sql.js + TypeScript; PHP-Proxy für WebDAV (CORS-Lösung); Deploy via `web/deploy.sh` (rsync nach Manitu); CRUD + Qualifiers + Kategorien + Tags; Navy/Gold-Theme
 - **Custom Qualifiers** — `qualifiers` + `entry_qualifiers` Tabellen; Migration mood/health; EMOJI_PRESETS; dynamische QualifierPicker in Formularen; generischer TrendChart in Stats; Verwaltung in Settings › Inhalte
 - **Responsives Layout** — `hooks/useLayout.ts`, `isWide >= 700px`; Calendar split-view; Stats zwei Spalten; Formulare + Liste maxWidth zentriert
 - **Standort-Karte** — `map.tsx` mit WebView + Leaflet + MarkerCluster; Zeitfilter; Tap → Entry öffnen
@@ -342,4 +343,4 @@ Installiertes Tooling:
 - Bilder/Anhänge
 - Gamification (Streaks etc.)
 - Android Widget (zu eng an generierten `android/`-Ordner gekoppelt)
-- Web-Client (React + sql.js + WebDAV) — zu großer separater Stack
+- Web-Client-Erweiterungen (Statistiken, Kalender, Kartenansicht im Browser)
