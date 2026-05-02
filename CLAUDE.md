@@ -1,7 +1,7 @@
 # CLAUDE.md – Tagebuch-App
 
 ## Was wir bauen
-Mobile-first Android-App zum schnellen Erfassen persönlicher Log-Einträge. Keine Public Cloud, keine Drittdienste. Alles läuft lokal oder auf dem eigenen NAS (Nextcloud).
+Mobile-first Android-App zum schnellen Erfassen persönlicher Log-Einträge, plus begleitender Web-Client für den Desktop-Browser. Keine Public Cloud, keine Drittdienste. Alles läuft lokal oder auf dem eigenen NAS (Nextcloud).
 
 ## Stack
 - Expo SDK 55 (React Native 0.83) mit TypeScript
@@ -316,6 +316,49 @@ Installiertes Tooling:
 - Nur planen wenn Berechtigung vorhanden; ohne Berechtigung graceful degradieren
 - Beim App-Start prüfen ob Notification noch geplant, ggf. neu registrieren
 
+## Web-Client (`web/`)
+
+Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Android-App — via WebDAV-Sync.
+
+### Stack
+- React 19 + Vite + TypeScript
+- sql.js (SQLite-WASM) — DB läuft komplett im Browser
+- Leaflet für die Kartenauswertung
+- CSS-Variablen für Dark-/Light-Modus
+- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff
+
+### Architektur
+- `src/db/database.ts` — alle SQL-Funktionen (kein Raw-SQL in Komponenten)
+- `src/sync/webdav.ts` — Download (`.db.enc` → entschlüsseln oder `.db`) + Upload nach Sync
+- `src/crypto.ts` — AES-Entschlüsselung kompatibel zur Android-App
+- `src/App.tsx` — Einstieg: Auth → DB laden → EntryList
+- `src/components/AuthScreen.tsx` — Login (URL, User, Passwort, Pfad, opt. AES-Key)
+- `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü
+- `src/components/EntryForm.tsx` — Erstellen/Bearbeiten (Overlay, Klick außen schließt)
+- `src/components/Stats.tsx` — Qualifier-Trend, Kategorien-/Tag-Balkendiagramme, Zeitfilter
+- `src/components/MapView.tsx` — Leaflet-Karte, CircleMarker, Popup → Eintrag öffnen
+- `src/components/EntryCard.tsx` — Karte mit Datum, Text-Preview, Qualifiers, Badges, Tags
+
+### Features
+- CRUD-Einträge inkl. Qualifiers, Kategorien, Tags
+- Dynamische Qualifier-Anzeige: kategorie-gebundene Qualifier ein-/ausblenden + Werte bereinigen
+- Statistiken: Qualifier-Trend-Chart, Kategorien-/Tag-Ranking, Vorperioden-Vergleich
+- Kartenauswertung mit Zeitfilter (7 Tage / 30 Tage / 365 Tage / Gesamt)
+- Dark-/Light-Modus (Burger-Menü, persistiert in `localStorage`)
+- Abmelden im Burger-Menü klar benannt
+- `periodRange('all')` → `{ from: 0, to: Number.MAX_SAFE_INTEGER }` (Unix-Sekunden-safe)
+
+### Deploy
+```bash
+cd web && bash deploy.sh   # baut + deployt via FTP nach Manitu (olovenet.de/tagebuch/)
+```
+Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
+
+### Coding-Regeln (Web)
+- Kein Raw-SQL in Komponenten — immer über `src/db/database.ts`
+- Alle Perioden-Funktionen in der jeweiligen Komponente lokal definieren (kein shared state)
+- CSS-Variablen für alle Farben, keine Hardcoded Hex-Werte außer `#0F1B2D`/`#C9A84C` in Inline-Styles
+
 ## Hilfe-Tour (components/HelpModal.tsx)
 - Modales Overlay mit nummerierten Schritten (Weiter / Zurück / Schließen)
 - Je ein Schritt pro Haupt-Feature: Eintrag erstellen, Suche & Filter, Kalender, Statistiken, Sync, Sicherheit
@@ -330,7 +373,7 @@ Installiertes Tooling:
 *Keine offenen Punkte.*
 
 ### Erledigt
-- **Web-Client** — `web/` Verzeichnis; React + Vite + sql.js + TypeScript; PHP-Proxy für WebDAV (CORS-Lösung); Deploy via `web/deploy.sh` (rsync nach Manitu); CRUD + Qualifiers + Kategorien + Tags; Navy/Gold-Theme
+- **Web-Client** — `web/`; React + Vite + sql.js + Leaflet; PHP-Proxy für WebDAV; CRUD + Qualifiers + Kategorien + Tags; Statistiken + Kartenauswertung; Dark-/Light-Modus; Burger-Menü mit Abmelden; Deploy via `web/deploy.sh` nach Manitu
 - **Custom Qualifiers** — `qualifiers` + `entry_qualifiers` Tabellen; Migration mood/health; EMOJI_PRESETS; dynamische QualifierPicker in Formularen; generischer TrendChart in Stats; Verwaltung in Settings › Inhalte
 - **Responsives Layout** — `hooks/useLayout.ts`, `isWide >= 700px`; Calendar split-view; Stats zwei Spalten; Formulare + Liste maxWidth zentriert
 - **Standort-Karte** — `map.tsx` mit WebView + Leaflet + MarkerCluster; Zeitfilter; Tap → Entry öffnen
@@ -343,4 +386,4 @@ Installiertes Tooling:
 - Bilder/Anhänge
 - Gamification (Streaks etc.)
 - Android Widget (zu eng an generierten `android/`-Ordner gekoppelt)
-- Web-Client-Erweiterungen (Statistiken, Kalender, Kartenansicht im Browser)
+- Web-Client: Kalenderansicht im Browser
