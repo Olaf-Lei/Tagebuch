@@ -24,7 +24,7 @@ import {
 } from '../db/qualifiers';
 import { EMOJI_PRESETS } from '../components/qualifiers';
 import QRCode from 'react-native-qrcode-svg';
-import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
+import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, pushNow, type WebDavConfig } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
 import { exportJSON, exportCSV } from '../utils/export';
@@ -212,6 +212,7 @@ export default function SettingsScreen() {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [autoSyncInterval, setAutoSyncIntervalState] = useState(0);
   const [encEnabled, setEncEnabledState] = useState(false);
   const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([]);
@@ -241,6 +242,7 @@ export default function SettingsScreen() {
   const [gdriveConnecting, setGDriveConnecting] = useState(false);
   const [gdriveSyncing, setGDriveSyncing] = useState(false);
   const [gdriveRestoring, setGDriveRestoring] = useState(false);
+  const [gdrivePushing, setGDrivePushing] = useState(false);
   const [gdriveLastSync, setGDriveLastSync] = useState<string | null>(null);
   const [gdriveHintExpanded, setGDriveHintExpanded] = useState(false);
   const [gdriveFolder, setGDriveFolder] = useState<{ id: string; name: string } | null>(null);
@@ -505,6 +507,58 @@ export default function SettingsScreen() {
               Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
             } finally {
               setRestoring(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handlePush = async () => {
+    Alert.alert(
+      'Lokale DB hochladen',
+      'Die lokale Datenbank wird ohne Merge direkt nach Nextcloud hochgeladen. Die Remote-Datei wird überschrieben.',
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: 'Hochladen', style: 'destructive', onPress: async () => {
+            setPushing(true);
+            try {
+              await pushNow();
+              const updated = await getLastSync();
+              setLastSync(updated);
+              Alert.alert('Fertig', 'Lokale DB erfolgreich hochgeladen.');
+            } catch (e: any) {
+              Alert.alert('Fehler', e.message ?? t.settings.unknownError);
+            } finally {
+              setPushing(false);
+              await refreshLog();
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleGDrivePush = async () => {
+    Alert.alert(
+      'Lokale DB hochladen',
+      'Die lokale Datenbank wird ohne Merge direkt nach Google Drive hochgeladen. Die Remote-Datei wird überschrieben.',
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: 'Hochladen', style: 'destructive', onPress: async () => {
+            setGDrivePushing(true);
+            try {
+              await gdrive.pushNow();
+              const updated = await gdrive.getLastSync();
+              setGDriveLastSync(updated);
+              Alert.alert('Fertig', 'Lokale DB erfolgreich hochgeladen.');
+            } catch (e: any) {
+              Alert.alert('Fehler', e.message ?? t.settings.unknownError);
+            } finally {
+              setGDrivePushing(false);
+              await refreshLog();
             }
           },
         },
@@ -850,8 +904,11 @@ export default function SettingsScreen() {
                       <Pressable style={styles.syncButton} onPress={handleGDriveSync} disabled={gdriveSyncing || gdriveRestoring}>
                         {gdriveSyncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveSyncNow}</Text>}
                       </Pressable>
-                      <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring}>
+                      <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
                         {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
+                      </Pressable>
+                      <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger, borderWidth: 1, backgroundColor: 'transparent' }]} onPress={handleGDrivePush} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
+                        {gdrivePushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ Lokale DB hochladen</Text>}
                       </Pressable>
                       {gdriveLastSync && <Text style={styles.lastSync}>{t.settings.gdriveLastSync}{gdriveLastSync}</Text>}
                     </>
@@ -887,8 +944,11 @@ export default function SettingsScreen() {
                   <Pressable style={[styles.syncButton, { marginTop: 2 }]} onPress={handleSync} disabled={syncing || restoring}>
                     {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.btnSyncNow}</Text>}
                   </Pressable>
-                  <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring}>
+                  <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring || pushing}>
                     {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
+                  </Pressable>
+                  <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger, borderWidth: 1, backgroundColor: 'transparent' }]} onPress={handlePush} disabled={syncing || restoring || pushing}>
+                    {pushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ Lokale DB hochladen</Text>}
                   </Pressable>
                   {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
                 </View>

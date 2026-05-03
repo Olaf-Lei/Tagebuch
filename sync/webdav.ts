@@ -186,6 +186,16 @@ async function _doSync(): Promise<void> {
     }
   }
 
+  await _uploadWebdav(rawDbPath, dbPath, credentials, buildUrl);
+  await appendLog('info', 'Sync erfolgreich');
+}
+
+async function _uploadWebdav(
+  rawDbPath: string,
+  dbPath: string,
+  credentials: string,
+  buildUrl: (filename: string) => string,
+): Promise<void> {
   // WAL in Hauptdatei flushen — sonst enthält die .db beim Upload nur 1 leere Page
   const db = await getDb();
   await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
@@ -248,7 +258,37 @@ async function _doSync(): Promise<void> {
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
   await SecureStore.setItemAsync(STORE_LAST_SYNC_MS, String(Date.now()));
-  await appendLog('info', 'Sync erfolgreich');
+}
+
+export async function pushNow(): Promise<void> {
+  if (_syncInProgress) return;
+  _syncInProgress = true;
+  try {
+    await _doPush();
+    _notifySyncListeners();
+  } finally {
+    _syncInProgress = false;
+  }
+}
+
+async function _doPush(): Promise<void> {
+  await appendLog('info', 'Push gestartet (lokale DB → Remote)');
+  const config = await loadConfig();
+  if (!config.url || !config.username || !config.password) {
+    const msg = 'Nextcloud nicht konfiguriert.';
+    await appendLog('error', msg);
+    throw new Error(msg);
+  }
+
+  const rawDbPath = await getDbPath();
+  const dbPath = rawDbPath.startsWith('file://') ? rawDbPath : `file://${rawDbPath}`;
+  const credentials = btoa(`${config.username}:${config.password}`);
+  const base = config.url.replace(/\/$/, '');
+  const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
+  const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
+
+  await _uploadWebdav(rawDbPath, dbPath, credentials, buildUrl);
+  await appendLog('info', 'Push erfolgreich');
 }
 
 export async function restoreNow(): Promise<void> {

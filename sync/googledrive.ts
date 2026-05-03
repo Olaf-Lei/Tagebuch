@@ -359,6 +359,15 @@ async function _doSync(): Promise<void> {
     }
   }
 
+  await _uploadGDrive(accessToken, rawDbPath, folderId);
+  await appendLog('info', 'Google Drive Sync erfolgreich');
+}
+
+async function _uploadGDrive(
+  accessToken: string,
+  rawDbPath: string,
+  folderId: string | undefined,
+): Promise<void> {
   const db = await getDb();
   await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
 
@@ -396,7 +405,26 @@ async function _doSync(): Promise<void> {
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
   await SecureStore.setItemAsync(STORE_LAST_SYNC_MS, String(Date.now()));
-  await appendLog('info', 'Google Drive Sync erfolgreich');
+}
+
+export async function pushNow(): Promise<void> {
+  if (_syncInProgress) return;
+  _syncInProgress = true;
+  try {
+    await _doPush();
+    _notifySyncListeners();
+  } finally {
+    _syncInProgress = false;
+  }
+}
+
+async function _doPush(): Promise<void> {
+  await appendLog('info', 'Push gestartet (lokale DB → Google Drive)');
+  const accessToken = await _getValidAccessToken();
+  const folderData = await getDriveFolder();
+  const rawDbPath = await getDbPath();
+  await _uploadGDrive(accessToken, rawDbPath, folderData?.id);
+  await appendLog('info', 'Push erfolgreich');
 }
 
 export async function restoreNow(): Promise<void> {
