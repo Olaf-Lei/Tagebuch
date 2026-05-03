@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
+import QRCode from 'react-native-qrcode-svg';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
 import { HelpModal } from '../components/HelpModal';
@@ -16,7 +17,9 @@ import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 import { useQualifiers } from '../hooks/useQualifiers';
 import { useT } from '../i18n';
-import { addSyncListener, syncIfConfigured } from '../sync/webdav';
+import { addSyncListener, loadConfig, syncNow as ncSyncNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
+import * as gdrive from '../sync/googledrive';
+import { exportEncKey } from '../utils/crypto';
 
 const HELP_SHOWN_KEY = 'help_shown';
 
@@ -79,15 +82,103 @@ export default function IndexScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [showBurgerMenu, setShowBurgerMenu] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
+
+  // Sync-Modal state
+  const [ncConfigured, setNcConfigured] = useState(false);
+  const [ncLastMs, setNcLastMs] = useState<number | null>(null);
+  const [ncLastStr, setNcLastStr] = useState<string | null>(null);
+  const [ncSyncing, setNcSyncing] = useState(false);
+  const [ncError, setNcError] = useState<string | null>(null);
+  const [gdriveConnectedState, setGDriveConnectedState] = useState(false);
+  const [gdriveLastMs, setGDriveLastMs] = useState<number | null>(null);
+  const [gdriveLastStr, setGDriveLastStr] = useState<string | null>(null);
+  const [gdriveSyncingState, setGDriveSyncingState] = useState(false);
+  const [gdriveError, setGDriveError] = useState<string | null>(null);
+
   const allTags = useTags();
   const qualifiers = useQualifiers();
 
-  const handleSync = useCallback(async () => {
-    if (syncing) return;
-    setSyncing(true);
-    try { await syncIfConfigured(); } finally { setSyncing(false); }
-  }, [syncing]);
+  const loadSyncStatus = useCallback(async () => {
+    const [cfg, lastMs, lastStr, connected, gLastMs, gLastStr] = await Promise.all([
+      loadConfig(),
+      ncGetLastSyncMs(),
+      ncGetLastSync(),
+      gdrive.isConnected(),
+      gdrive.getLastSyncMs(),
+      gdrive.getLastSync(),
+    ]);
+    setNcConfigured(!!(cfg.url && cfg.username && cfg.password));
+    setNcLastMs(lastMs);
+    setNcLastStr(lastStr);
+    setGDriveConnectedState(connected);
+    setGDriveLastMs(gLastMs);
+    setGDriveLastStr(gLastStr);
+  }, []);
+
+  const handleOpenSyncModal = useCallback(async () => {
+    await loadSyncStatus();
+    setShowSyncModal(true);
+  }, [loadSyncStatus]);
+
+  const handleNcSync = async () => {
+    setNcError(null);
+    setNcSyncing(true);
+    try {
+      await ncSyncNow();
+      const [ms, str] = await Promise.all([ncGetLastSyncMs(), ncGetLastSync()]);
+      setNcLastMs(ms);
+      setNcLastStr(str);
+    } catch (e: any) {
+      setNcError(e.message ?? 'Fehler');
+    } finally {
+      setNcSyncing(false);
+    }
+  };
+
+  const handleGDriveSync = async () => {
+    setGDriveError(null);
+    setGDriveSyncingState(true);
+    try {
+      await gdrive.syncNow();
+      const [ms, str] = await Promise.all([gdrive.getLastSyncMs(), gdrive.getLastSync()]);
+      setGDriveLastMs(ms);
+      setGDriveLastStr(str);
+    } catch (e: any) {
+      setGDriveError(e.message ?? 'Fehler');
+    } finally {
+      setGDriveSyncingState(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    const tasks: Promise<void>[] = [];
+    if (ncConfigured) tasks.push(handleNcSync());
+    if (gdriveConnectedState) tasks.push(handleGDriveSync());
+    await Promise.allSettled(tasks);
+  };
+
+  const handleShowWebLoginQR = async () => {
+    const cfg = await loadConfig();
+    const encKey = await exportEncKey();
+    const payload: Record<string, unknown> = { v: 1 };
+    if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
+    if (encKey) payload.encKey = encKey;
+    if (!payload.nc && !encKey) return;
+    setWebLoginQR(JSON.stringify(payload));
+    setShowBurgerMenu(false);
+  };
+
+  function trafficLight(lastMs: number | null, syncing: boolean): { color: string; dot: string } {
+    if (syncing) return { color: c.accent, dot: '⟳' };
+    if (lastMs === null) return { color: c.muted, dot: '⚫' };
+    const age = Date.now() - lastMs;
+    if (age < 24 * 3600_000) return { color: '#34C759', dot: '🟢' };
+    if (age < 72 * 3600_000) return { color: '#FF9500', dot: '🟡' };
+    return { color: '#FF3B30', dot: '🔴' };
+  }
 
   useEffect(() => {
     return addSyncListener(() => reload());
@@ -124,8 +215,8 @@ export default function IndexScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
         headerLeft: () => (
-          <Pressable onPress={() => router.push('/settings')} style={{ paddingHorizontal: 14, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 20, color: c.muted }}>☰</Text>
+          <Pressable onPress={() => setShowBurgerMenu(true)} style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ fontSize: 22, color: c.muted }}>☰</Text>
           </Pressable>
         ),
         headerTitle: () => (
@@ -139,14 +230,14 @@ export default function IndexScreen() {
         ),
         headerRight: () => (
           <View style={{ flexDirection: 'row' }}>
-            <Pressable onPress={handleSync} disabled={syncing} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={{ fontSize: 18, color: syncing ? c.muted : c.accent }}>↻</Text>
+            <Pressable onPress={handleOpenSyncModal} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 20, color: c.accent }}>↻</Text>
             </Pressable>
-            <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={{ fontSize: 17, color: c.muted, fontWeight: '600' }}>?</Text>
+            <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 18, color: c.muted, fontWeight: '600' }}>?</Text>
             </Pressable>
-            <Pressable onPress={() => setShowViewMenu(true)} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={{ fontSize: 19, color: c.accent }}>📊</Text>
+            <Pressable onPress={() => setShowViewMenu(true)} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 20, color: c.accent }}>📊</Text>
             </Pressable>
           </View>
         ),
@@ -245,6 +336,133 @@ export default function IndexScreen() {
       </Modal>
 
       <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* ── Burger-Menü ── */}
+      <Modal visible={showBurgerMenu} transparent animationType="fade" onRequestClose={() => setShowBurgerMenu(false)}>
+        <Pressable style={{ flex: 1 }} onPress={() => setShowBurgerMenu(false)}>
+          <View style={{
+            position: 'absolute', top: 54, left: 8,
+            backgroundColor: c.surface, borderRadius: 14, elevation: 10,
+            shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8,
+            borderWidth: 1, borderColor: c.border, minWidth: 200, overflow: 'hidden',
+          }}>
+            {([
+              { label: t.burgerMenu.settings, icon: '⚙', onPress: () => { setShowBurgerMenu(false); router.push('/settings'); } },
+              { label: t.burgerMenu.webLoginQR, icon: '📷', onPress: handleShowWebLoginQR },
+            ]).map(({ label, icon, onPress }, i, arr) => (
+              <Pressable
+                key={label}
+                onPress={onPress}
+                style={({ pressed }) => [{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  paddingHorizontal: 18, paddingVertical: 16,
+                  borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: c.border,
+                  backgroundColor: pressed ? c.border : 'transparent',
+                }]}
+              >
+                <Text style={{ fontSize: 20 }}>{icon}</Text>
+                <Text style={{ fontSize: 16, color: c.text }}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Web-Login QR ── */}
+      <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => setWebLoginQR(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 }} onPress={() => setWebLoginQR(null)}>
+          <View style={{ backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 14, alignItems: 'center' }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: c.text }}>{t.settings.webLoginQRTitle}</Text>
+            {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
+            <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{t.settings.webLoginQRHint}</Text>
+            <Pressable style={{ borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 14, width: '100%', alignItems: 'center' }} onPress={() => setWebLoginQR(null)}>
+              <Text style={{ color: c.accent, fontSize: 16 }}>{t.settings.webLoginQRClose}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Sync-Status-Modal ── */}
+      <Modal visible={showSyncModal} transparent animationType="fade" onRequestClose={() => setShowSyncModal(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 }} onPress={() => setShowSyncModal(false)}>
+          <Pressable onPress={e => e.stopPropagation()}>
+            <View style={{ backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 16 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: c.text }}>{t.syncStatus.title}</Text>
+
+              {/* Nextcloud */}
+              <View style={{ gap: 8, backgroundColor: c.bg, borderRadius: 12, padding: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>☁ {t.syncStatus.ncLabel}</Text>
+                  <Text style={{ fontSize: 20 }}>{trafficLight(ncLastMs, ncSyncing).dot}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: c.muted }}>
+                  {!ncConfigured
+                    ? t.syncStatus.notConfigured
+                    : ncLastStr
+                      ? t.syncStatus.lastSync(ncLastStr)
+                      : t.syncStatus.never}
+                </Text>
+                {ncError && <Text style={{ fontSize: 13, color: '#FF3B30' }}>{t.syncStatus.syncError(ncError)}</Text>}
+                {ncConfigured && (
+                  <Pressable
+                    style={{ backgroundColor: c.accent, borderRadius: 8, padding: 12, alignItems: 'center', opacity: ncSyncing ? 0.6 : 1 }}
+                    onPress={handleNcSync}
+                    disabled={ncSyncing}
+                  >
+                    {ncSyncing
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{t.syncStatus.syncNow}</Text>}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Google Drive */}
+              <View style={{ gap: 8, backgroundColor: c.bg, borderRadius: 12, padding: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>⬛ {t.syncStatus.driveLabel}</Text>
+                  <Text style={{ fontSize: 20 }}>{trafficLight(gdriveLastMs, gdriveSyncingState).dot}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: c.muted }}>
+                  {!gdriveConnectedState
+                    ? t.syncStatus.notConnected
+                    : gdriveLastStr
+                      ? t.syncStatus.lastSync(gdriveLastStr)
+                      : t.syncStatus.never}
+                </Text>
+                {gdriveError && <Text style={{ fontSize: 13, color: '#FF3B30' }}>{t.syncStatus.syncError(gdriveError)}</Text>}
+                {gdriveConnectedState && (
+                  <Pressable
+                    style={{ backgroundColor: c.accent, borderRadius: 8, padding: 12, alignItems: 'center', opacity: gdriveSyncingState ? 0.6 : 1 }}
+                    onPress={handleGDriveSync}
+                    disabled={gdriveSyncingState}
+                  >
+                    {gdriveSyncingState
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{t.syncStatus.syncNow}</Text>}
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Buttons */}
+              {(ncConfigured || gdriveConnectedState) && (
+                <Pressable
+                  style={{ backgroundColor: c.accent, borderRadius: 10, padding: 14, alignItems: 'center', opacity: (ncSyncing || gdriveSyncingState) ? 0.6 : 1 }}
+                  onPress={handleSyncAll}
+                  disabled={ncSyncing || gdriveSyncingState}
+                >
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{t.syncStatus.syncAll}</Text>
+                </Pressable>
+              )}
+              <Pressable
+                style={{ borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 14, alignItems: 'center' }}
+                onPress={() => setShowSyncModal(false)}
+              >
+                <Text style={{ color: c.muted, fontSize: 16 }}>{t.syncStatus.close}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

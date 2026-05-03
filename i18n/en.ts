@@ -127,6 +127,12 @@ export const en: Strings = {
     logCopied: 'Copied',
     logCopiedMsg: 'Log copied to clipboard.',
 
+    webLoginQR: 'Web login QR code',
+    webLoginQRTitle: 'Web login',
+    webLoginQRHint: 'Scan this QR code at olovenet.de/tagebuch to log in.',
+    webLoginQRClose: 'Close',
+    webLoginQRNoConfig: 'No sync configuration found.',
+
     subBiometric: 'Biometric lock',
     biometricActive: 'Biometric lock active',
     biometricUnavailable: 'No fingerprint or face recognition set up.',
@@ -306,5 +312,24 @@ export const en: Strings = {
     noEntries: 'No entries on this day.',
     tapHint: 'Tap a day to see entries.',
     weekPrefix: 'W',
+  },
+
+  syncStatus: {
+    title: 'Sync status',
+    ncLabel: 'Nextcloud',
+    driveLabel: 'Google Drive',
+    never: 'Never synced',
+    lastSync: (ts: string) => `Last: ${ts}`,
+    notConfigured: 'Not configured',
+    notConnected: 'Not connected',
+    syncNow: 'Sync now',
+    syncAll: 'Sync all',
+    close: 'Close',
+    syncError: (msg: string) => `Error: ${msg}`,
+  },
+
+  burgerMenu: {
+    settings: 'Settings',
+    webLoginQR: 'Web login QR code',
   },
 };

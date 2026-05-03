@@ -125,6 +125,12 @@ export const de = {
     logCopied: 'Kopiert',
     logCopiedMsg: 'Log in die Zwischenablage kopiert.',
 
+    webLoginQR: 'Web-Login QR-Code',
+    webLoginQRTitle: 'Web-Login',
+    webLoginQRHint: 'Scanne diesen QR-Code auf olovenet.de/tagebuch, um dich dort anzumelden.',
+    webLoginQRClose: 'Schließen',
+    webLoginQRNoConfig: 'Keine Sync-Konfiguration vorhanden.',
+
     subBiometric: 'Biometrie-Lock',
     biometricActive: 'Biometrie-Lock aktiv',
     biometricUnavailable: 'Kein Fingerabdruck oder Gesichtserkennung eingerichtet.',
@@ -304,6 +310,25 @@ export const de = {
     noEntries: 'Keine Einträge an diesem Tag.',
     tapHint: 'Tag antippen um Einträge zu sehen.',
     weekPrefix: 'KW',
+  },
+
+  syncStatus: {
+    title: 'Sync-Status',
+    ncLabel: 'Nextcloud',
+    driveLabel: 'Google Drive',
+    never: 'Nie synchronisiert',
+    lastSync: (ts: string) => `Zuletzt: ${ts}`,
+    notConfigured: 'Nicht eingerichtet',
+    notConnected: 'Nicht verbunden',
+    syncNow: 'Synchronisieren',
+    syncAll: 'Alle synchronisieren',
+    close: 'Schließen',
+    syncError: (msg: string) => `Fehler: ${msg}`,
+  },
+
+  burgerMenu: {
+    settings: 'Einstellungen',
+    webLoginQR: 'Web-Login QR-Code',
   },
 };
 

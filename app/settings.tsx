@@ -23,6 +23,7 @@ import {
   type Qualifier,
 } from '../db/qualifiers';
 import { EMOJI_PRESETS } from '../components/qualifiers';
+import QRCode from 'react-native-qrcode-svg';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, type WebDavConfig } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../sync/syncLog';
@@ -72,7 +73,7 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
-    inhalte: true,
+    inhalte: false,
     sync: false,
     syncGdrive: false,
     syncNextcloud: false,
@@ -91,12 +92,12 @@ export default function SettingsScreen() {
     sectionHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.surface, borderRadius: 10,
-      paddingHorizontal: 14, paddingVertical: 13, marginTop: 10,
+      paddingHorizontal: 16, paddingVertical: 16, marginTop: 10,
     },
     sectionHeaderText: {
-      fontSize: 13, fontWeight: '700', color: c.text, textTransform: 'uppercase', letterSpacing: 0.8,
+      fontSize: 14, fontWeight: '700', color: c.text, textTransform: 'uppercase', letterSpacing: 0.8,
     },
-    sectionChevron: { fontSize: 16, color: c.muted },
+    sectionChevron: { fontSize: 18, color: c.muted },
     sectionBody: {
       backgroundColor: c.surface, borderRadius: 10, marginTop: 2,
       paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14, gap: 8,
@@ -108,7 +109,7 @@ export default function SettingsScreen() {
     colorSwatch: { width: 22, height: 22, borderRadius: 11 },
     catName: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8 },
     catInput: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 8, borderBottomWidth: 1, borderColor: c.accent },
-    catAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    catAction: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
     accentText: { color: c.accent, fontSize: 15 },
     mutedText: { color: c.muted, fontSize: 22 },
     dangerText: { color: c.danger, fontSize: 22 },
@@ -117,30 +118,30 @@ export default function SettingsScreen() {
       flex: 1, backgroundColor: c.bg, borderRadius: 8,
       paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: c.text,
     },
-    addButton: { backgroundColor: c.accent, borderRadius: 8, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    addButton: { backgroundColor: c.accent, borderRadius: 8, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
     addButtonText: { color: '#fff', fontSize: 22 },
     subLabel: { fontSize: 11, fontWeight: '600', color: c.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 6 },
     fieldLabel: { fontSize: 12, color: c.muted, marginTop: 4 },
-    field: { backgroundColor: c.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: c.text },
-    saveButton: { borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
-    saveText: { color: c.accent, fontSize: 15 },
-    syncButton: { backgroundColor: c.accent, borderRadius: 10, padding: 14, alignItems: 'center' },
-    syncText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    field: { backgroundColor: c.bg, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: c.text },
+    saveButton: { borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 16, alignItems: 'center' },
+    saveText: { color: c.accent, fontSize: 16 },
+    syncButton: { backgroundColor: c.accent, borderRadius: 10, padding: 16, alignItems: 'center' },
+    syncText: { color: '#fff', fontSize: 16, fontWeight: '600' },
     lastSync: { fontSize: 12, color: c.muted, textAlign: 'center' },
     placeholder: { backgroundColor: c.bg, borderRadius: 8, padding: 14, alignItems: 'center' },
     intervalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    intervalChip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+    intervalChip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 11 },
     intervalChipActive: { backgroundColor: c.accent, borderColor: c.accent },
-    intervalChipText: { fontSize: 13, color: c.muted },
+    intervalChipText: { fontSize: 14, color: c.muted },
     intervalChipTextActive: { color: '#fff', fontWeight: '600' },
     exportRow: { flexDirection: 'row', gap: 10 },
     exportBtn: { flex: 1, borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
     exportBtnText: { color: c.accent, fontSize: 14, fontWeight: '600' },
     switchRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      backgroundColor: c.bg, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12,
+      backgroundColor: c.bg, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 14,
     },
-    switchLabel: { fontSize: 15, color: c.text },
+    switchLabel: { fontSize: 16, color: c.text },
     warnText: { fontSize: 12, color: c.muted },
     resetBtn: { borderWidth: 1, borderColor: c.danger, borderRadius: 10, padding: 12, alignItems: 'center' },
     resetBtnText: { color: c.danger, fontSize: 14 },
@@ -161,10 +162,10 @@ export default function SettingsScreen() {
     subSectionHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.bg, borderRadius: 8,
-      paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+      paddingHorizontal: 14, paddingVertical: 14, marginTop: 4,
     },
-    subSectionHeaderText: { fontSize: 12, fontWeight: '600', color: c.text, textTransform: 'uppercase', letterSpacing: 0.6 },
-    subSectionChevron: { fontSize: 14, color: c.muted },
+    subSectionHeaderText: { fontSize: 13, fontWeight: '600', color: c.text, textTransform: 'uppercase', letterSpacing: 0.6 },
+    subSectionChevron: { fontSize: 16, color: c.muted },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
     modalBox: { backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 12 },
     modalTitle: { fontSize: 17, fontWeight: '700', color: c.text },
@@ -227,6 +228,8 @@ export default function SettingsScreen() {
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
   const [pwError, setPwError] = useState('');
+
+  const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
 
   const [encKeyModal, setEncKeyModal] = useState<'export' | 'import' | null>(null);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
@@ -455,6 +458,16 @@ export default function SettingsScreen() {
     const log = await getSyncLog();
     setSyncLog(log);
     setLogExpanded(true);
+  };
+
+  const handleShowWebLoginQR = async () => {
+    const cfg = await loadConfig();
+    const encKey = await exportEncKey();
+    const payload: Record<string, unknown> = { v: 1 };
+    if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
+    if (encKey) payload.encKey = encKey;
+    if (!payload.nc && !encKey) { Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginQRNoConfig); return; }
+    setWebLoginQR(JSON.stringify(payload));
   };
 
   const handleSync = async () => {
@@ -926,6 +939,10 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
+              {/* Web-Login QR */}
+              <Pressable style={[styles.saveButton, { marginTop: 14 }]} onPress={handleShowWebLoginQR}>
+                <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
+              </Pressable>
             </View>
           )}
 
@@ -1219,6 +1236,20 @@ export default function SettingsScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Web-Login QR ── */}
+      <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => setWebLoginQR(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setWebLoginQR(null)}>
+          <View style={[styles.modalBox, { alignItems: 'center' }]}>
+            <Text style={styles.modalTitle}>{t.settings.webLoginQRTitle}</Text>
+            {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
+            <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 14 }]}>{t.settings.webLoginQRHint}</Text>
+            <Pressable style={[styles.saveButton, { marginTop: 14, width: '100%' }]} onPress={() => setWebLoginQR(null)}>
+              <Text style={styles.syncText}>{t.settings.webLoginQRClose}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
       </Modal>
 
       {/* ── Schlüssel exportieren ── */}
