@@ -318,35 +318,45 @@ Installiertes Tooling:
 
 ## Web-Client (`web/`)
 
-Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Android-App — via WebDAV-Sync.
+Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Android-App — via Nextcloud WebDAV oder Google Drive (oder beides gleichzeitig).
 
 ### Stack
 - React 19 + Vite + TypeScript
 - sql.js (SQLite-WASM) — DB läuft komplett im Browser
 - Leaflet für die Kartenauswertung
 - CSS-Variablen für Dark-/Light-Modus
-- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff
+- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff und Google OAuth Token-Exchange
 
 ### Architektur
 - `src/db/database.ts` — alle SQL-Funktionen (kein Raw-SQL in Komponenten)
-- `src/sync/webdav.ts` — Download (`.db.enc` → entschlüsseln oder `.db`) + Upload nach Sync
-- `src/crypto.ts` — AES-Entschlüsselung kompatibel zur Android-App
-- `src/App.tsx` — Einstieg: Auth → DB laden → EntryList
-- `src/components/AuthScreen.tsx` — Login (URL, User, Passwort, Pfad, opt. AES-Key)
-- `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü
+- `src/sync/webdav.ts` — Download (`.db.enc` → entschlüsseln oder `.db`) + Upload
+- `src/sync/googledrive.ts` — Google Drive Sync via OAuth 2.0 PKCE; Ordner-Browser; Up-/Download
+- `src/crypto.ts` — AES-Entschlüsselung/Verschlüsselung kompatibel zur Android-App
+- `src/App.tsx` — Einstieg: Auth → DB laden → EntryList; dualer Upload an beide Backends
+- `src/components/AuthScreen.tsx` — Login für Nextcloud + Google Drive
+- `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü links
 - `src/components/EntryForm.tsx` — Erstellen/Bearbeiten (Overlay, Klick außen schließt)
 - `src/components/Stats.tsx` — Qualifier-Trend, Kategorien-/Tag-Balkendiagramme, Zeitfilter
 - `src/components/MapView.tsx` — Leaflet-Karte, CircleMarker, Popup → Eintrag öffnen
 - `src/components/EntryCard.tsx` — Karte mit Datum, Text-Preview, Qualifiers, Badges, Tags
+- `src/components/SyncSettings.tsx` — Bottom-Sheet: Nextcloud-Tab + Google-Drive-Tab mit Ordner-Browser
+- `public/favicon.svg` — Navy/Gold Buch-Icon (identisch zur Android-App-Farbgebung)
 
 ### Features
 - CRUD-Einträge inkl. Qualifiers, Kategorien, Tags
 - Dynamische Qualifier-Anzeige: kategorie-gebundene Qualifier ein-/ausblenden + Werte bereinigen
-- Statistiken: Qualifier-Trend-Chart, Kategorien-/Tag-Ranking, Vorperioden-Vergleich
+- Statistiken: Qualifier-Trend-Chart, Kategorien-/Tag-Ranking
 - Kartenauswertung mit Zeitfilter (7 Tage / 30 Tage / 365 Tage / Gesamt)
 - Dark-/Light-Modus (Burger-Menü, persistiert in `localStorage`)
-- Abmelden im Burger-Menü klar benannt
-- `periodRange('all')` → `{ from: 0, to: Number.MAX_SAFE_INTEGER }` (Unix-Sekunden-safe)
+- **Dualer Sync**: Nextcloud + Google Drive gleichzeitig aktiv; Upload geht parallel an beide Backends (`Promise.allSettled`)
+- **Google Drive**: OAuth 2.0 PKCE-Flow; Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser (Ebene für Ebene, Breadcrumb, „Hier wählen"); Folder-ID in `localStorage`; Scope: `drive`
+- **Kein bidirektionaler Merge im Web**: Sync = Download remote → DB ersetzen → Upload; letzter Upload gewinnt
+
+### Timestamps
+Alle Timestamps in der DB sind **Millisekunden** (Android `Date.now()`). Alle Web-Funktionen und SQL-Abfragen verwenden ms:
+- `periodRange` → `{ from: Date.now() - n * 86400_000, to: Date.now() }`
+- SQLite date-Funktion: `date(e.timestamp / 1000, 'unixepoch')`
+- `new Date(ts)` direkt (kein `* 1000`)
 
 ### Deploy
 ```bash
@@ -358,6 +368,7 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 - Kein Raw-SQL in Komponenten — immer über `src/db/database.ts`
 - Alle Perioden-Funktionen in der jeweiligen Komponente lokal definieren (kein shared state)
 - CSS-Variablen für alle Farben, keine Hardcoded Hex-Werte außer `#0F1B2D`/`#C9A84C` in Inline-Styles
+- Timestamps immer in ms behandeln — niemals `* 1000` oder `/ 1000` bei Anzeige/Vergleich
 
 ## Hilfe-Tour (components/HelpModal.tsx)
 - Modales Overlay mit nummerierten Schritten (Weiter / Zurück / Schließen)
@@ -373,6 +384,9 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 *Keine offenen Punkte.*
 
 ### Erledigt
+- **QR-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": zeigt Modal mit QR (react-native-qrcode-svg); Payload `{v,nc:{url,user,pass,path},encKey}`; Web-Client AuthScreen: „📷 Mit QR-Code anmelden" öffnet Kamera-Overlay (jsQR), füllt Felder automatisch. Relay-Variante (Web zeigt QR, App schickt Credentials) als späteres Upgrade vorgemerkt.
+- **Web-Client Export** — Burger-Menü → Export-Untermenü: JSON / CSV / Markdown; alle Metadaten (Kategorien, Tags, Qualifiers, Geo-Daten); CSV mit dynamischen Qualifier-Spalten
+- **Web-Client Google Drive Sync** — OAuth 2.0 PKCE; dualer Upload (Nextcloud + Drive gleichzeitig); SyncSettings-Panel mit Tabs; navigierbarer Ordner-Browser; Favicon; Timestamp-Bugfixes (ms statt s)
 - **Web-Client** — `web/`; React + Vite + sql.js + Leaflet; PHP-Proxy für WebDAV; CRUD + Qualifiers + Kategorien + Tags; Statistiken + Kartenauswertung; Dark-/Light-Modus; Burger-Menü mit Abmelden; Deploy via `web/deploy.sh` nach Manitu
 - **Custom Qualifiers** — `qualifiers` + `entry_qualifiers` Tabellen; Migration mood/health; EMOJI_PRESETS; dynamische QualifierPicker in Formularen; generischer TrendChart in Stats; Verwaltung in Settings › Inhalte
 - **Responsives Layout** — `hooks/useLayout.ts`, `isWide >= 700px`; Calendar split-view; Stats zwei Spalten; Formulare + Liste maxWidth zentriert
