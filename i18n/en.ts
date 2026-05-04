@@ -49,6 +49,7 @@ export const en: Strings = {
     labelCategories: 'Categories',
     categoriesPlaceholder: 'Select categories…',
     labelTags: 'Tags',
+    labelIndulgences: 'Indulgences',
     deleteEntry: 'Delete entry',
     deleteConfirmTitle: 'Delete entry?',
     deleteConfirmMsg: 'This action cannot be undone.',

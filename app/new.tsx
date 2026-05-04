@@ -9,6 +9,7 @@ import { useLayout } from '../hooks/useLayout';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
+import { IndulgenceChips } from '../components/IndulgenceChips';
 import { TimestampPicker } from '../components/TimestampPicker';
 import { EMOJI_PRESETS } from '../components/qualifiers';
 import { getQualifiersForCategories, type Qualifier } from '../db/qualifiers';
@@ -185,6 +186,15 @@ export default function NewEntryScreen() {
               setSelectedTagNames(names);
             }}
             onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150)}
+          />
+          <IndulgenceChips
+            label={t.entry.labelIndulgences}
+            selectedTagIds={selectedTagIds}
+            selectedTagNames={selectedTagNames}
+            onChange={(ids, names) => {
+              setSelectedTagIds(ids);
+              setSelectedTagNames(names);
+            }}
           />
         </ScrollView>
       </KeyboardAvoidingView>

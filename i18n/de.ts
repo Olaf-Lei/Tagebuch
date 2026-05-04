@@ -47,6 +47,7 @@ export const de = {
     labelCategories: 'Kategorien',
     categoriesPlaceholder: 'Kategorien wählen…',
     labelTags: 'Tags',
+    labelIndulgences: 'Genussmittel',
     deleteEntry: 'Eintrag löschen',
     deleteConfirmTitle: 'Eintrag löschen?',
     deleteConfirmMsg: 'Diese Aktion kann nicht rückgängig gemacht werden.',
