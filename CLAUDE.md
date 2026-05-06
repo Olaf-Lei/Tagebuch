@@ -325,7 +325,7 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 - sql.js (SQLite-WASM) — DB läuft komplett im Browser
 - Leaflet für die Kartenauswertung
 - CSS-Variablen für Dark-/Light-Modus
-- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff und Google OAuth Token-Exchange
+- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff, Google OAuth Token-Exchange und Relay-Code-Login
 
 ### Architektur
 - `src/db/database.ts` — alle SQL-Funktionen (kein Raw-SQL in Komponenten)
@@ -333,7 +333,7 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 - `src/sync/googledrive.ts` — Google Drive Sync via OAuth 2.0 PKCE; Ordner-Browser; Up-/Download
 - `src/crypto.ts` — AES-Entschlüsselung/Verschlüsselung kompatibel zur Android-App
 - `src/App.tsx` — Einstieg: Auth → DB laden → EntryList; dualer Upload an beide Backends
-- `src/components/AuthScreen.tsx` — Login für Nextcloud + Google Drive
+- `src/components/AuthScreen.tsx` — Login für Nextcloud + Google Drive; QR-Scan (ZXing + TRY_HARDER, Kamera-Wechsel); Relay-Code-Eingabe
 - `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü links
 - `src/components/EntryForm.tsx` — Erstellen/Bearbeiten (Overlay, Klick außen schließt)
 - `src/components/Stats.tsx` — Qualifier-Trend, Kategorien-/Tag-Balkendiagramme, Zeitfilter
@@ -349,7 +349,8 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 - Kartenauswertung mit Zeitfilter (7 Tage / 30 Tage / 365 Tage / Gesamt)
 - Dark-/Light-Modus (Burger-Menü, persistiert in `localStorage`)
 - **Dualer Sync**: Nextcloud + Google Drive gleichzeitig aktiv; Upload geht parallel an beide Backends (`Promise.allSettled`)
-- **Google Drive**: OAuth 2.0 PKCE-Flow; Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser (Ebene für Ebene, Breadcrumb, „Hier wählen"); Folder-ID in `localStorage`; Scope: `drive`
+- **Google Drive**: OAuth 2.0 PKCE-Flow; PKCE-Verifier in `sessionStorage` (nicht `localStorage` — sonst bei Safari-Redirect verloren); Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser; Folder-ID in `localStorage`; Scope: `drive`
+- **Relay-Code-Login**: Android generiert 6-stelligen Code (POST `proxy.php?action=store_code`), Web gibt ihn ein (GET `proxy.php?action=fetch_code&code=…`); Credentials im Server-Temp, gültig 5 Min., danach automatisch gelöscht; Alphabet ohne 0/O/1/I
 - **Kein bidirektionaler Merge im Web**: Sync = Download remote → DB ersetzen → Upload; letzter Upload gewinnt
 
 ### Timestamps
@@ -384,7 +385,7 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 *Keine offenen Punkte.*
 
 ### Erledigt
-- **QR-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": zeigt Modal mit QR (react-native-qrcode-svg); Payload `{v,nc:{url,user,pass,path},encKey}`; Web-Client AuthScreen: „📷 Mit QR-Code anmelden" öffnet Kamera-Overlay (jsQR), füllt Felder automatisch. Relay-Variante (Web zeigt QR, App schickt Credentials) als späteres Upgrade vorgemerkt.
+- **QR-Code + Relay-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": QR (react-native-qrcode-svg) + „6-stelligen Code erzeugen" Button im selben Modal; Payload `{v,nc:{url,user,pass,path},encKey}`; Web AuthScreen: QR-Scan via ZXing (BrowserQRCodeReader, TRY_HARDER, Kamera-Wechsel-Button) + 6-Zeichen-Eingabefeld; Relay via `proxy.php` store_code/fetch_code.
 - **Web-Client Export** — Burger-Menü → Export-Untermenü: JSON / CSV / Markdown; alle Metadaten (Kategorien, Tags, Qualifiers, Geo-Daten); CSV mit dynamischen Qualifier-Spalten
 - **Web-Client Google Drive Sync** — OAuth 2.0 PKCE; dualer Upload (Nextcloud + Drive gleichzeitig); SyncSettings-Panel mit Tabs; navigierbarer Ordner-Browser; Favicon; Timestamp-Bugfixes (ms statt s)
 - **Web-Client** — `web/`; React + Vite + sql.js + Leaflet; PHP-Proxy für WebDAV; CRUD + Qualifiers + Kategorien + Tags; Statistiken + Kartenauswertung; Dark-/Light-Modus; Burger-Menü mit Abmelden; Deploy via `web/deploy.sh` nach Manitu
