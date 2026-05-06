@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "2.6.6",
+    "version": "2.6.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
         "backgroundColor": "#0F1B2D"
       },
       "package": "com.tagebuch.app",
-      "versionCode": 57,
+      "versionCode": 58,
       "intentFilters": [
         {
           "action": "VIEW",
