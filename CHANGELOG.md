@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.6.7 — 2026-05-06
+- Web: Korrupter DB-Upload behoben (WASM-Heap statt DB-Bytes wurde hochgeladen)
+- Web: `created_at`/`updated_at` in Millisekunden statt Sekunden
+- Web: Google OAuth — PKCE-Verifier in sessionStorage (verhindert "Missing code verifier"-Fehler)
+- Web: QR-Scanner auf ZXing mit TRY_HARDER umgestellt; Kamera-Wechsel-Button
+- Web + Android: Relay-Code-Login — 6-stelliger Code als Alternative zum QR-Scan (gültig 5 Min.)
+
 ## v2.6.1 — 2026-04-30
 - Statistiken: Vorperioden-Vergleich unter der Eintragsanzahl-Karte (+/− ggü. Vorperiode)
 - Statistiken: Qualifier-Übersichtsleiste (Ø-Wert + Emoji pro aktivem Qualifier)

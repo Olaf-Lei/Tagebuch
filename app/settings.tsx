@@ -231,6 +231,8 @@ export default function SettingsScreen() {
   const [pwError, setPwError] = useState('');
 
   const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
+  const [relayCode, setRelayCode] = useState<string | null>(null);
+  const [relayLoading, setRelayLoading] = useState(false);
 
   const [encKeyModal, setEncKeyModal] = useState<'export' | 'import' | null>(null);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
@@ -460,6 +462,29 @@ export default function SettingsScreen() {
     const log = await getSyncLog();
     setSyncLog(log);
     setLogExpanded(true);
+  };
+
+  const handleGenerateRelayCode = async () => {
+    setRelayCode(null);
+    setRelayLoading(true);
+    try {
+      const cfg = await loadConfig();
+      const encKey = await exportEncKey();
+      const payload: Record<string, unknown> = { v: 1 };
+      if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
+      if (encKey) payload.encKey = encKey;
+      if (!payload.nc && !encKey) { Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginQRNoConfig); setRelayLoading(false); return; }
+      const res = await fetch('https://olovenet.de/tagebuch/proxy.php?action=store_code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.code) throw new Error(json.error ?? 'Fehler');
+      setRelayCode(json.code);
+    } catch {
+      Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginRelayError);
+    } finally {
+      setRelayLoading(false);
+    }
   };
 
   const handleShowWebLoginQR = async () => {
@@ -1299,14 +1324,29 @@ export default function SettingsScreen() {
       </Modal>
 
       {/* ── Web-Login QR ── */}
-      <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => setWebLoginQR(null)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setWebLoginQR(null)}>
+      <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => { setWebLoginQR(null); setRelayCode(null); }}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
           <View style={[styles.modalBox, { alignItems: 'center' }]}>
             <Text style={styles.modalTitle}>{t.settings.webLoginQRTitle}</Text>
             {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
             <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 14 }]}>{t.settings.webLoginQRHint}</Text>
-            <Pressable style={[styles.saveButton, { marginTop: 14, width: '100%' }]} onPress={() => setWebLoginQR(null)}>
-              <Text style={styles.syncText}>{t.settings.webLoginQRClose}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, width: '100%' }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+              <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+            </View>
+            {relayCode ? (
+              <>
+                <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
+                <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
+              </>
+            ) : (
+              <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
+                <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
+              </Pressable>
+            )}
+            <Pressable style={[styles.modalCancel, { marginTop: 10, width: '100%' }]} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
+              <Text style={styles.modalCancelText}>{t.settings.webLoginQRClose}</Text>
             </Pressable>
           </View>
         </Pressable>

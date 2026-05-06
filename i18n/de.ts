@@ -131,6 +131,10 @@ export const de = {
     webLoginQRHint: 'Scanne diesen QR-Code auf olovenet.de/tagebuch, um dich dort anzumelden.',
     webLoginQRClose: 'Schließen',
     webLoginQRNoConfig: 'Keine Sync-Konfiguration vorhanden.',
+    webLoginRelayBtn: '6-stelligen Code erzeugen',
+    webLoginRelayLoading: 'Wird erzeugt…',
+    webLoginRelayHint: 'Gib diesen Code im Web-Client ein. Gültig 5 Minuten.',
+    webLoginRelayError: 'Code konnte nicht erstellt werden.',
 
     subBiometric: 'Biometrie-Lock',
     biometricActive: 'Biometrie-Lock aktiv',

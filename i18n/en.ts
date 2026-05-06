@@ -133,6 +133,10 @@ export const en: Strings = {
     webLoginQRHint: 'Scan this QR code at olovenet.de/tagebuch to log in.',
     webLoginQRClose: 'Close',
     webLoginQRNoConfig: 'No sync configuration found.',
+    webLoginRelayBtn: 'Generate 6-digit code',
+    webLoginRelayLoading: 'Generating…',
+    webLoginRelayHint: 'Enter this code in the web client. Valid for 5 minutes.',
+    webLoginRelayError: 'Could not generate code.',
 
     subBiometric: 'Biometric lock',
     biometricActive: 'Biometric lock active',
