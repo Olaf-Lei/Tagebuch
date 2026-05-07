@@ -52,7 +52,7 @@ export async function getEntries(opts?: {
   const db = await getDb();
 
   let query = `
-    SELECT DISTINCT e.id, e.timestamp, e.text, e.created_at, e.updated_at,
+    SELECT e.id, e.timestamp, e.text, e.created_at, e.updated_at,
       e.latitude, e.longitude, e.location_name as locationName
     FROM entries e
   `;
@@ -85,6 +85,7 @@ export async function getEntries(opts?: {
 
   query += joins.map((j) => ` ${j}`).join('');
   if (conditions.length > 0) query += ` WHERE ` + conditions.join(` AND `);
+  if (joins.length > 0) query += ` GROUP BY e.id`;
   query += ` ORDER BY e.timestamp DESC`;
 
   const rows = await db.getAllAsync<Omit<Entry, 'categories' | 'tags' | 'qualifierValues'>>(query, params);
