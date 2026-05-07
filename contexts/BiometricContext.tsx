@@ -11,6 +11,7 @@ import { checkFallbackPassword, checkRecoveryCode } from '../utils/auth';
 import { useT } from '../i18n';
 
 const STORE_KEY = 'biometric_enabled';
+const BG_TS_KEY  = 'biometric_bg_ts';
 
 interface BiometricContextValue {
   enabled: boolean;
@@ -39,22 +40,30 @@ function LockScreen({ onUnlock, bioAvailable }: { onUnlock: () => void; bioAvail
   const [recovery, setRecovery] = useState('');
   const [error, setError] = useState('');
 
+  const isAuthenticating = useRef(false);
+
   const tryBio = useCallback(async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: t.lock.title,
-      cancelLabel: t.common.cancel,
-      disableDeviceFallback: true,
-    });
-    if (result.success) {
-      onUnlock();
-    } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-      setMode('password');
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: t.lock.title,
+        cancelLabel: t.common.cancel,
+        disableDeviceFallback: true,
+      });
+      if (result.success) {
+        onUnlock();
+      } else if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
+        setMode('password');
+      }
+    } finally {
+      isAuthenticating.current = false;
     }
   }, [onUnlock, t]);
 
   useEffect(() => {
     if (mode === 'bio' && bioAvailable) {
-      const timer = setTimeout(tryBio, 150);
+      const timer = setTimeout(tryBio, 600);
       return () => clearTimeout(timer);
     }
   }, [mode, bioAvailable, tryBio]);
@@ -213,7 +222,9 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
       const stored = await SecureStore.getItemAsync(STORE_KEY);
       if (stored === 'true') {
         setEnabledState(true);
-        setLocked(true);
+        const bgTs = await SecureStore.getItemAsync(BG_TS_KEY);
+        const elapsed = bgTs ? Date.now() - parseInt(bgTs, 10) : Infinity;
+        if (elapsed > LOCK_DELAY_MS) setLocked(true);
       }
     })();
   }, []);
@@ -225,6 +236,7 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
     if (!enabled) return;
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       if (next === 'background' || next === 'inactive') {
+        SecureStore.setItemAsync(BG_TS_KEY, Date.now().toString());
         if (!lockTimer.current) {
           lockTimer.current = setTimeout(() => {
             setLocked(true);
@@ -232,6 +244,7 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
           }, LOCK_DELAY_MS);
         }
       } else if (next === 'active') {
+        SecureStore.setItemAsync(BG_TS_KEY, '0');
         if (lockTimer.current) {
           clearTimeout(lockTimer.current);
           lockTimer.current = null;

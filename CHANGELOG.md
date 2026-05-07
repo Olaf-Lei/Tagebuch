@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.7.2 — 2026-05-07
+- Biometrie-Lock: Hintergrund-Timestamp in SecureStore — kein Sperren wenn App innerhalb 15s zurückkommt
+- Biometrie-Button: Concurrent-Guard + 600ms Verzögerung (statt 150ms) verhindert sofortiges system_cancel
+
 ## v2.7.1 — 2026-05-07
 - Einstellungen: Web-Frontend URL konfigurierbar (SecureStore `web_frontend_url`)
 - Relay-Code-Button nur sichtbar wenn URL gesetzt; nutzt konfigurierte URL statt hardcoded olovenet.de
