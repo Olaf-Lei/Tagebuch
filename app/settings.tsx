@@ -1366,7 +1366,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
                 </>
               ) : webFrontendUrl ? (
-                <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
+                <Pressable style={[styles.syncButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
                   <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
                 </Pressable>
               ) : (

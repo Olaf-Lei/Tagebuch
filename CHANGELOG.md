@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.7.6 — 2026-05-07
+- Android: Relay-Code-Button im Hellen Modus sichtbar (syncButton statt saveButton)
+- Web: „Einmalcode eingeben" im Burger-Menü — Relay-Code auch nach dem Login nutzbar
+- Web: Brute-Force-Schutz für Code-Eingabe — max. 5 Versuche, danach exponentieller Backoff
+
 ## v2.7.5 — 2026-05-07
 - Einstellungen: Experten-Sektion vereinfacht (kein Nested-Accordion mehr, Inhalt direkt sichtbar)
 - Einstellungen: QR-Code-Modal scrollbar — Relay-Code-Abschnitt war auf kleinen Geräten abgeschnitten
