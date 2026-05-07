@@ -382,7 +382,11 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 
 ### Offen (nach Priorität)
 
-*Keine offenen Punkte.*
+**Play Store Veröffentlichung**
+- [ ] Datenschutzerklärung hosten (GitHub Gist o.ä.) → URL in `app.json` (`android.privacyPolicyUrl`) statt `"TODO"` eintragen
+- [ ] Screenshots erstellen (mind. 2 Phone-Screenshots, auf dem Gerät)
+- [ ] Google Play Developer Account aktiv (in Prüfung) → Play Console: App anlegen, AAB hochladen, Data Safety + Content Rating ausfüllen
+- [ ] AAB v2.7.2 bauen: `npx expo prebuild --platform android --clean && bash scripts/prepare-android.sh && cd android && ./gradlew bundleRelease`
 
 ### Erledigt
 - **QR-Code + Relay-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": QR (react-native-qrcode-svg) + „6-stelligen Code erzeugen" Button im selben Modal; Payload `{v,nc:{url,user,pass,path},encKey}`; Web AuthScreen: QR-Scan via ZXing (BrowserQRCodeReader, TRY_HARDER, Kamera-Wechsel-Button) + 6-Zeichen-Eingabefeld; Relay via `proxy.php` store_code/fetch_code.
