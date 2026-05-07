@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.8.4 — 2026-05-07 [demo branch]
+- Interaktive Ortswahl per Karte: 🗺️-Button neben GPS-Pill in Eintrag erstellen/bearbeiten
+- Android: WebView + Leaflet, Tap → Marker → expo-location Reverse-Geocoding → Übernehmen
+- Web: Leaflet-Modal, Klick → Marker → Nominatim Reverse-Geocoding
+- Web: createEntry/updateEntry nehmen jetzt lat/lng/locationName entgegen
+- Demo-Einträge tragen jetzt Tag „demo" → in bestehenden Umgebungen per Tag-Filter isolierbar
+
 ## v2.8.3 — 2026-05-07 [demo branch]
 - Demo-Daten entfernen: Button wechselt nach Laden zu „Demo-Daten entfernen" (rot)
 - is_demo-Spalte auf entries-Tabelle (Migration), DELETE WHERE is_demo=1 beim Aufräumen
