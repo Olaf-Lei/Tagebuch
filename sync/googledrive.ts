@@ -12,9 +12,7 @@ import { getDbPath, closeDb, initDb, getDb } from '../db/schema';
 import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
-
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-const REDIRECT_URI = 'com.googleusercontent.apps.YOUR_GOOGLE_CLIENT_ID:/oauth2redirect';
+import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email';
 
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
