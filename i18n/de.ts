@@ -48,6 +48,8 @@ export const de = {
     labelMood: 'Laune',
     labelHealth: 'Befinden',
     locationAdd: '📍 Standort hinzufügen',
+    locationPickerTitle: 'Ort wählen',
+    locationPickerConfirm: 'Übernehmen',
     labelCategories: 'Kategorien',
     categoriesPlaceholder: 'Kategorien wählen…',
     labelTags: 'Tags',

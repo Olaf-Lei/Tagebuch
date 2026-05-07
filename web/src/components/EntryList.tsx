@@ -14,7 +14,8 @@ interface Props {
     entryId: number | null,
     text: string, timestamp: number,
     categoryIds: number[], tagNames: string[],
-    qualifierValues: Record<number, number>
+    qualifierValues: Record<number, number>,
+    latitude?: number | null, longitude?: number | null, locationName?: string | null
   ) => Promise<void>
   onDelete: (id: number) => Promise<void>
   onLogout: () => void
@@ -81,9 +82,9 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
     setFilterTags(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  async function handleSave(text: string, timestamp: number, categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>) {
+  async function handleSave(text: string, timestamp: number, categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>, latitude?: number | null, longitude?: number | null, locationName?: string | null) {
     const entryId = formMode?.mode === 'edit' ? formMode.entryId : null
-    await onSave(entryId, text, timestamp, categoryIds, tagNames, qualifierValues)
+    await onSave(entryId, text, timestamp, categoryIds, tagNames, qualifierValues, latitude, longitude, locationName)
     setFormMode(null)
     setRefresh(r => r + 1)
   }

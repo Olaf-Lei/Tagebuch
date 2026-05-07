@@ -199,12 +199,13 @@ export default function App() {
 
   async function handleSave(
     entryId: number | null, text: string, timestamp: number,
-    categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>
+    categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>,
+    latitude?: number | null, longitude?: number | null, locationName?: string | null
   ) {
     setSaving(true)
     try {
-      if (entryId == null) createEntry(text, timestamp, categoryIds, tagNames, qualifierValues)
-      else updateEntry(entryId, text, timestamp, categoryIds, tagNames, qualifierValues)
+      if (entryId == null) createEntry(text, timestamp, categoryIds, tagNames, qualifierValues, latitude, longitude, locationName)
+      else updateEntry(entryId, text, timestamp, categoryIds, tagNames, qualifierValues, latitude, longitude, locationName)
       await _uploadDb()
       if (config) setNcLastSync(new Date())
       if (driveIsConnected()) setDriveLastSync(new Date())

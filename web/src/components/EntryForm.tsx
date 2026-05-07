@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { EntryDetail, Category, Tag, Qualifier } from '../types'
 import { getQualifierCategoryLinks } from '../db/database'
+import { LocationPickerModal } from './LocationPickerModal'
 
 const EMOJI_PRESETS: Record<string, string[]> = {
   mood:   ['😢', '😕', '😐', '🙂', '😄'],
@@ -27,7 +28,7 @@ interface Props {
   tags: Tag[]
   qualifiers: Qualifier[]
   saving: boolean
-  onSave: (text: string, timestamp: number, categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>) => void
+  onSave: (text: string, timestamp: number, categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>, latitude?: number | null, longitude?: number | null, locationName?: string | null) => void
   onDelete?: () => void
   onCancel: () => void
 }
@@ -41,6 +42,11 @@ export default function EntryForm({ entry, categories, tags, qualifiers, saving,
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([])
   const [qualCatLinks, setQualCatLinks] = useState<Record<number, number[]>>({})
+  const [latitude, setLatitude] = useState<number | null>(entry?.latitude ?? null)
+  const [longitude, setLongitude] = useState<number | null>(entry?.longitude ?? null)
+  const [locationName, setLocationName] = useState<string | null>(entry?.location_name ?? null)
+  const [showMapPicker, setShowMapPicker] = useState(false)
+  const [locating, setLocating] = useState(false)
   const textRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { textRef.current?.focus() }, [])
@@ -121,10 +127,33 @@ export default function EntryForm({ entry, categories, tags, qualifiers, saving,
     setTagSuggestions([])
   }
 
+  async function handleGpsLocation() {
+    if (!navigator.geolocation) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        setLatitude(lat)
+        setLongitude(lng)
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, { headers: { 'Accept-Language': 'de' } })
+          const d = await r.json()
+          setLocationName(d.address?.city ?? d.address?.town ?? d.address?.village ?? d.address?.suburb ?? d.address?.county ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+        } catch {
+          setLocationName(`${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+        }
+        setLocating(false)
+      },
+      () => setLocating(false)
+    )
+  }
+
+  function clearLocation() { setLatitude(null); setLongitude(null); setLocationName(null) }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const tagNames = tagInput.split(',').map(s => s.trim()).filter(Boolean)
-    onSave(text, fromDatetimeLocal(timestampStr), selectedCats, tagNames, qualValues)
+    onSave(text, fromDatetimeLocal(timestampStr), selectedCats, tagNames, qualValues, latitude, longitude, locationName)
   }
 
   return (
@@ -195,6 +224,37 @@ export default function EntryForm({ entry, categories, tags, qualifiers, saving,
               </div>
             )}
           </div>
+
+          <label style={styles.label}>Standort</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {locationName ? (
+              <button type="button"
+                style={{ ...styles.chip, background: '#C9A84C33', borderColor: 'var(--accent)', color: 'var(--accent)', flex: 1 }}
+                onClick={clearLocation}>
+                📍 {locationName}  ✕
+              </button>
+            ) : (
+              <button type="button"
+                style={{ ...styles.chip, flex: 1 }}
+                onClick={handleGpsLocation}
+                disabled={locating}>
+                {locating ? '…' : '📍 GPS'}
+              </button>
+            )}
+            <button type="button"
+              style={{ ...styles.chip, flexShrink: 0 }}
+              onClick={() => setShowMapPicker(true)}>
+              🗺️
+            </button>
+          </div>
+          {showMapPicker && (
+            <LocationPickerModal
+              initialLat={latitude}
+              initialLng={longitude}
+              onSelect={(lat, lng, name) => { setLatitude(lat); setLongitude(lng); setLocationName(name); setShowMapPicker(false) }}
+              onClose={() => setShowMapPicker(false)}
+            />
+          )}
 
           <label style={styles.label}>Genussmittel</label>
           <div style={styles.chips}>

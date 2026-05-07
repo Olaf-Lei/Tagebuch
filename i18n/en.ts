@@ -50,6 +50,8 @@ export const en: Strings = {
     labelMood: 'Mood',
     labelHealth: 'Health',
     locationAdd: '📍 Add location',
+    locationPickerTitle: 'Pick location',
+    locationPickerConfirm: 'Apply',
     labelCategories: 'Categories',
     categoriesPlaceholder: 'Select categories…',
     labelTags: 'Tags',

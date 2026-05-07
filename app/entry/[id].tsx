@@ -13,6 +13,7 @@ import { TimestampPicker } from '../../components/TimestampPicker';
 import { EMOJI_PRESETS } from '../../components/qualifiers';
 import { getQualifiersForCategories, type Qualifier } from '../../db/qualifiers';
 import { captureLocation, type GeoTag } from '../../utils/location';
+import { LocationPickerModal } from '../../components/LocationPickerModal';
 import { useColors } from '../../components/theme';
 import { useLayout } from '../../hooks/useLayout';
 import { getCategories, type Category } from '../../db/categories';
@@ -39,14 +40,16 @@ export default function EditEntryScreen() {
     label: { fontSize: 13, color: c.muted, marginTop: 4 },
     deleteButton: { marginTop: 20, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: c.danger, alignItems: 'center' },
     deleteText: { color: c.danger, fontSize: 15 },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     locationBtn: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8,
+      flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 12, paddingVertical: 8,
       borderRadius: 20, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
     },
     locationBtnActive: { borderColor: c.accent },
     locationBtnText: { fontSize: 13, color: c.muted },
     locationBtnTextActive: { color: c.accent },
+    mapBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
     headerSave: { paddingHorizontal: 16, paddingVertical: 10 },
     headerSaveText: { fontSize: 16, fontWeight: '700' },
   }), [c]);
@@ -63,6 +66,7 @@ export default function EditEntryScreen() {
   const [visibleQualifiers, setVisibleQualifiers] = useState<Qualifier[]>([]);
   const [geoTag, setGeoTag] = useState<GeoTag | null>(null);
   const [locating, setLocating] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -196,24 +200,36 @@ export default function EditEntryScreen() {
               />
             );
           })}
-          <Pressable
-            style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
-            onPress={async () => {
-              if (geoTag) { setGeoTag(null); return; }
-              setLocating(true);
-              const tag = await captureLocation();
-              if (tag) setGeoTag(tag);
-              setLocating(false);
-            }}
-            disabled={locating}
-          >
-            {locating
-              ? <ActivityIndicator size="small" color={c.accent} />
-              : <Text style={[styles.locationBtnText, geoTag && styles.locationBtnTextActive]}>
-                  {geoTag ? `📍 ${geoTag.locationName}  ✕` : t.entry.locationAdd}
-                </Text>
-            }
-          </Pressable>
+          <View style={styles.locationRow}>
+            <Pressable
+              style={[styles.locationBtn, geoTag && styles.locationBtnActive]}
+              onPress={async () => {
+                if (geoTag) { setGeoTag(null); return; }
+                setLocating(true);
+                const tag = await captureLocation();
+                if (tag) setGeoTag(tag);
+                setLocating(false);
+              }}
+              disabled={locating}
+            >
+              {locating
+                ? <ActivityIndicator size="small" color={c.accent} />
+                : <Text style={[styles.locationBtnText, geoTag && styles.locationBtnTextActive]}>
+                    {geoTag ? `📍 ${geoTag.locationName}  ✕` : t.entry.locationAdd}
+                  </Text>
+              }
+            </Pressable>
+            <Pressable style={styles.mapBtn} onPress={() => setShowMapPicker(true)} hitSlop={8}>
+              <Text>🗺️</Text>
+            </Pressable>
+          </View>
+          <LocationPickerModal
+            visible={showMapPicker}
+            initialLat={geoTag?.latitude}
+            initialLng={geoTag?.longitude}
+            onSelect={(lat, lng, name) => { setGeoTag({ latitude: lat, longitude: lng, locationName: name }); setShowMapPicker(false); }}
+            onClose={() => setShowMapPicker(false)}
+          />
 
           <Text style={styles.label}>{t.entry.labelCategories}</Text>
           <DropdownPicker
