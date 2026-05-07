@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.7.8 — 2026-05-07
+- Refactoring: settings.tsx in InhalteSection, SyncSection, SicherheitSection aufgeteilt (1528 → 367 Zeilen)
+- Fix: Hardcodierte Strings („Fertig", „Lokale DB hochladen", „oder", „← Zurück") in i18n ausgelagert
+- Fix: Redundante category_qualifiers-Tabellendefinition in schema.ts entfernt
+- Fix: DISTINCT durch GROUP BY ersetzt in getEntries() — effizienter bei kombinierten Kategorie/Tag-Filtern
+- Fix: web/ aus Root-tsconfig ausgeschlossen (kein falscher TS-Fehler mehr bei ImportMeta.env)
+
 ## v2.7.7 — 2026-05-07
 - Android Burger-Menü QR-Modal: Einmalcode erzeugen direkt verfügbar (kein Umweg über Einstellungen)
 - Web: Relay-Code-Placeholder und Divider-Text verdeutlichen dass der Code vom Smartphone kommt
