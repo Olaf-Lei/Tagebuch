@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;family=Raleway:wght@300;400&amp;display=swap');
+    </style>
+    <radialGradient id="bg" cx="25%" cy="50%" r="80%">
+      <stop offset="0%" stop-color="#162438"/>
+      <stop offset="100%" stop-color="#0F1B2D"/>
+    </radialGradient>
+    <filter id="softglow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bg)"/>
+
+  <!-- Subtle horizontal lines (journal feel) -->
+  <g stroke="#C9A84C" stroke-width="1" opacity="0.05">
+    <line x1="0" y1="125" x2="1024" y2="125"/>
+    <line x1="0" y1="188" x2="1024" y2="188"/>
+    <line x1="0" y1="251" x2="1024" y2="251"/>
+    <line x1="0" y1="314" x2="1024" y2="314"/>
+    <line x1="0" y1="377" x2="1024" y2="377"/>
+  </g>
+
+  <!-- Gold left border -->
+  <rect x="0" y="0" width="5" height="500" fill="#C9A84C"/>
+
+  <!-- Glow behind logo -->
+  <circle cx="225" cy="250" r="140" fill="#C9A84C" opacity="0.05" filter="url(#softglow)"/>
+
+  <!-- Book icon (scale=8, book centered at 225/250) -->
+  <!-- original viewBox 32×32; book spans x:6–26, y:5–27 → center 16/16 → translate(225-128, 250-128) -->
+  <g transform="translate(97, 122) scale(8)">
+    <!-- Spine -->
+    <rect x="6" y="5" width="5" height="22" rx="2" fill="#C9A84C"/>
+    <!-- Cover background -->
+    <rect x="10" y="5" width="16" height="22" rx="2" fill="#1A2F47"/>
+    <!-- Cover border -->
+    <rect x="10" y="5" width="16" height="22" rx="2" fill="none" stroke="#C9A84C" stroke-width="0.18"/>
+    <!-- Ruled lines -->
+    <line x1="13.5" y1="11"   x2="23" y2="11"   stroke="#C9A84C" stroke-width="0.14" stroke-linecap="round" opacity="0.75"/>
+    <line x1="13.5" y1="14.5" x2="23" y2="14.5" stroke="#C9A84C" stroke-width="0.14" stroke-linecap="round" opacity="0.75"/>
+    <line x1="13.5" y1="18"   x2="23" y2="18"   stroke="#C9A84C" stroke-width="0.14" stroke-linecap="round" opacity="0.75"/>
+    <line x1="13.5" y1="21.5" x2="19" y2="21.5" stroke="#C9A84C" stroke-width="0.14" stroke-linecap="round" opacity="0.45"/>
+  </g>
+
+  <!-- Vertical divider -->
+  <line x1="450" y1="120" x2="450" y2="380" stroke="#C9A84C" stroke-width="1" opacity="0.25"/>
+
+  <!-- App name -->
+  <text
+    x="540" y="272"
+    font-family="'Playfair Display', Georgia, serif"
+    font-size="100"
+    font-weight="700"
+    fill="#C9A84C"
+    letter-spacing="-1">Tagebuch</text>
+
+  <!-- Tagline 1 -->
+  <text
+    x="545" y="322"
+    font-family="'Raleway', 'Helvetica Neue', Arial, sans-serif"
+    font-size="26"
+    font-weight="400"
+    fill="#FFFFFF"
+    opacity="0.65"
+    letter-spacing="8">OPEN. WRITE. DONE.</text>
+
+  <!-- Tagline 2 -->
+  <text
+    x="547" y="360"
+    font-family="'Raleway', 'Helvetica Neue', Arial, sans-serif"
+    font-size="20"
+    font-weight="300"
+    fill="#C9A84C"
+    opacity="0.6"
+    letter-spacing="5">Your data. Your device.</text>
+</svg>
