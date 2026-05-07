@@ -25,6 +25,7 @@ export async function seedDemoData(): Promise<void> {
 
   await db.execAsync(`
     INSERT OR IGNORE INTO tags (name) VALUES
+      ('demo'),
       ('Ozean'), ('Wal'), ('Schiff'), ('Queequeg'), ('Ahab'),
       ('Sturm'), ('Jagd'), ('Hafen'), ('Nachtschicht'), ('Rettung');
   `);
@@ -70,7 +71,7 @@ export async function seedDemoData(): Promise<void> {
           [id, catMap[name]]
         );
     }
-    for (const name of tagNames) {
+    for (const name of ['demo', ...tagNames]) {
       if (tagMap[name] != null)
         await db.runAsync(
           'INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)',
