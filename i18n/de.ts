@@ -25,6 +25,10 @@ export const de = {
     cancel: 'Abbrechen',
     delete: 'Löschen',
     ok: 'OK',
+    done: 'Fertig',
+    back: '← Zurück',
+    error: 'Fehler',
+    or: 'oder',
   },
 
   list: {
@@ -219,6 +223,12 @@ export const de = {
     keyResetMsg: 'Bestehende Backups auf Nextcloud können danach nicht mehr entschlüsselt werden.',
     keyResetBtn: 'Zurücksetzen',
     exportFailTitle: 'Export fehlgeschlagen',
+    pushLocalTitle: 'Lokale DB hochladen',
+    pushLocalMsg: 'Die lokale Datenbank wird ohne Merge direkt nach Nextcloud hochgeladen. Die Remote-Datei wird überschrieben.',
+    pushLocalGDriveMsg: 'Die lokale Datenbank wird ohne Merge direkt nach Google Drive hochgeladen. Die Remote-Datei wird überschrieben.',
+    pushLocalBtn: 'Hochladen',
+    pushLocalSuccess: 'Lokale DB erfolgreich hochgeladen.',
+    gdriveFolderBack: '← Zurück',
     deleteCategoryTitle: (name: string) => `„${name}" löschen?`,
     deleteCategoryMsg: 'Die Kategorie wird aus allen Einträgen entfernt.',
     deleteTagTitle: (name: string) => `„#${name}" löschen?`,

@@ -27,6 +27,10 @@ export const en: Strings = {
     cancel: 'Cancel',
     delete: 'Delete',
     ok: 'OK',
+    done: 'Done',
+    back: '← Back',
+    error: 'Error',
+    or: 'or',
   },
 
   list: {
@@ -221,6 +225,12 @@ export const en: Strings = {
     keyResetMsg: 'Existing backups on Nextcloud can no longer be decrypted.',
     keyResetBtn: 'Reset',
     exportFailTitle: 'Export failed',
+    pushLocalTitle: 'Upload local DB',
+    pushLocalMsg: 'The local database will be uploaded directly to Nextcloud without merging. The remote file will be overwritten.',
+    pushLocalGDriveMsg: 'The local database will be uploaded directly to Google Drive without merging. The remote file will be overwritten.',
+    pushLocalBtn: 'Upload',
+    pushLocalSuccess: 'Local DB uploaded successfully.',
+    gdriveFolderBack: '← Back',
     deleteCategoryTitle: (name: string) => `Delete "${name}"?`,
     deleteCategoryMsg: 'The category will be removed from all entries.',
     deleteTagTitle: (name: string) => `Delete "#${name}"?`,

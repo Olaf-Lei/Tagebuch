@@ -3,6 +3,7 @@ import {
   Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View,
 } from 'react-native';
 import { useColors } from './theme';
+import { useT } from '../i18n';
 
 interface Option { id: number; name: string; color?: string | null; }
 
@@ -16,6 +17,7 @@ interface Props {
 
 export function DropdownPicker({ options, selected, onChange, placeholder, multi = false }: Props) {
   const c = useColors();
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   const styles = useMemo(() => StyleSheet.create({
@@ -90,7 +92,7 @@ export function DropdownPicker({ options, selected, onChange, placeholder, multi
                   <View style={styles.header}>
                     <Text style={styles.headerTitle}>{placeholder}</Text>
                     <Pressable style={styles.doneBtn} onPress={() => setOpen(false)}>
-                      <Text style={styles.doneBtnText}>Fertig</Text>
+                      <Text style={styles.doneBtnText}>{t.common.done}</Text>
                     </Pressable>
                   </View>
                 )}
