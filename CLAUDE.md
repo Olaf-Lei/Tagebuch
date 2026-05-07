@@ -102,6 +102,10 @@ Neue Spalten/Tabellen per Migration (try/catch) in `db/schema.ts` — idempotent
   HelpModal.tsx         -- Schritt-für-Schritt-Tour (nummeriete Hilfe-Screens)
   qualifiers.ts         -- EMOJI_PRESETS (mood/health/sleep/energy/pain/stress), emojiForLevel()
   theme.ts              -- useColors(), Dark/Light Palette
+  /settings
+    InhalteSection.tsx  -- Kategorien, Tags, Qualifiers + Color-Picker-Modal + Cat-Qual-Modal
+    SyncSection.tsx     -- Google Drive, Nextcloud, Auto-Sync, Sync-Log + Ordner-Modal
+    SicherheitSection.tsx -- Biometrie, Verschlüsselung + Passwort/Schlüssel-Modals
 /contexts
   BiometricContext.tsx  -- Lock-Screen als Overlay (App-State bleibt erhalten)
   ThemeContext.tsx
@@ -177,17 +181,18 @@ Neue Spalten/Tabellen per Migration (try/catch) in `db/schema.ts` — idempotent
 - Löschen mit Bestätigung (nur edit)
 
 ### settings.tsx – Einstellungen
-Sektionen sind einklappbar (Accordion). Gliederung:
-- **Inhalte**: Kategorien (Farbe + 📊-Button für Qualifier-Zuweisung), Tags, Bewertungen verwalten
+Sektionen sind einklappbar (Accordion). Orchestriert drei Sub-Komponenten (`components/settings/`).
+- **Inhalte** → `InhalteSection`: Kategorien (Farbe + 📊-Button für Qualifier-Zuweisung), Tags, Bewertungen verwalten
   - Kategorien: Farb-Swatch, 📊-Button öffnet Qualifier-Modal, Umbenennen, Löschen
   - Bewertungen: Liste mit aktiven/inaktiven Qualifiers, Schnell-Hinzufügen-Chips für nicht angelegte Presets
   - Preset-Picker zeigt alle 5 Emojis des Presets inline
-- **Sync & Backup**: Nextcloud URL/User/PW/Pfad, Sync-Button, Restore-Button, letzter Sync-Zeitstempel, Auto-Sync-Intervall, Sync-Log (einklappbar)
-- **Sicherheit**: Biometrie-Lock (aktivieren/deaktivieren, Passwort ändern, Reset per Biometrie), Verschlüsselung (AES vor Upload, Schlüssel zurücksetzen)
+- **Sync & Backup** → `SyncSection`: Google Drive (OAuth 2.0 PKCE, Ordner-Browser), Nextcloud (URL/User/PW/Pfad), Sync/Restore/Push-Buttons, Auto-Sync-Intervall, Sync-Log (einklappbar)
+- **Sicherheit** → `SicherheitSection`: Biometrie-Lock (aktivieren/deaktivieren, Passwort ändern, Reset per Biometrie), Verschlüsselung (AES vor Upload, Schlüssel exportieren/importieren/zurücksetzen)
 - **Erinnerungen**: Tägliche Benachrichtigung aktivieren, Uhrzeit wählen
-- **Darstellung**: Farbmodus Hell / Dunkel / System (folgt Systemeinstellung), Sprache DE/EN
+- **Darstellung**: Farbmodus Hell / Dunkel / System, Sprache DE/EN
 - **Export**: JSON / CSV
-- **Über die App**: App-Icon, Name, Version, Build-Info (Android Studio), Lizenz
+- **Experten**: Web-Frontend URL, Web-Login QR-Code + Relay-Code erzeugen
+- **Über die App**: App-Icon, Name, Version, Build-Info (Android Studio)
 
 ### stats.tsx – Statistiken
 - Globaler Zeitfilter (Tag / Woche / Monat / Jahr / Frei)
@@ -389,6 +394,7 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 - [ ] AAB v2.7.2 bauen: `npx expo prebuild --platform android --clean && bash scripts/prepare-android.sh && cd android && ./gradlew bundleRelease`
 
 ### Erledigt
+- **Code-Qualitäts-Refactoring** — settings.tsx (1528→367 Zeilen) in InhalteSection/SyncSection/SicherheitSection aufgeteilt; hardcodierte Strings in i18n; redundante schema.ts-Definition entfernt; DISTINCT→GROUP BY in getEntries(); web/ aus Root-tsconfig ausgeschlossen; Hilfe-Tour auf aktuellen Feature-Stand gebracht
 - **QR-Code + Relay-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": QR (react-native-qrcode-svg) + „6-stelligen Code erzeugen" Button im selben Modal; Payload `{v,nc:{url,user,pass,path},encKey}`; Web AuthScreen: QR-Scan via ZXing (BrowserQRCodeReader, TRY_HARDER, Kamera-Wechsel-Button) + 6-Zeichen-Eingabefeld; Relay via `proxy.php` store_code/fetch_code.
 - **Web-Client Export** — Burger-Menü → Export-Untermenü: JSON / CSV / Markdown; alle Metadaten (Kategorien, Tags, Qualifiers, Geo-Daten); CSV mit dynamischen Qualifier-Spalten
 - **Web-Client Google Drive Sync** — OAuth 2.0 PKCE; dualer Upload (Nextcloud + Drive gleichzeitig); SyncSettings-Panel mit Tabs; navigierbarer Ordner-Browser; Favicon; Timestamp-Bugfixes (ms statt s)
