@@ -130,7 +130,9 @@ export const en: Strings = {
 
     webLoginQR: 'Web login QR code',
     webLoginQRTitle: 'Web login',
-    webLoginQRHint: 'Scan this QR code at olovenet.de/tagebuch to log in.',
+    webLoginQRHint: 'Scan this QR code in your web client to log in.',
+    webFrontendUrlLabel: 'Web frontend URL',
+    webFrontendUrlPlaceholder: 'https://your-domain.com/tagebuch',
     webLoginQRClose: 'Close',
     webLoginQRNoConfig: 'No sync configuration found.',
     webLoginRelayBtn: 'Generate 6-digit code',

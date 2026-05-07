@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.7.1 — 2026-05-07
+- Einstellungen: Web-Frontend URL konfigurierbar (SecureStore `web_frontend_url`)
+- Relay-Code-Button nur sichtbar wenn URL gesetzt; nutzt konfigurierte URL statt hardcoded olovenet.de
+- QR-Hint zeigt konfigurierte URL an
+- deploy.sh: FTP-Credentials auf Umgebungsvariablen umgestellt (öffentliches Repo)
+
 ## v2.7.0 — 2026-05-07
 - Play Store Vorbereitung: targetSdkVersion 35, minSdkVersion 24, expo-notifications Plugin
 - Datenschutzerklärung (DE + EN) erstellt

@@ -128,7 +128,9 @@ export const de = {
 
     webLoginQR: 'Web-Login QR-Code',
     webLoginQRTitle: 'Web-Login',
-    webLoginQRHint: 'Scanne diesen QR-Code auf olovenet.de/tagebuch, um dich dort anzumelden.',
+    webLoginQRHint: 'Scanne diesen QR-Code im Web-Client, um dich dort anzumelden.',
+    webFrontendUrlLabel: 'Web-Frontend URL',
+    webFrontendUrlPlaceholder: 'https://deine-domain.de/tagebuch',
     webLoginQRClose: 'Schließen',
     webLoginQRNoConfig: 'Keine Sync-Konfiguration vorhanden.',
     webLoginRelayBtn: '6-stelligen Code erzeugen',

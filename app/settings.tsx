@@ -233,6 +233,7 @@ export default function SettingsScreen() {
   const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
   const [relayCode, setRelayCode] = useState<string | null>(null);
   const [relayLoading, setRelayLoading] = useState(false);
+  const [webFrontendUrl, setWebFrontendUrl] = useState('');
 
   const [encKeyModal, setEncKeyModal] = useState<'export' | 'import' | null>(null);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
@@ -280,6 +281,7 @@ export default function SettingsScreen() {
     gdrive.getDriveFolder().then(setGDriveFolder);
     getReminderEnabled().then(setReminderEnabled);
     getReminderTime().then(({ hour, minute }) => { setReminderHour(hour); setReminderMinute(minute); });
+    SecureStore.getItemAsync('web_frontend_url').then(v => setWebFrontendUrl(v ?? ''));
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -474,7 +476,7 @@ export default function SettingsScreen() {
       if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
       if (encKey) payload.encKey = encKey;
       if (!payload.nc && !encKey) { Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginQRNoConfig); setRelayLoading(false); return; }
-      const res = await fetch('https://olovenet.de/tagebuch/proxy.php?action=store_code', {
+      const res = await fetch(`${webFrontendUrl.replace(/\/$/, '')}/proxy.php?action=store_code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const json = await res.json();
@@ -1024,6 +1026,18 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
+              {/* Web-Frontend URL */}
+              <Text style={[styles.subLabel, { marginTop: 16 }]}>{t.settings.webFrontendUrlLabel}</Text>
+              <TextInput
+                style={styles.input}
+                value={webFrontendUrl}
+                onChangeText={setWebFrontendUrl}
+                onBlur={() => SecureStore.setItemAsync('web_frontend_url', webFrontendUrl.trim())}
+                placeholder={t.settings.webFrontendUrlPlaceholder}
+                placeholderTextColor={c.muted}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
               {/* Web-Login QR */}
               <Pressable style={[styles.saveButton, { marginTop: 14 }]} onPress={handleShowWebLoginQR}>
                 <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
@@ -1329,21 +1343,27 @@ export default function SettingsScreen() {
           <View style={[styles.modalBox, { alignItems: 'center' }]}>
             <Text style={styles.modalTitle}>{t.settings.webLoginQRTitle}</Text>
             {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
-            <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 14 }]}>{t.settings.webLoginQRHint}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, width: '100%' }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-              <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-            </View>
-            {relayCode ? (
+            <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 14 }]}>
+              {webFrontendUrl ? webFrontendUrl : t.settings.webLoginQRHint}
+            </Text>
+            {!!webFrontendUrl && (
               <>
-                <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
-                <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, width: '100%' }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                  <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                </View>
+                {relayCode ? (
+                  <>
+                    <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
+                    <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
+                  </>
+                ) : (
+                  <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
+                    <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
+                  </Pressable>
+                )}
               </>
-            ) : (
-              <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
-                <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
-              </Pressable>
             )}
             <Pressable style={[styles.modalCancel, { marginTop: 10, width: '100%' }]} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
               <Text style={styles.modalCancelText}>{t.settings.webLoginQRClose}</Text>
