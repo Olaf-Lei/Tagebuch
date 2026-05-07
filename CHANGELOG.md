@@ -1,11 +1,13 @@
 # Changelog
 
-## v2.8.1 — 2026-05-07
-- Interaktive Ortswahl per Karte in Eintrag erstellen/bearbeiten
-- Android: 🗺️-Button öffnet WebView-Leaflet-Modal; Tap → Marker setzen → Reverse-Geocoding via expo-location
-- Web: 🗺️-Button öffnet Leaflet-Modal; Klick → Marker → Nominatim Reverse-Geocoding
-- Web: GPS-Button über Geolocation-API (Nominatim-Fallback für Ortsnamen)
-- Web: createEntry/updateEntry nehmen jetzt latitude/longitude/locationName entgegen
+## v2.8.4 — 2026-05-07
+- Interaktive Ortswahl per Karte: 🗺️-Button neben GPS-Pill in Eintrag erstellen/bearbeiten
+- Android: WebView + Leaflet, Tap → Marker → expo-location Reverse-Geocoding → Übernehmen
+- Web: Leaflet-Modal, Klick → Marker → Nominatim Reverse-Geocoding
+- Web: createEntry/updateEntry nehmen jetzt lat/lng/locationName entgegen
+- Demo-Modus: „Demo-Daten laden (Moby Dick)“ in Settings › Experten
+- 20 Einträge als Ismaels Tagebuch (Moby Dick, 1851, gemeinfrei), Tag „demo“ für Filter
+- Demo-Daten entfernen: roter Button, löscht nur is_demo=1-Einträge, eigene Daten sicher
 
 ## v2.8.0 — 2026-05-07
 - Hilfe-Tour: „Stimmung/Befinden" durch „Bewertungen" ersetzt (custom Qualifiers)

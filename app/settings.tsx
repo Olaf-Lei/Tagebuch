@@ -18,6 +18,7 @@ import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, 
 import { InhalteSection } from '../components/settings/InhalteSection';
 import { SyncSection } from '../components/settings/SyncSection';
 import { SicherheitSection } from '../components/settings/SicherheitSection';
+import { seedDemoData, clearDemoData, hasDemoData } from '../db/demoSeed';
 
 type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'experten' | 'about';
 
@@ -54,6 +55,8 @@ export default function SettingsScreen() {
   const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
   const [relayCode, setRelayCode] = useState<string | null>(null);
   const [relayLoading, setRelayLoading] = useState(false);
+  const [demoActive, setDemoActive] = useState(false);
+  useEffect(() => { hasDemoData().then(setDemoActive); }, []);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
@@ -167,6 +170,26 @@ export default function SettingsScreen() {
     } finally {
       setRelayLoading(false);
     }
+  };
+
+  const handleLoadDemoData = () => {
+    Alert.alert(t.settings.demoSeedConfirmTitle, t.settings.demoSeedConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.common.ok,
+        onPress: () => seedDemoData().then(() => { setDemoActive(true); Alert.alert('', t.settings.demoSeedSuccess); }),
+      },
+    ]);
+  };
+
+  const handleClearDemoData = () => {
+    Alert.alert(t.settings.demoClearConfirmTitle, t.settings.demoClearConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.common.ok, style: 'destructive',
+        onPress: () => clearDemoData().then(() => { setDemoActive(false); Alert.alert('', t.settings.demoClearSuccess); }),
+      },
+    ]);
   };
 
   return (
@@ -307,6 +330,17 @@ export default function SettingsScreen() {
               <Pressable style={[styles.syncButton, { marginTop: 4 }]} onPress={handleShowWebLoginQR}>
                 <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
               </Pressable>
+              <Text style={[styles.subLabel, { marginTop: 20 }]}>Demo</Text>
+              {!demoActive && (
+                <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleLoadDemoData}>
+                  <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.demoSeedBtn}</Text>
+                </Pressable>
+              )}
+              {demoActive && (
+                <Pressable style={[styles.saveButton, { marginTop: 4, borderColor: c.danger }]} onPress={handleClearDemoData}>
+                  <Text style={[styles.syncText, { color: c.danger }]}>{t.settings.demoClearBtn}</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
