@@ -7,24 +7,23 @@ export interface GeoTag {
   locationName: string;
 }
 
+export async function reverseGeocode(latitude: number, longitude: number): Promise<string> {
+  try {
+    const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
+    return geo.city ?? geo.district ?? geo.subregion ?? geo.region ?? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  } catch {
+    return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+  }
+}
+
 export async function captureLocation(): Promise<GeoTag | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
     Alert.alert('Standort', 'Standortzugriff verweigert. Bitte in den Einstellungen aktivieren.');
     return null;
   }
-
-  const pos = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
+  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   const { latitude, longitude } = pos.coords;
-
-  try {
-    const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
-    const locationName =
-      geo.city ?? geo.district ?? geo.subregion ?? geo.region ?? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-    return { latitude, longitude, locationName };
-  } catch {
-    return { latitude, longitude, locationName: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` };
-  }
+  const locationName = await reverseGeocode(latitude, longitude);
+  return { latitude, longitude, locationName };
 }

@@ -176,13 +176,16 @@ export function createEntry(
   timestamp: number,
   categoryIds: number[],
   tagNames: string[],
-  qualifierValues: Record<number, number>
+  qualifierValues: Record<number, number>,
+  latitude?: number | null,
+  longitude?: number | null,
+  locationName?: string | null,
 ): number {
   const d = getDb()
   const ts = now()
   d.run(
-    `INSERT INTO entries (timestamp, text, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-    [timestamp, text, ts, ts]
+    `INSERT INTO entries (timestamp, text, created_at, updated_at, latitude, longitude, location_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [timestamp, text, ts, ts, latitude ?? null, longitude ?? null, locationName ?? null]
   )
   const idStmt = d.prepare(`SELECT last_insert_rowid() as id`)
   idStmt.step()
@@ -208,10 +211,14 @@ export function updateEntry(
   timestamp: number,
   categoryIds: number[],
   tagNames: string[],
-  qualifierValues: Record<number, number>
+  qualifierValues: Record<number, number>,
+  latitude?: number | null,
+  longitude?: number | null,
+  locationName?: string | null,
 ) {
   const d = getDb()
-  d.run(`UPDATE entries SET text = ?, timestamp = ?, updated_at = ? WHERE id = ?`, [text, timestamp, now(), id])
+  d.run(`UPDATE entries SET text = ?, timestamp = ?, updated_at = ?, latitude = ?, longitude = ?, location_name = ? WHERE id = ?`,
+    [text, timestamp, now(), latitude ?? null, longitude ?? null, locationName ?? null, id])
   d.run(`DELETE FROM entry_categories WHERE entry_id = ?`, [id])
   d.run(`DELETE FROM entry_tags WHERE entry_id = ?`, [id])
   d.run(`DELETE FROM entry_qualifiers WHERE entry_id = ?`, [id])
