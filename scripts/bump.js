@@ -51,9 +51,8 @@ if (fs.existsSync(gradlePath)) {
 
 console.log(`v${pkg.version.split('.').map(Number).join('.')} → v${newVersion}  (versionCode ${oldCode} → ${newCode})`);
 
-// Git commit + tag
-const gradleExists = fs.existsSync(gradlePath);
-execSync(`git add package.json app.json${gradleExists ? ' android/app/build.gradle' : ''}`, { cwd: root, stdio: 'inherit' });
+// Git commit + tag (android/ is gitignored, so never add build.gradle)
+execSync(`git add package.json app.json`, { cwd: root, stdio: 'inherit' });
 execSync(`git commit -m "chore: bump version to v${newVersion} (build ${newCode})"`, { cwd: root, stdio: 'inherit' });
 execSync(`git tag v${newVersion}`, { cwd: root, stdio: 'inherit' });
 
