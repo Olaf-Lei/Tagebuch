@@ -287,7 +287,7 @@ export const en: Strings = {
 
     step1Title: 'Create an entry',
     step1Icon: '✍️',
-    step1Text: 'Tap ＋, write your entry and save it with the button in the top right.\n\nOptionally add mood, health, location, categories and tags — nothing is required.',
+    step1Text: 'Tap ＋, write your entry and save it with the button in the top right.\n\nOptionally add ratings, location, categories and tags — nothing is required.',
 
     step2Title: 'Search & filter',
     step2Icon: '🔍',
@@ -299,11 +299,11 @@ export const en: Strings = {
 
     step4Title: 'Statistics',
     step4Icon: '📊',
-    step4Text: 'Choose a time range (Day / Week / Month / Year / Custom).\n\nSee entry count, streak record, mood and health trend curves, activity heatmap, and top categories and tags.',
+    step4Text: 'Choose a time range (Day / Week / Month / Year / Custom).\n\nSee entry count, streak record, rating trend curves, activity heatmap, and top categories and tags.',
 
     step5Title: 'Sync & backup',
     step5Icon: '☁️',
-    step5Text: 'Connect the app to your Nextcloud server under Settings → Sync & Backup.\n\nSync manually or choose an automatic interval. Optionally enable encryption before upload.',
+    step5Text: 'Connect the app to Nextcloud or Google Drive under Settings → Sync & Backup — both backends can be active at the same time.\n\nSync manually or choose an automatic interval. Optionally enable encryption before upload.',
 
     step6Title: 'Security',
     step6Icon: '🔒',

@@ -285,7 +285,7 @@ export const de = {
 
     step1Title: 'Eintrag erstellen',
     step1Icon: '✍️',
-    step1Text: 'Tippe auf ＋, schreibe deinen Eintrag und speichere ihn oben rechts.\n\nOptional: Stimmung, Befinden, Standort, Kategorien und Tags ergänzen — alles ohne Pflichtfelder.',
+    step1Text: 'Tippe auf ＋, schreibe deinen Eintrag und speichere ihn oben rechts.\n\nOptional: Bewertungen, Standort, Kategorien und Tags ergänzen — alles ohne Pflichtfelder.',
 
     step2Title: 'Suche & Filter',
     step2Icon: '🔍',
@@ -297,11 +297,11 @@ export const de = {
 
     step4Title: 'Statistiken',
     step4Icon: '📊',
-    step4Text: 'Wähle einen Zeitraum (Tag / Woche / Monat / Jahr / Frei).\n\nDu siehst Eintragsanzahl, Streak-Rekord, Laune- und Befindenstrendkurven, Aktivitätsheatmap sowie Top-Kategorien und Top-Tags.',
+    step4Text: 'Wähle einen Zeitraum (Tag / Woche / Monat / Jahr / Frei).\n\nDu siehst Eintragsanzahl, Streak-Rekord, Bewertungs-Trendkurven, Aktivitätsheatmap sowie Top-Kategorien und Top-Tags.',
 
     step5Title: 'Sync & Backup',
     step5Icon: '☁️',
-    step5Text: 'Verbinde die App unter Einstellungen → Sync & Backup mit deinem Nextcloud-Server.\n\nDu kannst manuell synchronisieren oder ein automatisches Intervall wählen. Optional: Verschlüsselung vor dem Upload aktivieren.',
+    step5Text: 'Verbinde die App unter Einstellungen → Sync & Backup mit Nextcloud oder Google Drive — beide Backends können gleichzeitig aktiv sein.\n\nDu kannst manuell synchronisieren oder ein automatisches Intervall wählen. Optional: Verschlüsselung vor dem Upload aktivieren.',
 
     step6Title: 'Sicherheit',
     step6Icon: '🔒',
