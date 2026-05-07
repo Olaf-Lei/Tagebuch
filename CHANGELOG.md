@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.8.1 — 2026-05-07
+- Interaktive Ortswahl per Karte in Eintrag erstellen/bearbeiten
+- Android: 🗺️-Button öffnet WebView-Leaflet-Modal; Tap → Marker setzen → Reverse-Geocoding via expo-location
+- Web: 🗺️-Button öffnet Leaflet-Modal; Klick → Marker → Nominatim Reverse-Geocoding
+- Web: GPS-Button über Geolocation-API (Nominatim-Fallback für Ortsnamen)
+- Web: createEntry/updateEntry nehmen jetzt latitude/longitude/locationName entgegen
+
 ## v2.8.0 — 2026-05-07
 - Hilfe-Tour: „Stimmung/Befinden" durch „Bewertungen" ersetzt (custom Qualifiers)
 - Hilfe-Tour: Statistiken-Schritt nennt jetzt „Bewertungs-Trendkurven" statt veralteter Begriffe
