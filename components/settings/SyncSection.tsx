@@ -479,7 +479,7 @@ export function SyncSection({ encEnabled }: Props) {
                 <Text key={f.id} style={[styles.mutedText, { fontSize: 12 }]}> › {f.name}</Text>
               ))}
             </View>
-            <View style={{ flexShrink: 1, minHeight: 60 }}>
+            <View style={{ maxHeight: 220, minHeight: 60 }}>
               {gdriveFolderLoading ? (
                 <View style={{ alignItems: 'center', padding: 16 }}>
                   <ActivityIndicator color={c.accent} />

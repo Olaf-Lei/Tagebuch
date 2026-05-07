@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.7.9 — 2026-05-07
+- Fix: Google Drive Ordner-Modal — „Diesen Ordner wählen"-Button war abgeschnitten (maxHeight auf Ordnerliste statt flexShrink)
+
 ## v2.7.8 — 2026-05-07
 - Refactoring: settings.tsx in InhalteSection, SyncSection, SicherheitSection aufgeteilt (1528 → 367 Zeilen)
 - Fix: Hardcodierte Strings („Fertig", „Lokale DB hochladen", „oder", „← Zurück") in i18n ausgelagert
