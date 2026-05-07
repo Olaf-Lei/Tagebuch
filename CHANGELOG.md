@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.8.0 — 2026-05-07
+- Hilfe-Tour: „Stimmung/Befinden" durch „Bewertungen" ersetzt (custom Qualifiers)
+- Hilfe-Tour: Statistiken-Schritt nennt jetzt „Bewertungs-Trendkurven" statt veralteter Begriffe
+- Hilfe-Tour: Sync-Schritt erwähnt jetzt Google Drive als zweites Backend
+
 ## v2.7.9 — 2026-05-07
 - Fix: Google Drive Ordner-Modal — „Diesen Ordner wählen"-Button war abgeschnitten (maxHeight auf Ordnerliste statt flexShrink)
 
