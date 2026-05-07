@@ -85,6 +85,8 @@ export default function IndexScreen() {
   const [showBurgerMenu, setShowBurgerMenu] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
+  const [relayCode, setRelayCode] = useState<string | null>(null);
+  const [relayLoading, setRelayLoading] = useState(false);
 
   // Sync-Modal state
   const [ncConfigured, setNcConfigured] = useState(false);
@@ -167,8 +169,24 @@ export default function IndexScreen() {
     if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
     if (encKey) payload.encKey = encKey;
     if (!payload.nc && !encKey) return;
+    setRelayCode(null);
     setWebLoginQR(JSON.stringify(payload));
     setShowBurgerMenu(false);
+  };
+
+  const handleGenerateRelayCode = async () => {
+    setRelayLoading(true);
+    setRelayCode(null);
+    try {
+      const webFrontendUrl = (await SecureStore.getItemAsync('web_frontend_url'))?.trim() ?? '';
+      if (!webFrontendUrl) return;
+      const res = await fetch(`${webFrontendUrl.replace(/\/$/, '')}/proxy.php?action=store_code`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: webLoginQR ?? '{}',
+      });
+      const json = await res.json();
+      if (res.ok && json.code) setRelayCode(json.code);
+    } catch {}
+    finally { setRelayLoading(false); }
   };
 
   function trafficLight(lastMs: number | null, syncing: boolean): { color: string; dot: string } {
@@ -375,6 +393,21 @@ export default function IndexScreen() {
             <Text style={{ fontSize: 17, fontWeight: '700', color: c.text }}>{t.settings.webLoginQRTitle}</Text>
             {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
             <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{t.settings.webLoginQRHint}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+              <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+            </View>
+            {relayCode ? (
+              <>
+                <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent }}>{relayCode}</Text>
+                <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{t.settings.webLoginRelayHint}</Text>
+              </>
+            ) : (
+              <Pressable style={{ backgroundColor: c.accent, borderRadius: 10, padding: 14, width: '100%', alignItems: 'center' }} onPress={handleGenerateRelayCode} disabled={relayLoading}>
+                {relayLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{t.settings.webLoginRelayBtn}</Text>}
+              </Pressable>
+            )}
             <Pressable style={{ borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 14, width: '100%', alignItems: 'center' }} onPress={() => setWebLoginQR(null)}>
               <Text style={{ color: c.accent, fontSize: 16 }}>{t.settings.webLoginQRClose}</Text>
             </Pressable>

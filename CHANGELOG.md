@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.7.7 — 2026-05-07
+- Android Burger-Menü QR-Modal: Einmalcode erzeugen direkt verfügbar (kein Umweg über Einstellungen)
+- Web: Relay-Code-Placeholder und Divider-Text verdeutlichen dass der Code vom Smartphone kommt
+
 ## v2.7.6 — 2026-05-07
 - Android: Relay-Code-Button im Hellen Modus sichtbar (syncButton statt saveButton)
 - Web: „Einmalcode eingeben" im Burger-Menü — Relay-Code auch nach dem Login nutzbar
