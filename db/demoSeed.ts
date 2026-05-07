@@ -1,9 +1,7 @@
 import { getDb } from './schema';
 
-export async function seedDemoDataIfEmpty(): Promise<void> {
+export async function seedDemoData(): Promise<void> {
   const db = await getDb();
-  const count = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM entries');
-  if ((count?.cnt ?? 0) > 0) return;
 
   await db.execAsync(`
     INSERT OR IGNORE INTO categories (name, color) VALUES
@@ -16,8 +14,8 @@ export async function seedDemoDataIfEmpty(): Promise<void> {
 
   await db.execAsync(`
     INSERT OR IGNORE INTO tags (name) VALUES
-      ('London'), ('Theater'), ('Musik'), ('Abendessen'), ('König'),
-      ('Schiff'), ('Wetter'), ('Büro'), ('Weintrinken'), ('Kirche');
+      ('Ozean'), ('Wal'), ('Schiff'), ('Queequeg'), ('Ahab'),
+      ('Sturm'), ('Jagd'), ('Hafen'), ('Nachtschicht'), ('Rettung');
   `);
 
   const cats = await db.getAllAsync<{ id: number; name: string }>('SELECT id, name FROM categories');
@@ -80,30 +78,26 @@ export async function seedDemoDataIfEmpty(): Promise<void> {
       );
   }
 
-  // ~25 Einträge inspiriert von Samuel Pepys' Tagebuch (1660er, gemeinfrei), ins Deutsche adaptiert
-  await add(85, 'Heute beginne ich dieses Tagebuch, welches ich als Zeugnis meines Lebens führen möchte. Meine Frau Elisabeth ist wohlauf, die neue Stelle beim Marineamt macht mir Freude. Ich bin voller guter Vorsätze.', ['Alltag', 'Familie'], ['London'], 4, 4);
-  await add(82, 'Den ganzen Vormittag beim Amt verbracht, Akten durchgesehen und Berichte abgezeichnet. Abends traf ich Herrn Coventry — ein kluger Mann, dem ich viel vertraue. Heimgegangen mit dem Gefühl, nützliche Arbeit getan zu haben.', ['Arbeit'], ['Büro', 'London'], 4, 3);
-  await add(79, 'Heute Abend mit Elisabeth ins Theater. Das Stück war eine herrliche Komödie, wir saßen auf den vorderen Plätzen und lachten herzlich. Elisabeth war so aufgeheitert, dass wir uns über unsere letzten Streitigkeiten versöhnten.', ['Gesellschaft', 'Familie'], ['Theater', 'London'], 5, 4, 51.5138, -0.0942, 'Cheapside, London');
-  await add(76, 'Diese Nacht schlecht geschlafen wegen der alten Nierensteinkrankheit. Den ganzen Morgen im Bett gelegen und nur Tee getrunken. Gegen Mittag wurde es besser, aber ich bin noch schwach. Elisabeth pflegte mich aufopferungsvoll.', ['Gesundheit', 'Familie'], [], 2, 1);
-  await add(73, 'Sonntag, zur Kirche gegangen, die Predigt war gut und lang. Anschließend an der Themse entlangspaziert, das Wetter war mild für die Jahreszeit. Nachmittags zu Hause Briefe geschrieben.', ['Alltag'], ['Wetter', 'London', 'Kirche'], 3, 3, 51.5000, -0.1220, 'Themse, Westminster');
-  await add(70, 'Abendessen bei Herrn Batten und seiner Frau: gebratenes Huhn, Austern und ein feiner Bordeaux. Die Gesellschaft war angenehm, man redete viel über Hofklatsch. Ich blieb länger als beabsichtigt und kam etwas benebelt nach Hause.', ['Gesellschaft'], ['Abendessen', 'Weintrinken'], 5, 3);
-  await add(67, 'Das Wetter ist scheußlich, Regen den ganzen Tag. Zuhause geblieben und in Büchern gelesen — eine Abhandlung über Flottenorganisation, sehr lehrreich. Am Abend auf der Laute geübt, bis Elisabeth mich bat aufzuhören.', ['Alltag'], ['Wetter', 'Musik'], 3, 4);
-  await add(64, 'Heute am Weißen Palast den König gesehen, wie er durch die Galerie schritt. Er hat eine imposante Erscheinung und nickte einigen Höflingen gnädig zu. Ich stand ehrfürchtig beiseite. Was für ein erhabener Anblick.', ['Gesellschaft'], ['König', 'London'], 4, 4, 51.5024, -0.1248, 'Whitehall, London');
-  await add(61, 'Streit mit Elisabeth wegen der Haushaltsausgaben — sie hat wieder zu viel für Kleider ausgegeben. Schlechter Abend, wir sprachen kaum miteinander. Diese Zwistigkeiten zermürben mich, obwohl ich weiß, dass wir uns lieben.', ['Familie'], [], 1, 3);
-  await add(58, 'Mit dem Boot auf der Themse gefahren, ein wunderschöner klarer Morgen. Bis Greenwich und zurück, sahen die vielen Schiffe im Hafen. Die Luft war frisch und das Wasser glitzerte. Solche Ausflüge tun der Seele gut.', ['Alltag'], ['Schiff', 'London', 'Wetter'], 5, 5, 51.5079, -0.0877, 'London Bridge');
-  await add(55, 'Den Abend musiziert: Laute und meine neue Gambe. Ein Freund kam dazu, wir spielten mehrere Stunden gemeinsam. Musik ist die Medizin der Seele — ich hätte nie aufgehört, wenn nicht die Kerzen ausgegangen wären.', ['Gesellschaft'], ['Musik'], 5, 4);
-  await add(52, 'Großartige Neuigkeiten: Die Flotte ist sicher im Hafen eingelaufen. Im Amt herrschte große Erleichterung und wir feierten abends gemeinsam. Ich bin stolz auf meine Arbeit, die zum Gelingen beigetragen hat.', ['Arbeit'], ['Schiff', 'Büro'], 5, 4);
-  await add(49, 'Inspektion der Werft in Deptford. Die Schiffe sind in gutem Zustand, die Mannschaften diszipliniert. Mit dem Aufseher über notwendige Lieferungen gesprochen. Den Rückweg entlang der Themse zu Fuß gemacht, fast zwei Stunden.', ['Arbeit'], ['Schiff', 'London'], 3, 3, 51.4993, -0.0243, 'Deptford Dockyard');
-  await add(46, 'Den ganzen Tag mit Kopfschmerzen geplagt, vermutlich wegen des gestrigen Abendessens mit zu viel Wein. Nur wenig geschafft im Amt. Früh schlafen gegangen.', ['Gesundheit'], [], 2, 2);
-  await add(43, 'Spaziergang durch Cheapside und St. Paul\'s Churchyard. Bei einem Buchhändler mehrere Werke erworben: eine Abhandlung über Seefahrt und einen Band lateinischer Poesie. Das Einkaufen von Büchern ist eine meiner größten Freuden.', ['Alltag'], ['London'], 4, 4, 51.5138, -0.0984, 'St. Paul\'s Churchyard');
-  await add(40, 'Wichtige Verhandlungen mit den Holzlieferanten für die Flotte. Mehrere Stunden gefeilscht und schließlich einen guten Preis erzielt. Mein Vorgesetzter lobte meine Verhandlungsgeschicklichkeit ausdrücklich — das gibt mir Mut.', ['Arbeit'], ['Büro'], 4, 4);
-  await add(37, 'Elisabeth liegt krank im Bett, erkältet. Ich blieb bei ihr zuhause und brachte ihr Suppe und heiße Tücher. Die Dienerin kümmerte sich auch, aber ich wollte selbst bei ihr sein. Morgen hoffe ich, dass es ihr besser geht.', ['Familie', 'Gesundheit'], [], 3, 4);
-  await add(34, 'Wieder ins Theater — diesmal ein Stück von Mr. Dryden. Die Hauptdarstellerin spielte großartig. War mit meinem Bruder und seiner Frau dort. Nach dem Stück noch gemeinsam gegessen. Ein herrlicher Abend.', ['Gesellschaft', 'Familie'], ['Theater', 'Abendessen'], 5, 4);
-  await add(31, 'Hervorragender Arbeitstag. Die Berichte wurden vom Admiralitätsrat angenommen, mein Vorschlag für die neue Ration der Matrosen mit Lob bedacht. Ich fühle, dass meine Arbeit endlich Früchte trägt.', ['Arbeit'], ['Büro'], 5, 5);
-  await add(28, 'Auf dem Markt gewesen, Fisch und Gemüse gekauft. Dann mit Elisabeth einen langen Spaziergang durch den Park gemacht. Sie lachte viel heute, was mich glücklich stimmte. Der Frühling kündigt sich an.', ['Alltag', 'Familie'], ['Wetter'], 5, 4);
-  await add(21, 'Den Abend am Kamin verbracht und Briefe an alte Freunde geschrieben. Dabei über das vergangene Jahr nachgedacht: vieles hat sich gebessert, manches bleibt schwierig. Im Großen und Ganzen bin ich zufrieden.', ['Alltag'], [], 4, 4);
-  await add(14, 'Wunderbares Frühlingswetter. Im Garten gesessen und die Sonne genossen. Abends kamen Freunde vorbei, wir saßen draußen und tranken Wein. Das Leben kann manchmal sehr schön sein.', ['Gesellschaft', 'Alltag'], ['Wetter', 'Weintrinken'], 5, 5);
-  await add(10, 'Abendessen mit den Kollegen vom Amt. Viel diskutiert über die neue Marinepolitik und die Beziehungen zu den Niederlanden. Gute Nachrichten über die Ausrüstung der Schiffe. Ich trank zur Vorsicht nur wenig.', ['Arbeit', 'Gesellschaft'], ['Abendessen', 'Büro', 'Schiff'], 4, 4, 51.5138, -0.0942, 'City of London');
-  await add(5, 'Drei Besprechungen heute, viel Papierkram — trotzdem das Gefühl, Wichtiges erledigt zu haben. Auf dem Heimweg kurz am Fluss gerastet und den Schiffen zugeschaut. Die Anerkennung meines Vorgesetzten motiviert mich sehr.', ['Arbeit'], ['Büro', 'Schiff'], 4, 4, 51.5024, -0.1248, 'Whitehall, London');
-  await add(2, 'Ein schöner Tag geht zu Ende. Die Arbeit lief gut, Elisabeth ist wieder gesund, und das Wetter war herrlich. Was will man mehr vom Leben? Ich bin dankbar für das, was ich habe.', ['Alltag', 'Familie'], ['Wetter'], 5, 5);
+  // ~20 Einträge inspiriert von Herman Melvilles Moby-Dick (1851, gemeinfrei),
+  // als Tagebuch des Erzählers Ismael adaptiert
+  await add(88, 'In New Bedford angekommen, auf der Suche nach einem Schiff. Die Stadt riecht nach Teer und Tran, überall Matrosen und Gerätschaften. Ich weiß noch nicht wohin die Reise geht, aber das Meer zieht mich an.', ['Alltag'], ['Hafen'], 3, 4, 41.6362, -70.9342, 'New Bedford, Massachusetts');
+  await add(85, 'Im Spouter-Inn ein Bett mit einem wilden Harpunier geteilt — Queequeg aus Südsee. Anfangs erschrocken, doch er ist ruhig und freundlich. Wir werden, so glaube ich, gute Freunde sein.', ['Familie', 'Gesellschaft'], ['Queequeg', 'Hafen'], 4, 4, 41.2835, -70.0995, 'Nantucket, Massachusetts');
+  await add(80, 'An Bord der Pequod gegangen. Das Schiff ist alt und verwettert, mit Knochen und Zähnen von Walen verziert — ein seltsamer Anblick. Queequeg ist dabei, das gibt mir Halt.', ['Alltag', 'Familie'], ['Schiff', 'Queequeg'], 3, 4, 41.2835, -70.0995, 'Nantucket, Massachusetts');
+  await add(75, 'Drei Tage auf See. Der Atlantik ist rau und die Arbeit an Deck hart. Kapitän Ahab hat sich bisher nicht gezeigt — die anderen Matrosen reden kaum über ihn. Eine merkwürdige Stimmung liegt über dem Schiff.', ['Arbeit', 'Alltag'], ['Schiff', 'Ozean'], 3, 3, 40.0, -50.0, 'Nordatlantik');
+  await add(70, 'Heute erschien Ahab zum ersten Mal an Deck. Ein eindrücklicher Mann mit einem Elfenbeinbein, der Blick hart wie Stein. Er sagte kein Wort, schaute nur aufs Wasser. Alle schwiegen.', ['Gesellschaft'], ['Ahab', 'Schiff'], 2, 4, 30.0, -45.0, 'Atlantischer Ozean');
+  await add(65, 'Ahab ließ alle Hände antreten und nagelte ein Goldstück ans Großmast: für den, der Moby Dick sichtet. Er erzählte von dem weißen Wal, der ihm das Bein nahm. Seine Obsession ist erschreckend — und irgendwie ansteckend.', ['Gesellschaft'], ['Ahab', 'Wal'], 3, 4, 20.0, -35.0, 'Atlantischer Ozean');
+  await add(60, 'Erste Wal-Jagd. Ins Beiboot gegangen, gepaddelt wie besessen. Der Wal tauchte ab, wir kamen ihm nicht nah. Trotzdem — das Blut pulste, das war kein Dienst mehr, das war etwas anderes.', ['Arbeit'], ['Jagd', 'Wal', 'Ozean'], 4, 4, 5.0, -20.0, 'Äquatorialer Atlantik');
+  await add(55, 'Ein Sturm in der Nacht — ich dachte, wir würden sinken. Das Schiff ächzte in den Böen, Wasser schwappte übers Deck. Queequeg arbeitete ruhig wie immer. Ich betete zum ersten Mal seit Jahren.', ['Gesundheit', 'Alltag'], ['Sturm', 'Schiff', 'Ozean'], 1, 2, -5.0, 10.0, 'Golf von Guinea');
+  await add(50, 'Tagelange Gespräche mit Queequeg über seine Heimat, seine Götter, sein Leben. Er ist weiser als die meisten Männer, die ich je kannte. Was macht eigentlich Zivilisation aus?', ['Familie', 'Gesellschaft'], ['Queequeg'], 4, 4);
+  await add(45, 'Ein anderes Schiff gekreuzt — die Jeroboam. Ihr Kapitän warnte uns eindringlich vor Moby Dick: er habe dort mehrere Männer das Leben gekostet. Ahab hörte zu und lachte. Mir wurde kalt.', ['Gesellschaft'], ['Ahab', 'Wal', 'Schiff'], 2, 3, -20.0, 50.0, 'Indischer Ozean');
+  await add(40, 'Queequeg ist plötzlich sehr krank — Fieber, kaum bei Bewusstsein. Er ließ sich einen Sarg zimmern, als wäre er sicher, sterben zu müssen. Dann, nach Tagen, erholte er sich wieder. Ich verstehe ihn nicht und liebe ihn dafür.', ['Familie', 'Gesundheit'], ['Queequeg'], 2, 2);
+  await add(35, 'Ein riesiger Tintenfisch stieg aus dem Wasser — weiß und stumm, so groß wie unser Schiff. Die alten Matrosen sagten, das bedeute nichts Gutes. Ich glaube es inzwischen.', ['Alltag'], ['Ozean'], 2, 3, -10.0, 80.0, 'Indischer Ozean');
+  await add(30, 'Nachts ein Wasserstrahl am Horizont — der Geisterstoß, wie sie es nennen. Niemand weiß, ob es Moby Dick ist. Ahab ließ alle wecken, stand stundenlang an der Reling. Ich schlafe kaum noch.', ['Alltag'], ['Wal', 'Nachtschicht', 'Ahab'], 2, 2, 10.0, 110.0, 'Südchinesisches Meer');
+  await add(25, 'Der Schiffszimmermann baute Ahab ein neues Bein aus dem Kieferknochen eines Spermwals. Seltsamer Auftrag. Pip, der arme Junge, fiel ins Meer und wurde gerettet — aber er ist seitdem nicht mehr ganz er selbst.', ['Gesellschaft', 'Gesundheit'], ['Schiff', 'Ahab'], 2, 3, 25.0, 130.0, 'Pazifischer Ozean');
+  await add(20, 'Die Rachel kreuzte uns — ihr Kapitän bat Ahab flehentlich um Hilfe bei der Suche nach seinem verlorenen Sohn, verschollen nach Moby Dick. Ahab lehnte ab. Ich sah den Mann weinen. Das werde ich nie vergessen.', ['Gesellschaft'], ['Ahab', 'Wal', 'Schiff'], 1, 3, 33.0, 138.0, 'Japanische See');
+  await add(15, 'Heute die Delight getroffen — ein zertrümmertes Schiff, fünf Mann tot durch Moby Dick. Sie begruben gerade einen Kameraden. Ahab schaute nicht hin. Ich kann an nichts anderes denken.', ['Gesellschaft'], ['Ahab', 'Wal'], 1, 2, 35.0, 140.0, 'Nordpazifik');
+  await add(10, 'Er ist da. Moby Dick aufgetaucht, weißer Schimmer in der Tiefe. Alle schrien. Ahab ließ die Boote zu Wasser. Wir paddelten auf ihn zu — größer als alles, was ich je gesehen habe. Er tauchte unter uns weg.', ['Arbeit'], ['Jagd', 'Wal', 'Ahab', 'Ozean'], 3, 4, 35.2, 141.1, 'Nordpazifik');
+  await add(7, 'Zweiter Tag der Jagd. Der Wal zerschlug mehrere Boote wie Streichhölzer. Ich war im Wasser, sah nur Weiß und Gischt. Gerettet worden, am Abend am ganzen Körper zitternd. Ahab hat kaum Blut an den Händen — aber er jagt weiter.', ['Gesundheit', 'Arbeit'], ['Jagd', 'Wal', 'Sturm', 'Rettung'], 1, 1, 35.2, 141.2, 'Nordpazifik');
+  await add(4, 'Dritter Tag. Moby Dick rammte die Pequod. Das Schiff sackte weg, alles Chaos. Queequeg — ich habe ihn nicht mehr gesehen. Ich klammerte mich an seinen Sarg. Er trieb mich über Wasser, bis die Rachel mich fand.', ['Gesundheit'], ['Wal', 'Schiff', 'Rettung', 'Queequeg'], 1, 1, 35.2, 141.3, 'Nordpazifik');
+  await add(2, 'Allein von allen übrig. Die Rachel hat mich gerettet — sie suchte immer noch nach ihren verlorenen Kindern und fand stattdessen mich. Ich lebe. Ich weiß nicht warum ich lebe. Aber ich schreibe es auf.', ['Alltag', 'Gesundheit'], ['Rettung', 'Ozean'], 3, 2, 35.5, 141.5, 'Nordpazifik');
 }

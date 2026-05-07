@@ -1,10 +1,13 @@
 # Changelog
 
+## v2.8.2 — 2026-05-07 [demo branch]
+- Demo-Modus umgebaut: manueller Button in Settings › Experten › Demo statt automatischem Seed
+- Quelle gewechselt: Moby Dick (Herman Melville, 1851, gemeinfrei) statt Samuel Pepys
+- 20 Einträge als Tagebuch von Ismael, von New Bedford bis zum Untergang der Pequod
+- Bestehende Daten werden nicht berührt (nur neue Einträge eingefügt)
+
 ## v2.8.1 — 2026-05-07 [demo branch]
-- Demo-Seed: 25 Einträge (Samuel Pepys, 1660er, adaptiert) werden beim ersten Start in leere DB eingefügt
-- Demo-Kategorien: Arbeit, Familie, Gesellschaft, Gesundheit, Alltag
-- Demo-Tags: London, Theater, Musik, Abendessen, König, Schiff, Wetter, Büro, Weintrinken, Kirche
-- Demo-Koordinaten: Whitehall, Cheapside, St. Paul's, London Bridge, Deptford Dockyard
+- (verworfen — automatischer Seed beim App-Start)
 
 ## v2.8.0 — 2026-05-07
 - Hilfe-Tour: „Stimmung/Befinden" durch „Bewertungen" ersetzt (custom Qualifiers)

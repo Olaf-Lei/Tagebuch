@@ -11,7 +11,6 @@ import { useT } from '../i18n';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
 import { initDb } from '../db/schema';
-import { seedDemoDataIfEmpty } from '../db/demoSeed';
 import { ensureReminderScheduled } from '../utils/notifications';
 import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
 import { syncIfConfigured as gdriveSyncIfConfigured, syncNow as gdriveSyncNow, isConnected as gdriveIsConnected, getLastSyncMs as gdriveGetLastSyncMs } from '../sync/googledrive';
@@ -60,8 +59,7 @@ export default function RootLayout() {
       useNativeDriver: true,
     }).start();
 
-    initDb().then(async () => {
-      await seedDemoDataIfEmpty();
+    initDb().then(() => {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});

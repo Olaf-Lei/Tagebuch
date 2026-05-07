@@ -18,6 +18,7 @@ import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, 
 import { InhalteSection } from '../components/settings/InhalteSection';
 import { SyncSection } from '../components/settings/SyncSection';
 import { SicherheitSection } from '../components/settings/SicherheitSection';
+import { seedDemoData } from '../db/demoSeed';
 
 type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'experten' | 'about';
 
@@ -169,6 +170,16 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleLoadDemoData = () => {
+    Alert.alert(t.settings.demoSeedConfirmTitle, t.settings.demoSeedConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.common.ok,
+        onPress: () => seedDemoData().then(() => Alert.alert('', t.settings.demoSeedSuccess)),
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -306,6 +317,10 @@ export default function SettingsScreen() {
               />
               <Pressable style={[styles.syncButton, { marginTop: 4 }]} onPress={handleShowWebLoginQR}>
                 <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
+              </Pressable>
+              <Text style={[styles.subLabel, { marginTop: 20 }]}>Demo</Text>
+              <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleLoadDemoData}>
+                <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.demoSeedBtn}</Text>
               </Pressable>
             </View>
           )}
