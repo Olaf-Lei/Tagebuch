@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.8.3 — 2026-05-07 [demo branch]
+- Demo-Daten entfernen: Button wechselt nach Laden zu „Demo-Daten entfernen" (rot)
+- is_demo-Spalte auf entries-Tabelle (Migration), DELETE WHERE is_demo=1 beim Aufräumen
+- Eigene Daten werden beim Entfernen nicht berührt
+
 ## v2.8.2 — 2026-05-07 [demo branch]
 - Demo-Modus umgebaut: manueller Button in Settings › Experten › Demo statt automatischem Seed
 - Quelle gewechselt: Moby Dick (Herman Melville, 1851, gemeinfrei) statt Samuel Pepys

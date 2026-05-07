@@ -125,6 +125,7 @@ export async function initDb(): Promise<void> {
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN latitude REAL;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN longitude REAL;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN location_name TEXT;'); } catch {}
+  try { await db.execAsync('ALTER TABLE entries ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;'); } catch {}
 
   // Migration: add color to categories
   try { await db.execAsync('ALTER TABLE categories ADD COLUMN color TEXT;'); } catch {}

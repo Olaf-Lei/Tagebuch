@@ -1,5 +1,16 @@
 import { getDb } from './schema';
 
+export async function clearDemoData(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM entries WHERE is_demo = 1');
+}
+
+export async function hasDemoData(): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM entries WHERE is_demo = 1');
+  return (row?.cnt ?? 0) > 0;
+}
+
 export async function seedDemoData(): Promise<void> {
   const db = await getDb();
 
@@ -47,8 +58,8 @@ export async function seedDemoData(): Promise<void> {
   ) {
     const ts = now - daysAgo * 86_400_000;
     const r = await db.runAsync(
-      `INSERT INTO entries (timestamp, text, created_at, updated_at, latitude, longitude, location_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO entries (timestamp, text, created_at, updated_at, latitude, longitude, location_name, is_demo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
       [ts, text, ts, ts, lat ?? null, lng ?? null, locationName ?? null]
     );
     const id = r.lastInsertRowId;
