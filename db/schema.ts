@@ -85,8 +85,6 @@ export async function initDb(): Promise<void> {
     );
   `);
 
-  try { await db.execAsync('CREATE TABLE IF NOT EXISTS category_qualifiers (category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE, qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE, PRIMARY KEY (category_id, qualifier_id));'); } catch {}
-
   // Seed default categories
   await db.execAsync(`
     INSERT OR IGNORE INTO categories (name) VALUES
