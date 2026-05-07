@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.7.0 — 2026-05-07
+- Play Store Vorbereitung: targetSdkVersion 35, minSdkVersion 24, expo-notifications Plugin
+- Datenschutzerklärung (DE + EN) erstellt
+- Build-Format auf AAB (Android App Bundle) für Play Store umgestellt
+
 ## v2.6.7 — 2026-05-06
 - Web: Korrupter DB-Upload behoben (WASM-Heap statt DB-Bytes wurde hochgeladen)
 - Web: `created_at`/`updated_at` in Millisekunden statt Sekunden
