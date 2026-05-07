@@ -60,6 +60,9 @@ export const de = {
     sectionReminders: 'Erinnerungen',
     sectionAppearance: 'Darstellung',
     sectionExport: 'Export',
+    sectionExperten: 'Experten',
+    subWebTagebuch: 'Web-Tagebuch',
+    webLoginRelayNoUrl: 'Bitte zuerst die Web-Tagebuch-URL unter Experten › Web-Tagebuch eintragen.',
     sectionAbout: 'Über die App',
 
     subCategories: 'Kategorien',

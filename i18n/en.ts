@@ -62,6 +62,9 @@ export const en: Strings = {
     sectionReminders: 'Reminders',
     sectionAppearance: 'Appearance',
     sectionExport: 'Export',
+    sectionExperten: 'Advanced',
+    subWebTagebuch: 'Web Journal',
+    webLoginRelayNoUrl: 'Please set the Web Journal URL under Advanced › Web Journal first.',
     sectionAbout: 'About',
 
     subCategories: 'Categories',

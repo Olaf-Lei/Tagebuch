@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.7.5 — 2026-05-07
+- Einstellungen: Experten-Sektion vereinfacht (kein Nested-Accordion mehr, Inhalt direkt sichtbar)
+- Einstellungen: QR-Code-Modal scrollbar — Relay-Code-Abschnitt war auf kleinen Geräten abgeschnitten
+- Einstellungen: QR-Button jetzt gold-gefüllt (syncButton) statt weißem Rahmen-Button
+- Web: Relay-Code-Eingabefeld war im Browser unsichtbar (Button-Width-Fix im Flex-Layout)
+
+## v2.7.4 — 2026-05-07
+- Einstellungen: Crash behoben — SecureStore-Import fehlte (ReferenceError beim Screen-Laden)
+- Einstellungen: styles.input → styles.field (fehlende Style-Referenz)
+- Einstellungen: Neue Sektion „Experten › Web-Tagebuch" mit URL-Feld und QR-Code-Button
+- Einstellungen: Relay-Code immer im QR-Modal sichtbar (nicht mehr hinter URL-Guard)
+- Einstellungen: i18n-Strings für neue Sektion und Relay-Fehlerhinweis ergänzt
+- bump.js: android/build.gradle nicht mehr in git add (gitignoriert)
+
 ## v2.7.2 — 2026-05-07
 - Biometrie-Lock: Hintergrund-Timestamp in SecureStore — kein Sperren wenn App innerhalb 15s zurückkommt
 - Biometrie-Button: Concurrent-Guard + 600ms Verzögerung (statt 150ms) verhindert sofortiges system_cancel

@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -48,7 +49,7 @@ const COLOR_PICKER_PALETTE = [
 ];
 const isValidHex = (s: string) => /^#[0-9A-Fa-f]{6}$/.test(s);
 
-type SectionKey = 'inhalte' | 'sync' | 'syncGdrive' | 'syncNextcloud' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'about';
+type SectionKey = 'inhalte' | 'sync' | 'syncGdrive' | 'syncNextcloud' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'experten' | 'about';
 
 function SectionHeader({
   title, open, onToggle, styles,
@@ -81,6 +82,7 @@ export default function SettingsScreen() {
     erinnerungen: false,
     darstellung: false,
     export: false,
+    experten: false,
     about: false,
   });
   const toggle = (k: SectionKey) => setOpen((s) => ({ ...s, [k]: !s[k] }));
@@ -1026,22 +1028,6 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
-              {/* Web-Frontend URL */}
-              <Text style={[styles.subLabel, { marginTop: 16 }]}>{t.settings.webFrontendUrlLabel}</Text>
-              <TextInput
-                style={styles.input}
-                value={webFrontendUrl}
-                onChangeText={setWebFrontendUrl}
-                onBlur={() => SecureStore.setItemAsync('web_frontend_url', webFrontendUrl.trim())}
-                placeholder={t.settings.webFrontendUrlPlaceholder}
-                placeholderTextColor={c.muted}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-              {/* Web-Login QR */}
-              <Pressable style={[styles.saveButton, { marginTop: 14 }]} onPress={handleShowWebLoginQR}>
-                <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
-              </Pressable>
             </View>
           )}
 
@@ -1216,6 +1202,28 @@ export default function SettingsScreen() {
             </View>
           )}
 
+          {/* ── Experten ── */}
+          <SectionHeader title={t.settings.sectionExperten} open={open.experten} onToggle={() => toggle('experten')} styles={headerStyles} />
+          {open.experten && (
+            <View style={styles.sectionBody}>
+              <Text style={styles.subLabel}>{t.settings.subWebTagebuch}</Text>
+              <Text style={styles.fieldLabel}>{t.settings.webFrontendUrlLabel}</Text>
+              <TextInput
+                style={styles.field}
+                value={webFrontendUrl}
+                onChangeText={setWebFrontendUrl}
+                onBlur={() => SecureStore.setItemAsync('web_frontend_url', webFrontendUrl.trim())}
+                placeholder={t.settings.webFrontendUrlPlaceholder}
+                placeholderTextColor={c.muted}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <Pressable style={[styles.syncButton, { marginTop: 4 }]} onPress={handleShowWebLoginQR}>
+                <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* ── Über die App ── */}
           <SectionHeader title={t.settings.sectionAbout} open={open.about} onToggle={() => toggle('about')} styles={headerStyles} />
           {open.about && (
@@ -1340,35 +1348,35 @@ export default function SettingsScreen() {
       {/* ── Web-Login QR ── */}
       <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => { setWebLoginQR(null); setRelayCode(null); }}>
         <Pressable style={styles.modalOverlay} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
-          <View style={[styles.modalBox, { alignItems: 'center' }]}>
-            <Text style={styles.modalTitle}>{t.settings.webLoginQRTitle}</Text>
-            {webLoginQR && <QRCode value={webLoginQR} size={220} backgroundColor={c.surface} color={c.text} />}
-            <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 14 }]}>
-              {webFrontendUrl ? webFrontendUrl : t.settings.webLoginQRHint}
-            </Text>
-            {!!webFrontendUrl && (
-              <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, width: '100%' }}>
-                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-                  <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
-                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-                </View>
-                {relayCode ? (
-                  <>
-                    <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
-                    <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
-                  </>
-                ) : (
-                  <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
-                    <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
-                  </Pressable>
-                )}
-              </>
-            )}
-            <Pressable style={[styles.modalCancel, { marginTop: 10, width: '100%' }]} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
-              <Text style={styles.modalCancelText}>{t.settings.webLoginQRClose}</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '90%' }}>
+            <ScrollView contentContainerStyle={[styles.modalBox, { alignItems: 'center' }]} showsVerticalScrollIndicator={false} bounces={false}>
+              <Text style={styles.modalTitle}>{t.settings.webLoginQRTitle}</Text>
+              {webLoginQR && <QRCode value={webLoginQR} size={200} backgroundColor={c.surface} color={c.text} />}
+              <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 10 }]}>
+                {webFrontendUrl ? webFrontendUrl : t.settings.webLoginQRHint}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, width: '100%' }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                <Text style={{ color: c.muted, fontSize: 12 }}>oder</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+              </View>
+              {relayCode ? (
+                <>
+                  <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
+                  <Text style={[styles.subLabel, { textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
+                </>
+              ) : webFrontendUrl ? (
+                <Pressable style={[styles.saveButton, { marginTop: 12, width: '100%' }]} onPress={handleGenerateRelayCode} disabled={relayLoading}>
+                  <Text style={styles.syncText}>{relayLoading ? t.settings.webLoginRelayLoading : t.settings.webLoginRelayBtn}</Text>
+                </Pressable>
+              ) : (
+                <Text style={[styles.warnText, { textAlign: 'center', marginTop: 8 }]}>{t.settings.webLoginRelayNoUrl}</Text>
+              )}
+              <Pressable style={[styles.modalCancel, { marginTop: 10, width: '100%' }]} onPress={() => { setWebLoginQR(null); setRelayCode(null); }}>
+                <Text style={styles.modalCancelText}>{t.settings.webLoginQRClose}</Text>
+              </Pressable>
+            </ScrollView>
+          </Pressable>
         </Pressable>
       </Modal>
 
