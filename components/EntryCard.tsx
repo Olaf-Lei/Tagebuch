@@ -10,6 +10,10 @@ interface Props {
   entry: Entry;
   highlight?: string;
   qualifiers?: Qualifier[];
+  selected?: boolean;
+  selectionMode?: boolean;
+  onLongPress?: () => void;
+  onSelect?: () => void;
 }
 
 function formatDate(ts: number): string {
@@ -45,11 +49,12 @@ function HighlightedText({
   );
 }
 
-export function EntryCard({ entry, highlight, qualifiers = [] }: Props) {
+export function EntryCard({ entry, highlight, qualifiers = [], selected, selectionMode, onLongPress, onSelect }: Props) {
   const router = useRouter();
   const c = useColors();
   const styles = useMemo(() => StyleSheet.create({
     card: { backgroundColor: c.surface, borderRadius: 12, padding: 14, marginBottom: 10, gap: 6 },
+    cardSelected: { borderWidth: 2, borderColor: c.accent },
     pressed: { opacity: 0.75 },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     timestamp: { fontSize: 12, color: c.muted },
@@ -63,26 +68,35 @@ export function EntryCard({ entry, highlight, qualifiers = [] }: Props) {
     tagText: { fontSize: 12, color: c.muted },
     locationBadge: { backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
     locationText: { fontSize: 12, color: c.muted },
+    checkbox: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    checkboxText: { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 16 },
   }), [c]);
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      onPress={() => router.push(`/entry/${entry.id}`)}
+      style={({ pressed }) => [styles.card, selected && styles.cardSelected, pressed && styles.pressed]}
+      onPress={() => selectionMode ? onSelect?.() : router.push(`/entry/${entry.id}`)}
+      onLongPress={onLongPress}
+      delayLongPress={400}
     >
       <View style={styles.headerRow}>
         <Text style={styles.timestamp}>{formatDate(entry.timestamp)}</Text>
-        {Object.keys(entry.qualifierValues).length > 0 && qualifiers.length > 0 ? (
-          <View style={styles.qualifiers}>
-            {qualifiers.map((q) => {
+        <View style={styles.qualifiers}>
+          {!selectionMode && Object.keys(entry.qualifierValues).length > 0 && qualifiers.length > 0 &&
+            qualifiers.map((q) => {
               const val = entry.qualifierValues[q.id];
               if (!val) return null;
               const preset = EMOJI_PRESETS[q.emoji_preset];
               const emoji = preset ? emojiForLevel(preset.emojis, val) : null;
               return emoji ? <Text key={q.id} style={styles.qualifierEmoji}>{emoji}</Text> : null;
-            })}
-          </View>
-        ) : null}
+            })
+          }
+          {selectionMode && (
+            <View style={[styles.checkbox, { borderColor: selected ? c.accent : c.muted, backgroundColor: selected ? c.accent : 'transparent' }]}>
+              {selected && <Text style={styles.checkboxText}>✓</Text>}
+            </View>
+          )}
+        </View>
       </View>
       {highlight ? (
         <HighlightedText

@@ -53,6 +53,9 @@ export const en: Strings = {
     dateCustom: 'Custom',
     changeRange: 'change',
     empty: 'No entries yet.',
+    selectionCount: (n: number) => `${n} selected`,
+    selectionDeleteConfirm: (n: number) => `Delete ${n} ${n === 1 ? 'entry' : 'entries'}?`,
+    selectAll: 'All',
   },
 
   entry: {

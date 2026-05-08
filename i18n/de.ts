@@ -51,6 +51,9 @@ export const de = {
     dateCustom: 'Frei',
     changeRange: 'ändern',
     empty: 'Noch keine Einträge.',
+    selectionCount: (n: number) => `${n} ausgewählt`,
+    selectionDeleteConfirm: (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'} löschen?`,
+    selectAll: 'Alle',
   },
 
   entry: {

@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Modal, Pressable,
+  ActivityIndicator, Alert, FlatList, Image, Modal, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 import { useQualifiers } from '../hooks/useQualifiers';
 import { useT } from '../i18n';
+import { deleteEntries } from '../db/entries';
 import { addSyncListener, loadConfig, syncNow as ncSyncNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { exportEncKey } from '../utils/crypto';
@@ -106,6 +107,8 @@ export default function IndexScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBurgerMenu, setShowBurgerMenu] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [webLoginQR, setWebLoginQR] = useState<string | null>(null);
@@ -177,6 +180,40 @@ export default function IndexScreen() {
     } finally {
       setGDriveSyncingState(false);
     }
+  };
+
+  const enterSelectionMode = (id: number) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  };
+
+  const toggleSelection = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleMultiDelete = () => {
+    const ids = [...selectedIds];
+    Alert.alert(t.list.selectionDeleteConfirm(ids.length), undefined, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.common.delete, style: 'destructive',
+        onPress: async () => {
+          await deleteEntries(ids);
+          exitSelectionMode();
+          reload();
+        },
+      },
+    ]);
   };
 
   const handleSyncAll = async () => {
@@ -279,12 +316,20 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{
-        headerLeft: () => (
+        headerLeft: () => selectionMode ? (
+          <Pressable onPress={exitSelectionMode} style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ fontSize: 15, color: c.accent }}>{t.common.cancel}</Text>
+          </Pressable>
+        ) : (
           <Pressable onPress={() => setShowBurgerMenu(true)} style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
             <Text style={{ fontSize: 22, color: c.muted }}>☰</Text>
           </Pressable>
         ),
-        headerTitle: () => (
+        headerTitle: () => selectionMode ? (
+          <Text style={{ fontSize: 17, fontWeight: '600', color: c.text }}>
+            {t.list.selectionCount(selectedIds.size)}
+          </Text>
+        ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Image
               source={require('../assets/icon.png')}
@@ -293,7 +338,16 @@ export default function IndexScreen() {
             <Text style={{ fontSize: 17, fontWeight: '600', color: c.text }}>{t.appName}</Text>
           </View>
         ),
-        headerRight: () => (
+        headerRight: () => selectionMode ? (
+          <View style={{ flexDirection: 'row' }}>
+            <Pressable onPress={() => setSelectedIds(new Set(entries.map(e => e.id)))} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 14, color: c.accent }}>{t.list.selectAll}</Text>
+            </Pressable>
+            <Pressable onPress={handleMultiDelete} disabled={selectedIds.size === 0} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
+              <Text style={{ fontSize: 14, color: selectedIds.size > 0 ? '#FF3B30' : c.muted }}>{t.common.delete}</Text>
+            </Pressable>
+          </View>
+        ) : (
           <View style={{ flexDirection: 'row' }}>
             <Pressable onPress={handleOpenSyncModal} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
               <Text style={{ fontSize: 20, color: c.accent }}>↻</Text>
@@ -363,7 +417,17 @@ export default function IndexScreen() {
         <FlatList
           data={entries}
           keyExtractor={(e) => String(e.id)}
-          renderItem={({ item }) => <EntryCard entry={item} highlight={search} qualifiers={qualifiers} />}
+          renderItem={({ item }) => (
+            <EntryCard
+              entry={item}
+              highlight={search}
+              qualifiers={qualifiers}
+              selected={selectedIds.has(item.id)}
+              selectionMode={selectionMode}
+              onLongPress={() => enterSelectionMode(item.id)}
+              onSelect={() => toggleSelection(item.id)}
+            />
+          )}
           contentContainerStyle={[styles.list, listMaxWidth != null && { maxWidth: listMaxWidth, alignSelf: 'center', width: '100%' }]}
           ListEmptyComponent={
             <Text style={styles.empty}>{t.list.empty}</Text>
@@ -384,8 +448,8 @@ export default function IndexScreen() {
           }}>
             {([
               { label: t.nav.stats, icon: '📊', route: '/stats' },
-              { label: t.nav.calendar, icon: '📅', route: '/calendar' },
               { label: t.nav.map, icon: '🗺️', route: '/map' },
+              { label: t.nav.calendar, icon: '📅', route: '/calendar' },
             ] as const).map(({ label, icon, route }, i, arr) => (
               <Pressable
                 key={route}

@@ -2,6 +2,11 @@ import { getDb } from './schema';
 
 export async function clearDemoData(): Promise<void> {
   const db = await getDb();
+  await db.runAsync(
+    `INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at)
+     SELECT created_at, ? FROM entries WHERE is_demo = 1`,
+    [Date.now()],
+  );
   await db.runAsync('DELETE FROM entries WHERE is_demo = 1');
 }
 

@@ -219,6 +219,18 @@ export async function getEntriesWithLocation(opts?: {
   );
 }
 
+export async function deleteEntries(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = await getDb();
+  const ph = ids.map(() => '?').join(',');
+  await db.runAsync(
+    `INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at)
+     SELECT created_at, ? FROM entries WHERE id IN (${ph})`,
+    [Date.now(), ...ids],
+  );
+  await db.runAsync(`DELETE FROM entries WHERE id IN (${ph})`, ids);
+}
+
 export async function deleteEntry(id: number): Promise<void> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ created_at: number }>('SELECT created_at FROM entries WHERE id = ?', [id]);
