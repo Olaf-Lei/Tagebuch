@@ -21,7 +21,7 @@
       "versionCode": 81,
       "targetSdkVersion": 35,
       "minSdkVersion": 24,
-      "privacyPolicyUrl": "TODO",
+      "privacyPolicyUrl": "https://gist.github.com/Olaf-Lei/ab539abc2d8d4db4305b9ee2de4af95d",
       "intentFilters": [
         {
           "action": "VIEW",

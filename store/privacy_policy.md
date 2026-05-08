@@ -1,7 +1,7 @@
 # Datenschutzerklärung – Tagebuch-App
 # Privacy Policy – Diary App
 
-**Letzte Aktualisierung / Last updated:** 2025-04
+**Letzte Aktualisierung / Last updated:** 2026-05
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### Verantwortlicher
 Olaf Leichsenring  
-E-Mail: olaf@olovenet.de
+E-Mail: tagebuch.promenade340@slmail.me
 
 ### Grundsatz
 Die Tagebuch-App ist eine rein lokale Anwendung. Alle Einträge, Kategorien und Tags werden ausschließlich auf deinem Gerät gespeichert. Es findet keine Übertragung an Dritte statt.
@@ -31,11 +31,14 @@ Wenn du die tägliche Erinnerung aktivierst, plant die App eine lokale Benachric
 **Nextcloud-Backup (optional)**  
 Wenn du das Sync-Feature konfigurierst, überträgt die App eine Sicherungskopie der Datenbank an den Nextcloud-Server, den **du selbst** angegeben hast. Die App verbindet sich ausschließlich mit diesem Server — niemals mit Servern des App-Entwicklers. Du bist selbst verantwortlich für die Sicherheit deines Nextcloud-Servers.
 
+**Google Drive-Backup (optional)**  
+Wenn du die Google-Drive-Synchronisation aktivierst, überträgt die App eine Sicherungskopie der Datenbank in den Google-Drive-Ordner, den du ausgewählt hast. Die Authentifizierung erfolgt über OAuth 2.0 (Google). Es werden ausschließlich die Datenbankdatei übertragen — keine anderen Gerätedaten. Deine Google-Zugangsdaten werden niemals von der App gespeichert.
+
 ### Drittanbieter
-Die App verwendet keine Analyse-Tools, keine Werbe-SDKs und sendet keine Telemetriedaten. Es werden keine Daten an Dritte weitergegeben.
+Die App verwendet keine Analyse-Tools, keine Werbe-SDKs und sendet keine Telemetriedaten. Außer dem optionalen Nextcloud- bzw. Google-Drive-Backup werden keine Daten an Dritte weitergegeben.
 
 ### Deine Rechte (DSGVO)
-Da alle Daten lokal auf deinem Gerät liegen, hast du jederzeit vollständige Kontrolle. Du kannst die App und alle Daten durch Deinstallation vollständig entfernen. Bei Fragen: olaf@olovenet.de
+Da alle Daten lokal auf deinem Gerät liegen, hast du jederzeit vollständige Kontrolle. Du kannst die App und alle Daten durch Deinstallation vollständig entfernen. Bei Fragen: tagebuch.promenade340@slmail.me
 
 ---
 
@@ -43,7 +46,7 @@ Da alle Daten lokal auf deinem Gerät liegen, hast du jederzeit vollständige Ko
 
 ### Controller
 Olaf Leichsenring  
-Email: olaf@olovenet.de
+Email: tagebuch.promenade340@slmail.me
 
 ### Principle
 Diary is a purely local application. All entries, categories and tags are stored exclusively on your device. No data is transmitted to third parties.
@@ -65,8 +68,11 @@ When you enable the daily reminder, the app schedules a local notification on yo
 **Nextcloud backup (optional)**  
 If you configure the sync feature, the app transfers a backup of the database to the Nextcloud server **you** specified. The app connects only to that server — never to servers operated by the app developer. You are responsible for the security of your own Nextcloud server.
 
+**Google Drive backup (optional)**  
+If you enable Google Drive sync, the app transfers a backup of the database to the Google Drive folder you selected. Authentication is handled via OAuth 2.0 (Google). Only the database file is transferred — no other device data. Your Google credentials are never stored by the app.
+
 ### Third parties
-The app uses no analytics tools, no advertising SDKs, and sends no telemetry data. No data is shared with third parties.
+The app uses no analytics tools, no advertising SDKs, and sends no telemetry data. Apart from the optional Nextcloud or Google Drive backup, no data is shared with third parties.
 
 ### Your rights (GDPR)
-Since all data resides locally on your device, you have full control at all times. You can remove the app and all data completely by uninstalling it. Questions: olaf@olovenet.de
+Since all data resides locally on your device, you have full control at all times. You can remove the app and all data completely by uninstalling it. Questions: tagebuch.promenade340@slmail.me
