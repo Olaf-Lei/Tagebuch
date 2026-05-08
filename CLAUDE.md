@@ -387,10 +387,6 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 
 ### Offen (nach Priorität)
 
-**Bugfixes**
-- [ ] Android: Menü-Reihenfolge im 📊-Bubble korrigieren → Statistik / Karte / Kalender (aktuell: Statistik / Kalender / Karte)
-- [ ] Demo-Modus: Einträge werden beim Löschen nicht wirklich entfernt — Ursache prüfen
-- [x] Kategorien und Tags löschen nicht persistent — kommen nach Sync/Neustart wieder (vermutlich Merge-Logik überschreibt Löschung)
 
 **Play Store Veröffentlichung**
 - [ ] Datenschutzerklärung hosten (GitHub Gist o.ä.) → URL in `app.json` (`android.privacyPolicyUrl`) statt `"TODO"` eintragen
@@ -399,6 +395,11 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 - [ ] AAB v2.7.2 bauen: `npx expo prebuild --platform android --clean && bash scripts/prepare-android.sh && cd android && ./gradlew bundleRelease`
 
 ### Erledigt
+- **Mehrfachauswahl** — Long-Press aktiviert Auswahlmodus; Header zeigt Anzahl + „Alle"/„Löschen"-Buttons; `deleteEntries(ids[])` mit Tombstone
+- **Menü-Reihenfolge** — 📊-Bubble: Statistik → Karte → Kalender
+- **Demo-Modus Fix** — `clearDemoData` schreibt Tombstones; Demo-Einträge kommen nach Sync nicht mehr zurück
+- **Kategorien/Tags Lösch-Persistenz** — Tombstone-Tabellen in Sync-Merge; Löschungen werden bidirektional propagiert
+- **Karten- und Statistik-Filter** — Android + Web: Kategorie-Multi-Select + Qualifier-Bereichsfilter auf Karte; Web Stats: Zeitraum-Chips + freier Datumsbereich; Eintragsliste: „Frei"-Filter
 - **Code-Qualitäts-Refactoring** — settings.tsx (1528→367 Zeilen) in InhalteSection/SyncSection/SicherheitSection aufgeteilt; hardcodierte Strings in i18n; redundante schema.ts-Definition entfernt; DISTINCT→GROUP BY in getEntries(); web/ aus Root-tsconfig ausgeschlossen; Hilfe-Tour auf aktuellen Feature-Stand gebracht
 - **QR-Code + Relay-Code Web-Login** — Android Settings → Sync → „Web-Login QR-Code": QR (react-native-qrcode-svg) + „6-stelligen Code erzeugen" Button im selben Modal; Payload `{v,nc:{url,user,pass,path},encKey}`; Web AuthScreen: QR-Scan via ZXing (BrowserQRCodeReader, TRY_HARDER, Kamera-Wechsel-Button) + 6-Zeichen-Eingabefeld; Relay via `proxy.php` store_code/fetch_code.
 - **Web-Client Export** — Burger-Menü → Export-Untermenü: JSON / CSV / Markdown; alle Metadaten (Kategorien, Tags, Qualifiers, Geo-Daten); CSV mit dynamischen Qualifier-Spalten
