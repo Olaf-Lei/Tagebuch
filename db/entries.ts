@@ -181,22 +181,41 @@ export interface LocationEntry {
 export async function getEntriesWithLocation(opts?: {
   startTime?: number;
   endTime?: number;
+  categoryIds?: number[];
+  qualifierFilter?: { qualifierId: number; minValue: number; maxValue: number };
 }): Promise<LocationEntry[]> {
   const db = await getDb();
-  const conditions = ['latitude IS NOT NULL AND longitude IS NOT NULL'];
-  const params: number[] = [];
+  const conditions = ['e.latitude IS NOT NULL AND e.longitude IS NOT NULL'];
+  const params: (number | string)[] = [];
+  let joins = '';
+
   if (opts?.startTime !== undefined) {
-    conditions.push('timestamp >= ?');
+    conditions.push('e.timestamp >= ?');
     params.push(opts.startTime);
   }
   if (opts?.endTime !== undefined) {
-    conditions.push('timestamp <= ?');
+    conditions.push('e.timestamp <= ?');
     params.push(opts.endTime);
   }
+  if (opts?.categoryIds && opts.categoryIds.length > 0) {
+    joins += ' JOIN entry_categories ec ON ec.entry_id = e.id';
+    conditions.push(`ec.category_id IN (${opts.categoryIds.map(() => '?').join(',')})`);
+    params.push(...opts.categoryIds);
+  }
+  if (opts?.qualifierFilter) {
+    joins += ' JOIN entry_qualifiers eq ON eq.entry_id = e.id';
+    conditions.push('eq.qualifier_id = ?', 'eq.value >= ?', 'eq.value <= ?');
+    params.push(
+      opts.qualifierFilter.qualifierId,
+      opts.qualifierFilter.minValue,
+      opts.qualifierFilter.maxValue,
+    );
+  }
+
   return db.getAllAsync<LocationEntry>(
-    `SELECT id, timestamp, text, latitude, longitude, location_name as locationName
-     FROM entries WHERE ${conditions.join(' AND ')} ORDER BY timestamp DESC`,
-    params
+    `SELECT DISTINCT e.id, e.timestamp, e.text, e.latitude, e.longitude, e.location_name as locationName
+     FROM entries e${joins} WHERE ${conditions.join(' AND ')} ORDER BY e.timestamp DESC`,
+    params,
   );
 }
 

@@ -18,6 +18,15 @@ export const de = {
     dateWeek: 'Woche',
     dateMonth: 'Monat',
     loading: 'Karte wird geladen…',
+    filterBtn: 'Filter',
+    filterReset: 'Zurücksetzen',
+    filterApply: 'Anwenden',
+    filterCategories: 'Kategorien',
+    filterQualifier: 'Bewertung',
+    filterQualifierNone: 'Keine',
+    filterQualifierMin: 'Von',
+    filterQualifierMax: 'Bis',
+    filterActive: (n: number) => `${n} aktiv`,
   },
 
   common: {

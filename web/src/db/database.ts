@@ -402,14 +402,32 @@ export function getQualifierCategoryLinks(): Record<number, number[]> {
   } catch { return {} }
 }
 
-export function getEntriesWithLocation(p: StatsPeriod): Entry[] {
+export interface LocationFilter extends StatsPeriod {
+  categoryIds?: number[]
+  qualifierFilter?: { qualifierId: number; minValue: number; maxValue: number }
+}
+
+export function getEntriesWithLocation(p: LocationFilter): Entry[] {
   const d = getDb()
-  const stmt = d.prepare(`
-    SELECT * FROM entries
-    WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-      AND timestamp >= ? AND timestamp <= ?
-    ORDER BY timestamp DESC`)
-  stmt.bind([p.from, p.to])
+  const conditions = ['e.latitude IS NOT NULL', 'e.longitude IS NOT NULL', 'e.timestamp >= ?', 'e.timestamp <= ?']
+  const params: (number | string)[] = [p.from, p.to]
+  let joins = ''
+
+  if (p.categoryIds && p.categoryIds.length > 0) {
+    joins += ' JOIN entry_categories ec ON ec.entry_id = e.id'
+    conditions.push(`ec.category_id IN (${p.categoryIds.map(() => '?').join(',')})`)
+    params.push(...p.categoryIds)
+  }
+  if (p.qualifierFilter) {
+    joins += ' JOIN entry_qualifiers eq ON eq.entry_id = e.id'
+    conditions.push('eq.qualifier_id = ?', 'eq.value >= ?', 'eq.value <= ?')
+    params.push(p.qualifierFilter.qualifierId, p.qualifierFilter.minValue, p.qualifierFilter.maxValue)
+  }
+
+  const stmt = d.prepare(
+    `SELECT DISTINCT e.* FROM entries e${joins} WHERE ${conditions.join(' AND ')} ORDER BY e.timestamp DESC`
+  )
+  stmt.bind(params)
   const rows: Entry[] = []
   while (stmt.step()) {
     const r = stmt.getAsObject() as Record<string, unknown>

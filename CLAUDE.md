@@ -354,7 +354,7 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 - Kartenauswertung mit Zeitfilter (7 Tage / 30 Tage / 365 Tage / Gesamt)
 - Dark-/Light-Modus (Burger-Menü, persistiert in `localStorage`)
 - **Dualer Sync**: Nextcloud + Google Drive gleichzeitig aktiv; Upload geht parallel an beide Backends (`Promise.allSettled`)
-- **Google Drive**: OAuth 2.0 PKCE-Flow; PKCE-Verifier in `sessionStorage` (nicht `localStorage` — sonst bei Safari-Redirect verloren); Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser; Folder-ID in `localStorage`; Scope: `drive`
+- **Google Drive**: OAuth 2.0 PKCE-Flow; PKCE-Verifier in `localStorage` (nicht `sessionStorage` — sonst bei Cross-Origin-Redirect in Safari/Firefox verloren), wird nach Verwendung sofort gelöscht; Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser; Folder-ID in `localStorage`; Scope: `drive`
 - **Relay-Code-Login**: Android generiert 6-stelligen Code (POST `proxy.php?action=store_code`), Web gibt ihn ein (GET `proxy.php?action=fetch_code&code=…`); Credentials im Server-Temp, gültig 5 Min., danach automatisch gelöscht; Alphabet ohne 0/O/1/I
 - **Kein bidirektionaler Merge im Web**: Sync = Download remote → DB ersetzen → Upload; letzter Upload gewinnt
 

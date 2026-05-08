@@ -29,7 +29,7 @@ async function _generateChallenge(verifier: string): Promise<string> {
 
 export async function startAuth(): Promise<void> {
   const verifier = _generateVerifier()
-  sessionStorage.setItem('gdrive_pkce_verifier', verifier)
+  localStorage.setItem('gdrive_pkce_verifier', verifier)
   const params = new URLSearchParams({
     client_id: CLIENT_ID, redirect_uri: REDIRECT_URI,
     response_type: 'code', scope: SCOPE,
@@ -40,7 +40,7 @@ export async function startAuth(): Promise<void> {
 }
 
 export async function completeAuth(code: string): Promise<void> {
-  const verifier = sessionStorage.getItem('gdrive_pkce_verifier') ?? ''
+  const verifier = localStorage.getItem('gdrive_pkce_verifier') ?? ''
   if (!verifier) throw new Error('PKCE-Verifier fehlt — bitte den Anmelde-Vorgang neu starten.')
   const res = await fetch('./proxy.php?action=google_token', {
     method: 'POST',
@@ -52,7 +52,7 @@ export async function completeAuth(code: string): Promise<void> {
   localStorage.setItem(LS.ACCESS_TOKEN, tokens.access_token)
   if (tokens.refresh_token) localStorage.setItem(LS.REFRESH_TOKEN, tokens.refresh_token)
   localStorage.setItem(LS.TOKEN_EXPIRY, String(Date.now() + tokens.expires_in * 1000))
-  sessionStorage.removeItem('gdrive_pkce_verifier')
+  localStorage.removeItem('gdrive_pkce_verifier')
   try {
     const ui = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },

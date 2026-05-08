@@ -16,9 +16,9 @@ const PRESET_ICONS: Record<string, string> = {
 
 const QUAL_COLORS = ['#C9A84C','#5B9CF6','#7EC97E','#E07E7E','#B57EE0','#7EC9C9']
 
-type Period = 'week' | 'month' | 'year' | 'all'
+type Period = 'week' | 'month' | 'year' | 'all' | 'custom'
 
-function periodRange(p: Period): { from: number; to: number } {
+function builtinRange(p: Exclude<Period, 'custom'>): { from: number; to: number } {
   const now = Date.now()
   const day = 86400_000
   if (p === 'week')  return { from: now - 7 * day, to: now }
@@ -37,9 +37,8 @@ function LinePath({ points, color }: { points: { x: number; y: number }[]; color
   return <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
 }
 
-function TrendChart({ period }: { period: Period }) {
-  const range = periodRange(period)
-  const raw = useMemo(() => getQualifierTrend(range), [period])
+function TrendChart({ range }: { range: { from: number; to: number } }) {
+  const raw = useMemo(() => getQualifierTrend(range), [range])
 
   if (!raw.length) return (
     <p style={s.hint}>
@@ -115,23 +114,65 @@ function BarChart({ data, max }: { data: { name: string; color?: string; count: 
   )
 }
 
+function todayStr() {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+function monthAgoStr() {
+  const d = new Date(Date.now() - 30 * 86400_000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 export default function Stats() {
   const [period, setPeriod] = useState<Period>('all')
-  const range = useMemo(() => periodRange(period), [period])
+  const [customFrom, setCustomFrom] = useState(monthAgoStr)
+  const [customTo, setCustomTo] = useState(todayStr)
+
+  const range = useMemo(() => {
+    if (period === 'custom') {
+      const from = customFrom ? new Date(customFrom).getTime() : 0
+      const to = customTo ? new Date(customTo + 'T23:59:59').getTime() : Number.MAX_SAFE_INTEGER
+      return { from, to }
+    }
+    return builtinRange(period as Exclude<Period, 'custom'>)
+  }, [period, customFrom, customTo])
+
   const overview = useMemo(() => getStatsOverview(range), [range])
   const catStats = useMemo(() => getCategoryStats(range), [range])
   const tagStats = useMemo(() => getTagStats(range), [range])
 
-  const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt' }
+  const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt', custom: 'Frei' }
 
   return (
     <div style={s.container}>
       <div style={s.filters}>
-        {(['week','month','year','all'] as Period[]).map(p => (
-          <button key={p} style={{ ...s.filterBtn, background: period === p ? 'var(--accent)' : 'transparent', color: period === p ? '#0F1B2D' : 'var(--text2)' }}
-            onClick={() => setPeriod(p)}>{periodLabel[p]}</button>
+        {(['week','month','year','all','custom'] as Period[]).map(p => (
+          <button key={p}
+            style={{ ...s.filterBtn, background: period === p ? 'var(--accent)' : 'transparent', color: period === p ? '#0F1B2D' : 'var(--text2)' }}
+            onClick={() => setPeriod(p)}>
+            {periodLabel[p]}
+          </button>
         ))}
       </div>
+
+      {period === 'custom' && (
+        <div style={s.customRange}>
+          <div style={s.dateField}>
+            <label style={s.dateLabel}>Von</label>
+            <input type="date" value={customFrom} max={customTo || todayStr()}
+              onChange={e => setCustomFrom(e.target.value)} style={s.dateInput} />
+          </div>
+          <div style={{ color: 'var(--text2)', alignSelf: 'flex-end', paddingBottom: 2 }}>–</div>
+          <div style={s.dateField}>
+            <label style={s.dateLabel}>Bis</label>
+            <input type="date" value={customTo} min={customFrom} max={todayStr()}
+              onChange={e => setCustomTo(e.target.value)} style={s.dateInput} />
+          </div>
+        </div>
+      )}
 
       <div style={s.statRow}>
         <div style={s.statCard}>
@@ -146,7 +187,7 @@ export default function Stats() {
 
       <div style={s.section}>
         <h3 style={s.sectionTitle}>Bewertungs-Verlauf</h3>
-        <TrendChart period={period} />
+        <TrendChart range={range} />
       </div>
 
       {catStats.length > 0 && (
@@ -168,8 +209,12 @@ export default function Stats() {
 
 const s: Record<string, React.CSSProperties> = {
   container: { padding: '16px', maxWidth: 800, margin: '0 auto', paddingBottom: 80 },
-  filters: { display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
+  filters: { display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   filterBtn: { border: '1px solid var(--accent)', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  customRange: { display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap', background: 'var(--surface)', borderRadius: 10, padding: '12px 16px' },
+  dateField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  dateLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase' as const, letterSpacing: 1 },
+  dateInput: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', color: 'var(--text)', fontSize: 14, cursor: 'pointer' },
   statRow: { display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' },
   statCard: { flex: 1, minWidth: 120, background: 'var(--surface)', borderRadius: 10, padding: '16px 20px' },
   statNum: { color: 'var(--accent)', fontSize: 36, fontWeight: 700 },

@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.8.6 — 2026-05-08
+- Android Karte: Kategorie-Filter (Multi-Select) + Qualifier-Bereichsfilter (von/bis Emoji) im Filter-Modal
+- Web Karte: dasselbe Filter-Panel (Kategorien + Qualifier-Bereich), inline aufklappbar
+- Web Statistiken: Zeitraum-Chips (7 Tage / 30 Tage / 365 Tage / Gesamt / **Frei**) + Von/Bis-Datumseingabe
+- DB (Android + Web): `getEntriesWithLocation` unterstützt jetzt `categoryIds` und `qualifierFilter` (min/max)
+
 ## v2.8.4 — 2026-05-07
 - Interaktive Ortswahl per Karte: 🗺️-Button neben GPS-Pill in Eintrag erstellen/bearbeiten
 - Android: WebView + Leaflet, Tap → Marker → expo-location Reverse-Geocoding → Übernehmen

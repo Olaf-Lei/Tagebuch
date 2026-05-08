@@ -20,6 +20,15 @@ export const en: Strings = {
     dateWeek: 'Week',
     dateMonth: 'Month',
     loading: 'Loading map…',
+    filterBtn: 'Filter',
+    filterReset: 'Reset',
+    filterApply: 'Apply',
+    filterCategories: 'Categories',
+    filterQualifier: 'Rating',
+    filterQualifierNone: 'None',
+    filterQualifierMin: 'From',
+    filterQualifierMax: 'To',
+    filterActive: (n: number) => `${n} active`,
   },
 
   common: {
