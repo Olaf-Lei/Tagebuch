@@ -47,14 +47,22 @@ export async function mergeRemoteDb(
     );
     const newCount = row?.cnt ?? 0;
 
-    await db.execAsync(`INSERT OR IGNORE INTO categories (name, color) SELECT name, color FROM remote.categories`);
+    await db.execAsync(`
+      INSERT OR IGNORE INTO categories (name, color)
+      SELECT name, color FROM remote.categories
+      WHERE name NOT IN (SELECT name FROM deleted_category_names)
+    `);
     await db.execAsync(`
       UPDATE categories
       SET color = (SELECT rc.color FROM remote.categories rc WHERE rc.name = categories.name)
       WHERE EXISTS (SELECT 1 FROM remote.categories rc WHERE rc.name = categories.name AND rc.color IS NOT NULL)
         AND (categories.color IS NULL OR categories.color != (SELECT rc.color FROM remote.categories rc WHERE rc.name = categories.name))
     `);
-    await db.execAsync(`INSERT OR IGNORE INTO tags (name) SELECT name FROM remote.tags`);
+    await db.execAsync(`
+      INSERT OR IGNORE INTO tags (name)
+      SELECT name FROM remote.tags
+      WHERE name NOT IN (SELECT name FROM deleted_tag_names)
+    `);
     await db.execAsync(`
       INSERT INTO entries (timestamp, text, created_at, updated_at, mood, health, latitude, longitude, location_name)
       SELECT re.timestamp, re.text, re.created_at, re.updated_at, re.mood, re.health, re.latitude, re.longitude, re.location_name
@@ -115,6 +123,22 @@ export async function mergeRemoteDb(
     if ((remoteHasTombstones?.cnt ?? 0) > 0) {
       await db.execAsync(`INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at) SELECT created_at, deleted_at FROM remote.deleted_entry_ids`);
       await db.execAsync(`DELETE FROM entries WHERE created_at IN (SELECT created_at FROM deleted_entry_ids)`);
+    }
+
+    const remoteHasCatTombstones = await db.getFirstAsync<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt FROM remote.sqlite_master WHERE type='table' AND name='deleted_category_names'`,
+    );
+    if ((remoteHasCatTombstones?.cnt ?? 0) > 0) {
+      await db.execAsync(`INSERT OR IGNORE INTO deleted_category_names (name, deleted_at) SELECT name, deleted_at FROM remote.deleted_category_names`);
+      await db.execAsync(`DELETE FROM categories WHERE name IN (SELECT name FROM deleted_category_names)`);
+    }
+
+    const remoteHasTagTombstones = await db.getFirstAsync<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt FROM remote.sqlite_master WHERE type='table' AND name='deleted_tag_names'`,
+    );
+    if ((remoteHasTagTombstones?.cnt ?? 0) > 0) {
+      await db.execAsync(`INSERT OR IGNORE INTO deleted_tag_names (name, deleted_at) SELECT name, deleted_at FROM remote.deleted_tag_names`);
+      await db.execAsync(`DELETE FROM tags WHERE name IN (SELECT name FROM deleted_tag_names)`);
     }
 
     await db.execAsync(`DETACH DATABASE remote`);

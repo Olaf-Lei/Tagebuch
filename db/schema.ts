@@ -62,6 +62,16 @@ export async function initDb(): Promise<void> {
       deleted_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS deleted_category_names (
+      name TEXT PRIMARY KEY,
+      deleted_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS deleted_tag_names (
+      name TEXT PRIMARY KEY,
+      deleted_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS qualifiers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,

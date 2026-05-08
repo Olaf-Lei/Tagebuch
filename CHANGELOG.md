@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.8.8 — 2026-05-08
+- Fix: Kategorien und Tags löschen jetzt persistent — Tombstone-Tabellen verhindern Wiedereinfügen beim Merge
+- Neu: `deleted_category_names` + `deleted_tag_names` Tabellen; remote Tombstones werden beim Sync propagiert
+
 ## v2.8.7 — 2026-05-08
 - Android Standardansicht: Zeitfilter „Frei" mit Von/Bis-Datumseingabe (Chips statt Segmented Control)
 

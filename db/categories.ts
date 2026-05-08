@@ -26,9 +26,11 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function createCategory(name: string): Promise<number> {
   const db = await getDb();
+  const trimmed = name.trim();
+  await db.runAsync(`DELETE FROM deleted_category_names WHERE name = ?`, [trimmed]);
   const row = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM categories');
   const color = CATEGORY_COLORS[(row?.cnt ?? 0) % CATEGORY_COLORS.length];
-  const result = await db.runAsync(`INSERT INTO categories (name, color) VALUES (?, ?)`, [name.trim(), color]);
+  const result = await db.runAsync(`INSERT INTO categories (name, color) VALUES (?, ?)`, [trimmed, color]);
   return result.lastInsertRowId;
 }
 
@@ -44,5 +46,9 @@ export async function updateCategoryColor(id: number, color: string): Promise<vo
 
 export async function deleteCategory(id: number): Promise<void> {
   const db = await getDb();
+  const row = await db.getFirstAsync<{ name: string }>(`SELECT name FROM categories WHERE id = ?`, [id]);
+  if (row) {
+    await db.runAsync(`INSERT OR REPLACE INTO deleted_category_names (name, deleted_at) VALUES (?, ?)`, [row.name, Date.now()]);
+  }
   await db.runAsync(`DELETE FROM categories WHERE id = ?`, [id]);
 }

@@ -13,6 +13,7 @@ export async function getTags(): Promise<Tag[]> {
 export async function upsertTag(name: string): Promise<number> {
   const db = await getDb();
   const trimmed = name.trim().toLowerCase();
+  await db.runAsync(`DELETE FROM deleted_tag_names WHERE name = ?`, [trimmed]);
   await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [trimmed]);
   const row = await db.getFirstAsync<{ id: number }>(`SELECT id FROM tags WHERE name = ?`, [trimmed]);
   return row!.id;
@@ -25,6 +26,10 @@ export async function renameTag(id: number, name: string): Promise<void> {
 
 export async function deleteTag(id: number): Promise<void> {
   const db = await getDb();
+  const row = await db.getFirstAsync<{ name: string }>(`SELECT name FROM tags WHERE id = ?`, [id]);
+  if (row) {
+    await db.runAsync(`INSERT OR REPLACE INTO deleted_tag_names (name, deleted_at) VALUES (?, ?)`, [row.name, Date.now()]);
+  }
   await db.runAsync(`DELETE FROM tags WHERE id = ?`, [id]);
 }
 
