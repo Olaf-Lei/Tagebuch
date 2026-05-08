@@ -137,6 +137,40 @@ export async function initDb(): Promise<void> {
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN location_name TEXT;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;'); } catch {}
 
+  // Migration: entry_tags + entry_categories brauchen ON DELETE CASCADE auf tag_id/category_id
+  try {
+    const etRow = await db.getFirstAsync<{ sql: string }>(`SELECT sql FROM sqlite_master WHERE type='table' AND name='entry_tags'`);
+    if (etRow && (etRow.sql.match(/ON DELETE CASCADE/g) || []).length < 2) {
+      await db.runAsync(`PRAGMA foreign_keys = OFF`);
+      await db.execAsync(`
+        CREATE TABLE entry_tags_new (
+          entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+          tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+          PRIMARY KEY (entry_id, tag_id)
+        );
+        INSERT OR IGNORE INTO entry_tags_new SELECT * FROM entry_tags;
+        DROP TABLE entry_tags;
+        ALTER TABLE entry_tags_new RENAME TO entry_tags;
+      `);
+      await db.runAsync(`PRAGMA foreign_keys = ON`);
+    }
+    const ecRow = await db.getFirstAsync<{ sql: string }>(`SELECT sql FROM sqlite_master WHERE type='table' AND name='entry_categories'`);
+    if (ecRow && (ecRow.sql.match(/ON DELETE CASCADE/g) || []).length < 2) {
+      await db.runAsync(`PRAGMA foreign_keys = OFF`);
+      await db.execAsync(`
+        CREATE TABLE entry_categories_new (
+          entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+          category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+          PRIMARY KEY (entry_id, category_id)
+        );
+        INSERT OR IGNORE INTO entry_categories_new SELECT * FROM entry_categories;
+        DROP TABLE entry_categories;
+        ALTER TABLE entry_categories_new RENAME TO entry_categories;
+      `);
+      await db.runAsync(`PRAGMA foreign_keys = ON`);
+    }
+  } catch {}
+
   // Migration: add color to categories
   try { await db.execAsync('ALTER TABLE categories ADD COLUMN color TEXT;'); } catch {}
   // Assign palette colors to existing colorless categories
