@@ -21,7 +21,12 @@ export async function upsertTag(name: string): Promise<number> {
 
 export async function renameTag(id: number, name: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(`UPDATE tags SET name = ? WHERE id = ?`, [name.trim().toLowerCase(), id]);
+  const trimmed = name.trim().toLowerCase();
+  const row = await db.getFirstAsync<{ name: string }>(`SELECT name FROM tags WHERE id = ?`, [id]);
+  if (row && row.name !== trimmed) {
+    await db.runAsync(`INSERT OR REPLACE INTO deleted_tag_names (name, deleted_at) VALUES (?, ?)`, [row.name, Date.now()]);
+  }
+  await db.runAsync(`UPDATE tags SET name = ? WHERE id = ?`, [trimmed, id]);
 }
 
 export async function deleteTag(id: number): Promise<void> {
