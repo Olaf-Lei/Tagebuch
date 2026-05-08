@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import type { Category, Tag, Qualifier } from '../types'
-import { getEntries, getEntry, exportJSON, exportCSV, exportMarkdown } from '../db/database'
+import { getEntries, getEntry, exportJSON, exportCSV, exportMarkdown, exportDB } from '../db/database'
 import EntryCard from './EntryCard'
 import EntryForm from './EntryForm'
 import Stats from './Stats'
@@ -162,6 +162,7 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
                     <button style={s.submenuItem} onClick={() => { exportJSON(); setMenuOpen(false) }}>Einträge JSON</button>
                     <button style={s.submenuItem} onClick={() => { exportCSV(); setMenuOpen(false) }}>Einträge CSV</button>
                     <button style={s.submenuItem} onClick={() => { exportMarkdown(); setMenuOpen(false) }}>Einträge Markdown</button>
+                    <button style={s.submenuItem} onClick={() => { exportDB(); setMenuOpen(false) }}>Datenbank (.db)</button>
                   </div>
                 )}
                 <div style={s.menuDivider} />

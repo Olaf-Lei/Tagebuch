@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import { loadConfig } from '../sync/webdav';
 import { isEncryptionEnabled, exportEncKey } from '../utils/crypto';
-import { exportJSON, exportCSV } from '../utils/export';
+import { exportJSON, exportCSV, exportDB } from '../utils/export';
 import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
 import { InhalteSection } from '../components/settings/InhalteSection';
 import { SyncSection } from '../components/settings/SyncSection';
@@ -134,8 +134,8 @@ export default function SettingsScreen() {
     if (reminderEnabled) await scheduleReminder(hour, minute);
   };
 
-  const handleExport = (format: 'json' | 'csv') => {
-    const fn = format === 'json' ? exportJSON : exportCSV;
+  const handleExport = (format: 'json' | 'csv' | 'db') => {
+    const fn = format === 'json' ? exportJSON : format === 'csv' ? exportCSV : exportDB;
     fn().catch((e) => Alert.alert(t.settings.exportFailTitle, e.message ?? String(e)));
   };
 
@@ -306,6 +306,9 @@ export default function SettingsScreen() {
                 </Pressable>
                 <Pressable style={styles.exportBtn} onPress={() => handleExport('csv')}>
                   <Text style={styles.exportBtnText}>CSV</Text>
+                </Pressable>
+                <Pressable style={styles.exportBtn} onPress={() => handleExport('db')}>
+                  <Text style={styles.exportBtnText}>Datenbank</Text>
                 </Pressable>
               </View>
             </View>

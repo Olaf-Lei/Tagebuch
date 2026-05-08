@@ -255,6 +255,17 @@ function triggerDownload(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url)
 }
 
+export function exportDB() {
+  const bytes = getDb().export()
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'tagebuch_export.db'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 interface ExportRow {
   id: number
   timestamp: number
