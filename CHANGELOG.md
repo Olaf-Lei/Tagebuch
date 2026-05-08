@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.8.7 — 2026-05-08
+- Android Standardansicht: Zeitfilter „Frei" mit Von/Bis-Datumseingabe (Chips statt Segmented Control)
+
 ## v2.8.6 — 2026-05-08
 - Android Karte: Kategorie-Filter (Multi-Select) + Qualifier-Bereichsfilter (von/bis Emoji) im Filter-Modal
 - Web Karte: dasselbe Filter-Panel (Kategorien + Qualifier-Bereich), inline aufklappbar

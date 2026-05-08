@@ -50,6 +50,8 @@ export const en: Strings = {
     dateToday: 'Today',
     dateWeek: 'Week',
     dateMonth: 'Month',
+    dateCustom: 'Custom',
+    changeRange: 'change',
     empty: 'No entries yet.',
   },
 

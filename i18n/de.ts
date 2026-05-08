@@ -48,6 +48,8 @@ export const de = {
     dateToday: 'Heute',
     dateWeek: 'Woche',
     dateMonth: 'Monat',
+    dateCustom: 'Frei',
+    changeRange: 'ändern',
     empty: 'Noch keine Einträge.',
   },
 

@@ -2,7 +2,7 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, Modal, Pressable,
-  StyleSheet, Text, TextInput, View,
+  ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
@@ -38,12 +38,16 @@ export default function IndexScreen() {
       paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: c.text,
     },
     filterRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4, gap: 8 },
-    dateBar: { paddingHorizontal: 14, paddingBottom: 6 },
-    segmented: { flexDirection: 'row', backgroundColor: c.surface, borderRadius: 10, padding: 3 },
-    segment: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 8 },
-    segmentActive: { backgroundColor: c.accent },
-    segmentText: { fontSize: 13, color: c.muted },
-    segmentTextActive: { color: '#fff', fontWeight: '600' },
+    chip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+    chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+    chipText: { fontSize: 13, color: c.muted },
+    chipTextActive: { color: '#fff', fontWeight: '600' },
+    customRange: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: c.surface, borderRadius: 8, padding: 10,
+      marginHorizontal: 14, marginBottom: 6,
+    },
+    customRangeText: { fontSize: 13, color: c.text, flex: 1 },
     list: { paddingHorizontal: 14, paddingBottom: 100 },
     loader: { flex: 1 },
     empty: { textAlign: 'center', marginTop: 80, color: c.muted, fontSize: 15 },
@@ -55,22 +59,36 @@ export default function IndexScreen() {
     fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
   }), [c, fabBottom]);
 
-  type DateRange = 'all' | 'today' | 'week' | 'month';
+  type DateRange = 'all' | 'today' | 'week' | 'month' | 'custom';
 
-  function dateRangeTimes(range: DateRange): { startTime?: number; endTime?: number } {
+  function parseDateDE(s: string): Date | null {
+    const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (!m) return null;
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatDateDE(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  }
+
+  function dateRangeTimes(range: DateRange, from?: Date, to?: Date): { startTime?: number; endTime?: number } {
     const now = new Date();
     if (range === 'today') {
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      return { startTime: start };
+      return { startTime: new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() };
     }
     if (range === 'week') {
       const dow = (now.getDay() + 6) % 7;
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow).getTime();
-      return { startTime: start };
+      return { startTime: new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow).getTime() };
     }
     if (range === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      return { startTime: start };
+      return { startTime: new Date(now.getFullYear(), now.getMonth(), 1).getTime() };
+    }
+    if (range === 'custom') {
+      const endDate = to ? new Date(to) : undefined;
+      if (endDate) endDate.setHours(23, 59, 59, 999);
+      return { startTime: from?.getTime(), endTime: endDate?.getTime() };
     }
     return {};
   }
@@ -79,6 +97,12 @@ export default function IndexScreen() {
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [fromInput, setFromInput] = useState('');
+  const [toInput, setToInput] = useState('');
+  const [dateError, setDateError] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
@@ -217,8 +241,30 @@ export default function IndexScreen() {
     search,
     categoryIds: selectedCategories.length ? selectedCategories : undefined,
     tagIds: selectedTags.length ? selectedTags : undefined,
-    ...dateRangeTimes(dateRange),
+    ...dateRangeTimes(dateRange, customFrom, customTo),
   });
+
+  const openDatePicker = () => {
+    const now = new Date();
+    const monthAgo = new Date(now); monthAgo.setDate(now.getDate() - 30);
+    setFromInput(customFrom ? formatDateDE(customFrom) : formatDateDE(monthAgo));
+    setToInput(customTo ? formatDateDE(customTo) : formatDateDE(now));
+    setDateError('');
+    setShowDatePicker(true);
+  };
+
+  const applyCustomRange = () => {
+    const from = parseDateDE(fromInput);
+    const to = parseDateDE(toInput);
+    if (!from) { setDateError(t.stats.dateErrorFrom); return; }
+    if (!to) { setDateError(t.stats.dateErrorTo); return; }
+    if (from > to) { setDateError(t.stats.dateErrorOrder); return; }
+    setCustomFrom(from);
+    setCustomTo(to);
+    setDateRange('custom');
+    setShowDatePicker(false);
+    setDateError('');
+  };
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -227,6 +273,7 @@ export default function IndexScreen() {
     { key: 'today', label: t.list.dateToday },
     { key: 'week', label: t.list.dateWeek },
     { key: 'month', label: t.list.dateMonth },
+    { key: 'custom', label: t.list.dateCustom },
   ];
 
   return (
@@ -289,21 +336,26 @@ export default function IndexScreen() {
             />
           )}
         </View>
-        <View style={styles.dateBar}>
-          <View style={styles.segmented}>
-            {DATE_RANGES.map(({ key, label }) => (
-              <Pressable
-                key={key}
-                style={[styles.segment, dateRange === key && styles.segmentActive]}
-                onPress={() => setDateRange(key)}
-              >
-                <Text style={[styles.segmentText, dateRange === key && styles.segmentTextActive]}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 6, paddingTop: 2, flexDirection: 'row', gap: 6 }}>
+          {DATE_RANGES.map(({ key, label }) => (
+            <Pressable
+              key={key}
+              style={[styles.chip, dateRange === key && styles.chipActive]}
+              onPress={() => key === 'custom' ? openDatePicker() : setDateRange(key)}
+            >
+              <Text style={[styles.chipText, dateRange === key && styles.chipTextActive]}>{label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        {dateRange === 'custom' && customFrom && customTo && (
+          <Pressable onPress={openDatePicker} style={styles.customRange}>
+            <Text style={styles.customRangeText}>
+              {formatDateDE(customFrom)} – {formatDateDE(customTo)}
+            </Text>
+            <Text style={{ fontSize: 12, color: c.muted }}>{t.list.changeRange}</Text>
+          </Pressable>
+        )}
       </View>
       {loading ? (
         <ActivityIndicator style={styles.loader} color={c.accent} />
@@ -412,6 +464,50 @@ export default function IndexScreen() {
               <Text style={{ color: c.accent, fontSize: 16 }}>{t.settings.webLoginQRClose}</Text>
             </Pressable>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Datums-Picker ── */}
+      <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 }} onPress={() => setShowDatePicker(false)}>
+          <Pressable onPress={e => e.stopPropagation()}>
+            <View style={{ backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 14 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: c.text }}>{t.stats.datePickerTitle}</Text>
+              <View>
+                <Text style={{ fontSize: 12, color: c.muted, marginBottom: 4 }}>{t.stats.dateFromLabel}</Text>
+                <TextInput
+                  style={{ backgroundColor: c.bg, borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: c.text }}
+                  value={fromInput}
+                  onChangeText={v => { setFromInput(v); setDateError(''); }}
+                  placeholder={t.stats.datePlaceholder}
+                  placeholderTextColor={c.muted}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View>
+                <Text style={{ fontSize: 12, color: c.muted, marginBottom: 4 }}>{t.stats.dateToLabel}</Text>
+                <TextInput
+                  style={{ backgroundColor: c.bg, borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: c.text }}
+                  value={toInput}
+                  onChangeText={v => { setToInput(v); setDateError(''); }}
+                  placeholder={formatDateDE(new Date())}
+                  placeholderTextColor={c.muted}
+                  keyboardType="numeric"
+                  onSubmitEditing={applyCustomRange}
+                  returnKeyType="done"
+                />
+              </View>
+              {!!dateError && <Text style={{ fontSize: 13, color: c.danger }}>{dateError}</Text>}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable style={{ flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 13, alignItems: 'center' }} onPress={() => setShowDatePicker(false)}>
+                  <Text style={{ color: c.muted, fontSize: 15 }}>{t.common.cancel}</Text>
+                </Pressable>
+                <Pressable style={{ flex: 1, backgroundColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' }} onPress={applyCustomRange}>
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>{t.stats.btnApply}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
