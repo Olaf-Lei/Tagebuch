@@ -390,7 +390,7 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 **Bugfixes**
 - [ ] Android: Menü-Reihenfolge im 📊-Bubble korrigieren → Statistik / Karte / Kalender (aktuell: Statistik / Kalender / Karte)
 - [ ] Demo-Modus: Einträge werden beim Löschen nicht wirklich entfernt — Ursache prüfen
-- [ ] Kategorien und Tags löschen nicht persistent — kommen nach Sync/Neustart wieder (vermutlich Merge-Logik überschreibt Löschung)
+- [x] Kategorien und Tags löschen nicht persistent — kommen nach Sync/Neustart wieder (vermutlich Merge-Logik überschreibt Löschung)
 
 **Play Store Veröffentlichung**
 - [ ] Datenschutzerklärung hosten (GitHub Gist o.ä.) → URL in `app.json` (`android.privacyPolicyUrl`) statt `"TODO"` eintragen
