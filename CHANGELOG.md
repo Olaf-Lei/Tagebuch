@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.8.15 — 2026-05-08
+- Vollständig dynamische Mehrsprachigkeit: Default-Kategorien, Qualifier-Presets und Export-Button werden zur Laufzeit übersetzt
+- `categories.key`-Spalte (Migration + Backfill) für Seed-Kategorien (diary/health/nutrition/sports/wellbeing)
+- `categoryLabel(cat, t)` und `qualifierLabel(name, preset, t)` als zentrale Helper-Funktionen
+- `t.qualifierPresets` und `t.defaultCategories` in i18n de/en hinzugefügt
+- `t.settings.btnExportDb` + `exportDbDialogTitle` — Export-Button „Datenbank" jetzt übersetzt
+- Quick-Add-Presets: Vergleich per `emoji_preset`-Key statt Label; neu angelegte Qualifiers erhalten übersetzten Namen
+
 ## v2.8.8 — 2026-05-08
 - Fix: Kategorien und Tags löschen jetzt persistent — Tombstone-Tabellen verhindern Wiedereinfügen beim Merge
 - Neu: `deleted_category_names` + `deleted_tag_names` Tabellen; remote Tombstones werden beim Sync propagiert
