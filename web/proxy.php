@@ -31,7 +31,9 @@ if ($action === 'fetch_code') {
     $code = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $_GET['code'] ?? ''));
     if (strlen($code) !== 6) { http_response_code(400); echo json_encode(['error' => 'Ungültiger Code']); exit; }
 
-    // Brute-force protection: max 5 attempts per IP, then exponential backoff
+    // Brute-force protection: progressive lockout per IP
+    // Delays after n-th wrong attempt: 3→30s, 4→60s, 5→5min, 6→30min, 7+→1h
+    $delays = [0, 0, 0, 30, 60, 300, 1800, 3600];
     $ip = md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
     $rlFile = sys_get_temp_dir() . '/tgb_rl_' . $ip . '.json';
     $rl = file_exists($rlFile) ? (json_decode(file_get_contents($rlFile), true) ?? []) : [];
@@ -42,26 +44,31 @@ if ($action === 'fetch_code') {
         echo json_encode(['error' => 'Zu viele Versuche.', 'retry_after' => $wait]);
         exit;
     }
-    // Reset window if last attempt was >10 min ago
-    if (($rl['last'] ?? 0) < $now - 600) $rl = [];
+    // Reset only after lock has fully expired AND 10+ min of inactivity
+    $lockExpired = ($rl['locked_until'] ?? 0) <= $now;
+    $inactive = ($rl['last'] ?? 0) < $now - 600;
+    if ($lockExpired && $inactive) $rl = [];
 
     $file = sys_get_temp_dir() . '/tgb_relay_' . $code . '.json';
+    $wrongAttempt = false;
     if (!file_exists($file)) {
-        $rl['attempts'] = ($rl['attempts'] ?? 0) + 1;
-        $rl['last'] = $now;
-        if ($rl['attempts'] >= 5) {
-            $rl['locked_until'] = $now + min(pow(2, $rl['attempts'] - 4), 3600);
+        $wrongAttempt = true;
+        http_response_code(404); $errMsg = 'Code nicht gefunden oder abgelaufen.';
+    } else {
+        $content = json_decode(file_get_contents($file), true);
+        @unlink($file);
+        if (!$content || ($content['ts'] ?? 0) < $now - 300) {
+            $wrongAttempt = true;
+            http_response_code(404); $errMsg = 'Code abgelaufen.';
         }
-        file_put_contents($rlFile, json_encode($rl));
-        http_response_code(404); echo json_encode(['error' => 'Code nicht gefunden oder abgelaufen.']); exit;
     }
-    $content = json_decode(file_get_contents($file), true);
-    @unlink($file);
-    if (!$content || ($content['ts'] ?? 0) < $now - 300) {
+    if ($wrongAttempt) {
         $rl['attempts'] = ($rl['attempts'] ?? 0) + 1;
         $rl['last'] = $now;
+        $idx = min($rl['attempts'], count($delays) - 1);
+        if ($delays[$idx] > 0) $rl['locked_until'] = $now + $delays[$idx];
         file_put_contents($rlFile, json_encode($rl));
-        http_response_code(404); echo json_encode(['error' => 'Code abgelaufen.']); exit;
+        echo json_encode(['error' => $errMsg]); exit;
     }
     // Success: reset rate limit
     @unlink($rlFile);
