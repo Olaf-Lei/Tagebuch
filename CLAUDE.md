@@ -63,7 +63,8 @@ CREATE TABLE qualifiers (
   emoji_preset TEXT NOT NULL DEFAULT 'mood',  -- Schlüssel in EMOJI_PRESETS
   position INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
-  deleted INTEGER NOT NULL DEFAULT 0          -- Soft-Delete
+  deleted INTEGER NOT NULL DEFAULT 0,         -- Soft-Delete
+  updated_at INTEGER NOT NULL DEFAULT 0       -- für timestamp-basierte Sync-Konfliktlösung
 );
 
 CREATE TABLE entry_qualifiers (
@@ -78,6 +79,15 @@ CREATE TABLE category_qualifiers (
   category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
   qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE,
   PRIMARY KEY (category_id, qualifier_id)
+);
+
+-- Tombstones für entfernte Kategorie-Qualifier-Verknüpfungen (Sync-Propagierung)
+-- Speichert Namen statt IDs, weil IDs zwischen Geräten divergieren
+CREATE TABLE deleted_category_qualifiers (
+  category_name TEXT NOT NULL,
+  qualifier_name TEXT NOT NULL,
+  deleted_at INTEGER NOT NULL,
+  PRIMARY KEY (category_name, qualifier_name)
 );
 ```
 
@@ -227,18 +237,41 @@ Sektionen sind einklappbar (Accordion). Orchestriert drei Sub-Komponenten (`comp
 - Entschlüsselung beim Restore: `decryptToPath()` → DB ersetzen → `initDb()`
 - Schlüssel-Transfer: `exportEncKey()` → Hex-String anzeigen → auf Gerät 2 via `importEncKey()` eintragen (Settings → Sicherheit)
 
-## Sync (sync/webdav.ts)
+## Sync (sync/webdav.ts + sync/mergeDb.ts)
 
 ### syncNow() — bidirektionaler Merge
 1. Remote-DB herunterladen (probt `.db.enc`, dann `.db`; 404 → Erstsync)
-2. `ATTACH DATABASE tempPath AS remote`, Merge via SQL:
-   - `INSERT OR IGNORE` für categories + tags (nach Name)
-   - Neue entries importieren (created_at fehlt lokal)
-   - Vorhandene entries updaten wenn `remote.updated_at > local.updated_at`
-   - Junction-Tabellen via `created_at`/`name` mappen
-3. `DETACH`, Temp-Datei löschen, gemergete DB hochladen
-4. Kein Alert bei Erfolg — nur Sync-Log. Fehler werden als Alert angezeigt.
-5. `_syncInProgress`-Flag verhindert parallele Läufe
+2. `ATTACH DATABASE tempPath AS remote`
+3. `PRAGMA remote.integrity_check` — korrupte Downloads werden sofort abgebrochen
+4. Gesamter Merge läuft in **einer einzigen Transaktion** (`withTransactionAsync`) — partieller Merge bei Absturz/Fehler ist ausgeschlossen
+5. Merge-Reihenfolge:
+   - `INSERT OR IGNORE` categories + tags (nach Name); UPDATE colors
+   - `INSERT OR IGNORE` neue qualifiers (nach Name); UPDATE active/deleted/position/emoji_preset wenn `remote.updated_at > local.updated_at`
+   - Neue entries importieren — nur wenn `created_at` weder lokal noch in `deleted_entry_ids` vorhanden
+   - Junction-Tabellen (entry_categories, entry_tags, entry_qualifiers) löschen + neu für aktualisierte entries
+   - entries UPDATE wenn `remote.updated_at > local.updated_at`
+   - Junction-Tabellen neu befüllen (alle entries, nach Name gemappt)
+   - category_qualifiers: INSERT OR IGNORE + Tombstone-Propagierung via `deleted_category_qualifiers`
+   - Tombstones für entries/categories/tags propagieren
+6. `DETACH`, Temp-Datei löschen, WAL-Checkpoint, gemergete DB hochladen
+7. Kein Alert bei Erfolg — nur Sync-Log. Fehler werden als Alert angezeigt.
+8. `_syncInProgress`-Flag verhindert parallele Läufe
+
+### Tombstone-Tabellen (Lösch-Propagierung)
+| Tabelle | Schlüssel | Zweck |
+|---|---|---|
+| `deleted_entry_ids` | `created_at` | Entry-Löschungen (Android + Web) |
+| `deleted_category_names` | `name` | Kategorie-Löschungen |
+| `deleted_tag_names` | `name` | Tag-Löschungen |
+| `deleted_category_qualifiers` | `(category_name, qualifier_name)` | Qualifier-Kategorie-Verknüpfung entfernt |
+
+**Wichtig**: `db/qualifiers.ts:setCategoryQualifiers()` schreibt Tombstones für entfernte Links und löscht Tombstones für neu hinzugefügte Links. `web/src/db/database.ts:deleteEntry()` schreibt Tombstone in `deleted_entry_ids`.
+
+### Qualifier-Sync-Semantik
+- Neue Qualifiers: `INSERT OR IGNORE` (nach Name)
+- Bestehende Qualifiers: UPDATE wenn `remote.updated_at > local.updated_at`
+- Alle Qualifier-Mutationen (setActive, deleteQualifier, updateQualifier, reorderQualifiers) setzen `updated_at = Date.now()`
+- Soft-Delete (`deleted=1`) propagiert damit korrekt
 
 ### restoreNow()
 Download → probt `.db.enc` zuerst, dann `.db` → `closeDb()` → ersetzen → WAL/SHM löschen → `initDb()`
@@ -328,21 +361,23 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 ### Stack
 - React 19 + Vite + TypeScript
 - sql.js (SQLite-WASM) — DB läuft komplett im Browser
-- Leaflet für die Kartenauswertung
+- Leaflet + leaflet.markercluster für die Kartenauswertung (Clustering + Spiderfy)
 - CSS-Variablen für Dark-/Light-Modus
-- PHP-Proxy (`proxy.php`) auf Manitu für CORS-freien WebDAV-Zugriff, Google OAuth Token-Exchange und Relay-Code-Login
+- PHP-Proxy (`proxy.php` + `proxy.config.php`) auf Manitu für CORS-freien WebDAV-Zugriff, Google OAuth Token-Exchange und Relay-Code-Login
 
 ### Architektur
-- `src/db/database.ts` — alle SQL-Funktionen (kein Raw-SQL in Komponenten)
+- `src/db/database.ts` — alle SQL-Funktionen inkl. `getEntryDateRange()` (kein Raw-SQL in Komponenten)
 - `src/sync/webdav.ts` — Download (`.db.enc` → entschlüsseln oder `.db`) + Upload
 - `src/sync/googledrive.ts` — Google Drive Sync via OAuth 2.0 PKCE; Ordner-Browser; Up-/Download
+- `src/sync/googledriveConfig.ts` — Client-ID + Redirect-URI (`https://www.olovenet.de/tagebuch/`)
 - `src/crypto.ts` — AES-Entschlüsselung/Verschlüsselung kompatibel zur Android-App
 - `src/App.tsx` — Einstieg: Auth → DB laden → EntryList; dualer Upload an beide Backends
 - `src/components/AuthScreen.tsx` — Login für Nextcloud + Google Drive; QR-Scan (ZXing + TRY_HARDER, Kamera-Wechsel); Relay-Code-Eingabe
-- `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü links
+- `src/components/EntryList.tsx` — Tabs: Einträge | Statistiken | Karte; Burger-Menü links; Topbar: ☀️/🌙 + NC/GD Sync-Status
 - `src/components/EntryForm.tsx` — Erstellen/Bearbeiten (Overlay, Klick außen schließt)
-- `src/components/Stats.tsx` — Qualifier-Trend, Kategorien-/Tag-Balkendiagramme, Zeitfilter
-- `src/components/MapView.tsx` — Leaflet-Karte, CircleMarker, Popup → Eintrag öffnen
+- `src/components/Stats.tsx` — Qualifier-Trend, Kategorien-/Tag-Balkendiagramme, Zeitstrahl-Slider
+- `src/components/MapView.tsx` — Leaflet-Karte, MarkerClusterGroup + Spiderfy, Zeitstrahl-Slider, Popup → Eintrag öffnen
+- `src/components/DateRangeSlider.tsx` — Zwei-Daumen-Zeitstrahl (von/bis, Mouse + Touch), eingebunden in Stats + MapView
 - `src/components/EntryCard.tsx` — Karte mit Datum, Text-Preview, Qualifiers, Badges, Tags
 - `src/components/SyncSettings.tsx` — Bottom-Sheet: Nextcloud-Tab + Google-Drive-Tab mit Ordner-Browser
 - `public/favicon.svg` — Navy/Gold Buch-Icon (identisch zur Android-App-Farbgebung)
@@ -350,13 +385,26 @@ Eigenständige Browser-App, die dieselbe SQLite-DB liest/schreibt wie die Androi
 ### Features
 - CRUD-Einträge inkl. Qualifiers, Kategorien, Tags
 - Dynamische Qualifier-Anzeige: kategorie-gebundene Qualifier ein-/ausblenden + Werte bereinigen
-- Statistiken: Qualifier-Trend-Chart, Kategorien-/Tag-Ranking
-- Kartenauswertung mit Zeitfilter (7 Tage / 30 Tage / 365 Tage / Gesamt)
-- Dark-/Light-Modus (Burger-Menü, persistiert in `localStorage`)
+- Statistiken: Qualifier-Trend-Chart, Kategorien-/Tag-Ranking, Zeitstrahl-Slider
+- Kartenauswertung: Marker-Clustering mit Spiderfy bei Überlappung, Zeitstrahl-Slider, Kategorie-/Qualifier-Filter
+- Dark-/Light-Modus: Toggle-Button ☀️/🌙 direkt in der Topbar (persistiert in `localStorage`)
+- **Sync-Status-Anzeige**: Zwei separate Dots in der Topbar — `NC 🟢` (Nextcloud) + `GD 🟢` (Google Drive); Ampel: 🟢 < 24h, 🟡 < 72h, 🔴 älter, ⟳ beim Syncing; nur verbundene Services werden angezeigt
 - **Dualer Sync**: Nextcloud + Google Drive gleichzeitig aktiv; Upload geht parallel an beide Backends (`Promise.allSettled`)
-- **Google Drive**: OAuth 2.0 PKCE-Flow; PKCE-Verifier in `localStorage` (nicht `sessionStorage` — sonst bei Cross-Origin-Redirect in Safari/Firefox verloren), wird nach Verwendung sofort gelöscht; Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser; Folder-ID in `localStorage`; Scope: `drive`
+- **Google Drive**: OAuth 2.0 PKCE-Flow; kanonische Redirect-URI `https://www.olovenet.de/tagebuch/`; PKCE-Verifier in `localStorage` (nicht `sessionStorage` — sonst bei Cross-Origin-Redirect in Safari/Firefox verloren), wird nach Verwendung sofort gelöscht; Token-Exchange via `proxy.php?action=google_token|google_refresh`; navigierbarer Ordner-Browser; Folder-ID in `localStorage`; Scope: `drive`
 - **Relay-Code-Login**: Android generiert 6-stelligen Code (POST `proxy.php?action=store_code`), Web gibt ihn ein (GET `proxy.php?action=fetch_code&code=…`); Credentials im Server-Temp, gültig 5 Min., danach automatisch gelöscht; Alphabet ohne 0/O/1/I
-- **Kein bidirektionaler Merge im Web**: Sync = Download remote → DB ersetzen → Upload; letzter Upload gewinnt
+- **Kein bidirektionaler Merge im Web**: Sync = Download remote → DB ersetzen (kein Merge); letzter Upload gewinnt
+- **syncAll() sequenziell**: NC zuerst, dann Drive — verhindert Datenverlust durch parallele `loadDatabase()`-Aufrufe bei divergiertem NC/Drive-Zustand
+- **deleteEntry() schreibt Tombstone**: `deleted_entry_ids (created_at, deleted_at)` — damit propagieren Web-Löschungen korrekt zu Android
+
+### Zeitstrahl-Slider (DateRangeSlider)
+- Zwei Daumen (von/bis) über der gesamten Eintrags-Zeitspanne (`getEntryDateRange()`)
+- Chips (7 Tage / 30 Tage / Gesamt) bleiben als Schnellauswahl; Daumen-Drag wechselt automatisch in Modus „Zeitstrahl"
+- Tick-Beschriftungen `DD.MM.YY`, ~6 gleichmäßig verteilt
+- Mouse + Touch, Rail-Klick setzt nächstliegenden Daumen
+
+### Google OAuth (Deployment-Hinweis)
+- `proxy.config.php` enthält Client-ID + Secret und **muss** via `deploy.sh` auf den Server hochgeladen werden
+- In Google Cloud Console müssen beide Redirect-URIs eingetragen sein: `https://olovenet.de/tagebuch/` und `https://www.olovenet.de/tagebuch/`
 
 ### Timestamps
 Alle Timestamps in der DB sind **Millisekunden** (Android `Date.now()`). Alle Web-Funktionen und SQL-Abfragen verwenden ms:
@@ -368,7 +416,7 @@ Alle Timestamps in der DB sind **Millisekunden** (Android `Date.now()`). Alle We
 ```bash
 cd web && bash deploy.sh   # baut + deployt via FTP nach Manitu (olovenet.de/tagebuch/)
 ```
-Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
+Zugangsdaten in `/root/.deploy_credentials` (wird von `deploy.sh` nicht automatisch gesourct — Aufruf: `source /root/.deploy_credentials && FTP_USER=... bash deploy.sh`). Die `dist/`-Ordner ist gitigniert. `proxy.config.php` wird mitdeployt.
 
 ### Coding-Regeln (Web)
 - Kein Raw-SQL in Komponenten — immer über `src/db/database.ts`
@@ -395,6 +443,9 @@ Zugangsdaten stehen in `deploy.sh`. Die `dist/`-Ordner ist gitigniert.
 - [ ] AAB v2.7.2 bauen: `npx expo prebuild --platform android --clean && bash scripts/prepare-android.sh && cd android && ./gradlew bundleRelease`
 
 ### Erledigt
+- **Sync-Robustheit & Web/Android-Konsistenz** — Merge in Transaktion (kein partieller Merge); integrity_check vor Merge; Tombstone-Check bei Entry-Import (Einträge kehren nicht zurück); Qualifier-Merge mit updated_at (timestamp-basiert); category_qualifiers Tombstone-Tabelle; Web deleteEntry schreibt Tombstone; syncAll() sequenziell statt parallel
+- **Web-Client UX-Verbesserungen** — ☀️/🌙-Toggle direkt in Topbar; NC/GD Sync-Status als separate Ampel-Dots; Marker-Clustering + Spiderfy auf Karte; Zwei-Daumen-Zeitstrahl in Statistiken + Karte
+- **Google OAuth Fix** — `proxy.config.php` wird jetzt via `deploy.sh` mitdeployt; kanonische Redirect-URI auf `https://www.olovenet.de/tagebuch/` umgestellt; beide Varianten (mit/ohne www) in GCC eingetragen
 - **Mehrfachauswahl** — Long-Press aktiviert Auswahlmodus; Header zeigt Anzahl + „Alle"/„Löschen"-Buttons; `deleteEntries(ids[])` mit Tombstone
 - **Menü-Reihenfolge** — 📊-Bubble: Statistik → Karte → Kalender
 - **Demo-Modus Fix** — `clearDemoData` schreibt Tombstones; Demo-Einträge kommen nach Sync nicht mehr zurück
