@@ -235,7 +235,18 @@ export function updateEntry(
 }
 
 export function deleteEntry(id: number) {
-  getDb().run(`DELETE FROM entries WHERE id = ?`, [id])
+  const d = getDb()
+  const stmt = d.prepare(`SELECT created_at FROM entries WHERE id = ?`)
+  stmt.bind([id])
+  if (stmt.step()) {
+    const r = stmt.getAsObject() as Record<string, unknown>
+    d.run(
+      `INSERT OR IGNORE INTO deleted_entry_ids (created_at, deleted_at) VALUES (?, ?)`,
+      [r.created_at as number, Date.now()],
+    )
+  }
+  stmt.free()
+  d.run(`DELETE FROM entries WHERE id = ?`, [id])
 }
 
 function formatDateDE(ts: number): string {
@@ -516,6 +527,15 @@ export function getCategoryStats(p: StatsPeriod): NameCount[] {
   }
   stmt.free()
   return rows
+}
+
+export function getEntryDateRange(): { minTs: number; maxTs: number } {
+  const d = getDb()
+  const stmt = d.prepare('SELECT MIN(timestamp) as mn, MAX(timestamp) as mx FROM entries WHERE timestamp > 0')
+  stmt.step()
+  const r = stmt.getAsObject() as Record<string, unknown>
+  stmt.free()
+  return { minTs: (r.mn as number) ?? Date.now(), maxTs: (r.mx as number) ?? Date.now() }
 }
 
 export function getTagStats(p: StatsPeriod): NameCount[] {

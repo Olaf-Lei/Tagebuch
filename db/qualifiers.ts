@@ -46,26 +46,27 @@ export async function createQualifier(name: string, emojiPreset: string): Promis
 export async function updateQualifier(id: number, name: string, emojiPreset: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE qualifiers SET name = ?, emoji_preset = ? WHERE id = ?',
-    [name, emojiPreset, id]
+    'UPDATE qualifiers SET name = ?, emoji_preset = ?, updated_at = ? WHERE id = ?',
+    [name, emojiPreset, Date.now(), id]
   );
 }
 
 export async function setQualifierActive(id: number, active: boolean): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE qualifiers SET active = ? WHERE id = ?', [active ? 1 : 0, id]);
+  await db.runAsync('UPDATE qualifiers SET active = ?, updated_at = ? WHERE id = ?', [active ? 1 : 0, Date.now(), id]);
 }
 
 /** Soft-Delete: Qualifier ausblenden, historische entry_qualifiers-Daten bleiben erhalten */
 export async function deleteQualifier(id: number): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE qualifiers SET deleted = 1 WHERE id = ?', [id]);
+  await db.runAsync('UPDATE qualifiers SET deleted = 1, updated_at = ? WHERE id = ?', [Date.now(), id]);
 }
 
 export async function reorderQualifiers(ids: number[]): Promise<void> {
   const db = await getDb();
+  const now = Date.now();
   for (let i = 0; i < ids.length; i++) {
-    await db.runAsync('UPDATE qualifiers SET position = ? WHERE id = ?', [i, ids[i]]);
+    await db.runAsync('UPDATE qualifiers SET position = ?, updated_at = ? WHERE id = ?', [i, now, ids[i]]);
   }
 }
 
@@ -91,11 +92,40 @@ export async function getCategoryQualifierIds(categoryId: number): Promise<numbe
 
 export async function setCategoryQualifiers(categoryId: number, qualifierIds: number[]): Promise<void> {
   const db = await getDb();
+  const catRow = await db.getFirstAsync<{ name: string }>('SELECT name FROM categories WHERE id = ?', [categoryId]);
+  if (catRow) {
+    const newSet = new Set(qualifierIds);
+    const currentLinks = await db.getAllAsync<{ qualifier_id: number; qualifier_name: string }>(
+      `SELECT cq.qualifier_id, q.name AS qualifier_name
+       FROM category_qualifiers cq JOIN qualifiers q ON q.id = cq.qualifier_id
+       WHERE cq.category_id = ?`,
+      [categoryId],
+    );
+    const now = Date.now();
+    for (const link of currentLinks) {
+      if (!newSet.has(link.qualifier_id)) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO deleted_category_qualifiers (category_name, qualifier_name, deleted_at) VALUES (?, ?, ?)',
+          [catRow.name, link.qualifier_name, now],
+        );
+      }
+    }
+  }
   await db.runAsync('DELETE FROM category_qualifiers WHERE category_id = ?', [categoryId]);
   for (const qid of qualifierIds) {
     await db.runAsync(
       'INSERT OR IGNORE INTO category_qualifiers (category_id, qualifier_id) VALUES (?, ?)',
       [categoryId, qid]
+    );
+  }
+  // Tombstones für neu hinzugefügte Links entfernen (Re-Add hebt Löschung auf)
+  if (qualifierIds.length > 0 && catRow) {
+    const ph = qualifierIds.map(() => '?').join(',');
+    await db.runAsync(
+      `DELETE FROM deleted_category_qualifiers
+       WHERE category_name = ?
+         AND qualifier_name IN (SELECT name FROM qualifiers WHERE id IN (${ph}))`,
+      [catRow.name, ...qualifierIds],
     );
   }
 }

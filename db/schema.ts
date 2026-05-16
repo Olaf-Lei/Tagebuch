@@ -95,10 +95,24 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Migration: key column for default category translation
+  try { await db.execAsync('ALTER TABLE categories ADD COLUMN key TEXT;'); } catch {}
+  // Backfill keys for existing seed rows
+  try {
+    await db.execAsync(`
+      UPDATE categories SET key = 'diary'     WHERE name = 'Tagebuch'  AND key IS NULL;
+      UPDATE categories SET key = 'health'    WHERE name = 'Gesundheit' AND key IS NULL;
+      UPDATE categories SET key = 'nutrition' WHERE name = 'Ernährung'  AND key IS NULL;
+      UPDATE categories SET key = 'sports'    WHERE name = 'Sport'      AND key IS NULL;
+      UPDATE categories SET key = 'wellbeing' WHERE name = 'Befinden'   AND key IS NULL;
+    `);
+  } catch {}
+
   // Seed default categories
   await db.execAsync(`
-    INSERT OR IGNORE INTO categories (name) VALUES
-      ('Tagebuch'), ('Gesundheit'), ('Ernährung'), ('Sport'), ('Befinden');
+    INSERT OR IGNORE INTO categories (name, key) VALUES
+      ('Tagebuch', 'diary'), ('Gesundheit', 'health'), ('Ernährung', 'nutrition'),
+      ('Sport', 'sports'), ('Befinden', 'wellbeing');
   `);
 
   // Seed default qualifiers (idempotent insert)
@@ -179,4 +193,17 @@ export async function initDb(): Promise<void> {
   for (let _i = 0; _i < _colorless.length; _i++) {
     await db.runAsync('UPDATE categories SET color = ? WHERE id = ?', [_palette[_i % _palette.length], _colorless[_i].id]);
   }
+
+  // Migration: timestamp für Qualifier-Sync-Konfliktlösung
+  try { await db.execAsync('ALTER TABLE qualifiers ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;'); } catch {}
+
+  // Migration: Tombstone-Tabelle für Kategorie-Qualifier-Verknüpfungen
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS deleted_category_qualifiers (
+      category_name TEXT NOT NULL,
+      qualifier_name TEXT NOT NULL,
+      deleted_at INTEGER NOT NULL,
+      PRIMARY KEY (category_name, qualifier_name)
+    )
+  `);
 }

@@ -104,9 +104,21 @@ export async function mergeRemoteDb(
 
       if (hasRemoteQualifiers) {
         await db.execAsync(`
-          INSERT OR IGNORE INTO qualifiers (name, emoji_preset, position, active, deleted)
-          SELECT name, emoji_preset, position, active, deleted FROM remote.qualifiers
+          INSERT OR IGNORE INTO qualifiers (name, emoji_preset, position, active, deleted, updated_at)
+          SELECT name, emoji_preset, position, active, deleted, updated_at FROM remote.qualifiers
           WHERE name NOT IN (SELECT name FROM qualifiers)
+        `);
+        await db.execAsync(`
+          UPDATE qualifiers SET
+            emoji_preset = (SELECT rq.emoji_preset FROM remote.qualifiers rq WHERE rq.name = qualifiers.name),
+            position     = (SELECT rq.position     FROM remote.qualifiers rq WHERE rq.name = qualifiers.name),
+            active       = (SELECT rq.active       FROM remote.qualifiers rq WHERE rq.name = qualifiers.name),
+            deleted      = (SELECT rq.deleted      FROM remote.qualifiers rq WHERE rq.name = qualifiers.name),
+            updated_at   = (SELECT rq.updated_at   FROM remote.qualifiers rq WHERE rq.name = qualifiers.name)
+          WHERE EXISTS (
+            SELECT 1 FROM remote.qualifiers rq
+            WHERE rq.name = qualifiers.name AND rq.updated_at > qualifiers.updated_at
+          )
         `);
       }
 
@@ -198,6 +210,28 @@ export async function mergeRemoteDb(
           JOIN remote.qualifiers rq ON rq.id = rcq.qualifier_id
           JOIN categories lc ON lc.name = rc.name
           JOIN qualifiers lq ON lq.name = rq.name
+        `);
+      }
+
+      const remoteHasCatQualTombstones =
+        ((await db.getFirstAsync<{ cnt: number }>(
+          `SELECT COUNT(*) AS cnt FROM remote.sqlite_master WHERE type='table' AND name='deleted_category_qualifiers'`,
+        ))?.cnt ?? 0) > 0;
+
+      if (remoteHasCatQualTombstones) {
+        await db.execAsync(`
+          INSERT OR REPLACE INTO deleted_category_qualifiers (category_name, qualifier_name, deleted_at)
+          SELECT category_name, qualifier_name, deleted_at FROM remote.deleted_category_qualifiers
+        `);
+        await db.execAsync(`
+          DELETE FROM category_qualifiers
+          WHERE rowid IN (
+            SELECT cq.rowid FROM category_qualifiers cq
+            JOIN categories lc ON lc.id = cq.category_id
+            JOIN qualifiers lq ON lq.id = cq.qualifier_id
+            JOIN deleted_category_qualifiers dcq
+              ON dcq.category_name = lc.name AND dcq.qualifier_name = lq.name
+          )
         `);
       }
 

@@ -177,10 +177,8 @@ export default function App() {
   }
 
   async function syncAll() {
-    await Promise.allSettled([
-      config ? syncNC() : Promise.resolve(),
-      driveIsConnected() ? syncDriveOnly() : Promise.resolve(),
-    ])
+    if (config) await syncNC()
+    if (driveIsConnected()) await syncDriveOnly()
   }
 
   async function pushLocalToRemote() {
