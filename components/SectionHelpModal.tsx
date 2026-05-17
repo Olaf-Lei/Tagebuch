@@ -16,7 +16,8 @@ export function SectionHelpModal({ visible, title, body, onClose }: Props) {
   const windowHeight = Dimensions.get('window').height;
 
   const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 24 },
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+    overlay: { flex: 1, justifyContent: 'center', padding: 24 },
     card: {
       backgroundColor: c.surface, borderRadius: 20,
       padding: 24, gap: 16, maxHeight: windowHeight * 0.8,
@@ -34,24 +35,23 @@ export function SectionHelpModal({ visible, title, body, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable onPress={e => e.stopPropagation()}>
-          <View style={styles.card}>
-            <View style={styles.topRow}>
-              <Text style={styles.title}>{title}</Text>
-              <Pressable onPress={onClose} hitSlop={12}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </Pressable>
-            </View>
-            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator style={{ flexShrink: 1 }}>
-              <Text style={styles.body}>{body}</Text>
-            </ScrollView>
-            <Pressable style={styles.doneBtn} onPress={onClose}>
-              <Text style={styles.doneBtnText}>{t.common.done}</Text>
+      <Pressable style={styles.backdrop} onPress={onClose} />
+      <View style={styles.overlay} pointerEvents="box-none">
+        <View style={styles.card}>
+          <View style={styles.topRow}>
+            <Text style={styles.title}>{title}</Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <Text style={styles.closeBtn}>✕</Text>
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+          <ScrollView nestedScrollEnabled showsVerticalScrollIndicator style={{ flexShrink: 1 }}>
+            <Text style={styles.body}>{body}</Text>
+          </ScrollView>
+          <Pressable style={styles.doneBtn} onPress={onClose}>
+            <Text style={styles.doneBtnText}>{t.common.done}</Text>
+          </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

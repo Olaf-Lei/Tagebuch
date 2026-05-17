@@ -36,10 +36,8 @@ export function HelpModal({ visible, onClose }: Props) {
   };
 
   const styles = StyleSheet.create({
-    overlay: {
-      flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
-      justifyContent: 'center', padding: 24,
-    },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+    overlayCenter: { flex: 1, justifyContent: 'center', padding: 24 },
     card: {
       backgroundColor: c.surface, borderRadius: 20,
       padding: 24, gap: 16,
@@ -70,48 +68,47 @@ export function HelpModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable onPress={e => e.stopPropagation()}>
-          <View style={styles.card}>
-            <View style={styles.topRow}>
-              <Text style={styles.stepLabel}>{t.help.stepLabel(step + 1, total)}</Text>
-              <Pressable onPress={handleClose} hitSlop={12}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.iconText}>{current.icon}</Text>
-            <Text style={styles.title}>{current.title}</Text>
-
-            <ScrollView
-              style={{ maxHeight: Math.max(200, Dimensions.get('window').height * 0.3) }}
-              showsVerticalScrollIndicator
-              nestedScrollEnabled
-            >
-              <Text style={styles.body}>{current.text}</Text>
-            </ScrollView>
-
-            <View style={styles.btnRow}>
-              {step > 0 && (
-                <Pressable style={styles.btnSecondary} onPress={() => setStep(s => s - 1)}>
-                  <Text style={styles.btnSecondaryText}>{t.help.btnBack}</Text>
-                </Pressable>
-              )}
-              <Pressable style={styles.btnPrimary} onPress={() => isLast ? handleClose() : setStep(s => s + 1)}>
-                <Text style={styles.btnPrimaryText}>{isLast ? t.help.btnDone : t.help.btnNext}</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.dots}>
-              {steps.map((_, i) => (
-                <Pressable key={i} onPress={() => setStep(i)}>
-                  <View style={[styles.dot, i === step && styles.dotActive]} />
-                </Pressable>
-              ))}
-            </View>
+      <Pressable style={styles.overlay} onPress={handleClose} />
+      <View style={styles.overlayCenter} pointerEvents="box-none">
+        <View style={styles.card}>
+          <View style={styles.topRow}>
+            <Text style={styles.stepLabel}>{t.help.stepLabel(step + 1, total)}</Text>
+            <Pressable onPress={handleClose} hitSlop={12}>
+              <Text style={styles.closeBtn}>✕</Text>
+            </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+
+          <Text style={styles.iconText}>{current.icon}</Text>
+          <Text style={styles.title}>{current.title}</Text>
+
+          <ScrollView
+            style={{ maxHeight: Math.max(200, Dimensions.get('window').height * 0.3) }}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled
+          >
+            <Text style={styles.body}>{current.text}</Text>
+          </ScrollView>
+
+          <View style={styles.btnRow}>
+            {step > 0 && (
+              <Pressable style={styles.btnSecondary} onPress={() => setStep(s => s - 1)}>
+                <Text style={styles.btnSecondaryText}>{t.help.btnBack}</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.btnPrimary} onPress={() => isLast ? handleClose() : setStep(s => s + 1)}>
+              <Text style={styles.btnPrimaryText}>{isLast ? t.help.btnDone : t.help.btnNext}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.dots}>
+            {steps.map((_, i) => (
+              <Pressable key={i} onPress={() => setStep(i)}>
+                <View style={[styles.dot, i === step && styles.dotActive]} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </View>
     </Modal>
   );
 }
