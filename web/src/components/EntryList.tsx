@@ -147,9 +147,6 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
             <>
               <div style={s.menuOverlay} onClick={() => setMenuOpen(false)} />
               <div style={s.menu}>
-                <button style={s.menuItem} onClick={() => { onToggleTheme(); setMenuOpen(false) }}>
-                  {isDark ? '☀️ Tagmodus' : '🌙 Nachtmodus'}
-                </button>
                 <button style={s.menuItem} onClick={() => { onOpenSyncSettings(); setMenuOpen(false) }}>
                   ⚙️ Sync-Einstellungen
                 </button>
@@ -173,6 +170,8 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
                 <button style={{ ...s.menuItem, color: 'var(--error)' }} onClick={() => { onLogout(); setMenuOpen(false) }}>
                   Abmelden
                 </button>
+                <div style={s.menuDivider} />
+                <div style={s.menuInfo}>Web v{__WEB_VERSION__}</div>
               </div>
             </>
           )}
@@ -186,13 +185,29 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
           ))}
         </div>
         <div style={s.actions}>
+          <button style={s.iconBtn} onClick={onToggleTheme} title={isDark ? 'Tagmodus' : 'Nachtmodus'}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
           <button
-            style={{ ...s.iconBtn, display: 'flex', alignItems: 'center', gap: 4 }}
+            style={{ ...s.iconBtn, display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={() => setSyncOpen(true)}
             title="Sync-Status"
           >
-            <span style={{ fontSize: 18 }}>↻</span>
-            <span style={{ fontSize: 13 }}>{trafficDot(ncLastSync ?? driveLastSync, ncSyncing || driveSyncing)}</span>
+            {ncConnected && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13 }}>
+                <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>NC</span>
+                <span>{trafficDot(ncLastSync, ncSyncing)}</span>
+              </span>
+            )}
+            {driveConnected && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13 }}>
+                <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>GD</span>
+                <span>{trafficDot(driveLastSync, driveSyncing)}</span>
+              </span>
+            )}
+            {!ncConnected && !driveConnected && (
+              <span style={{ fontSize: 13 }}>⚫</span>
+            )}
           </button>
         </div>
       </div>
