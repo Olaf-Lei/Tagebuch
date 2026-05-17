@@ -23,6 +23,7 @@ export function HelpModal({ visible, onClose }: Props) {
     { title: t.help.step5Title, icon: t.help.step5Icon, text: t.help.step5Text },
     { title: t.help.step6Title, icon: t.help.step6Icon, text: t.help.step6Text },
     { title: t.help.step7Title, icon: t.help.step7Icon, text: t.help.step7Text },
+    { title: t.help.step8Title, icon: t.help.step8Icon, text: t.help.step8Text },
   ];
 
   const total = steps.length;

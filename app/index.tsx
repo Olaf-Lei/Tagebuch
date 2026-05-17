@@ -10,7 +10,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
 import { HelpModal } from '../components/HelpModal';
-import { SetupWizard, WIZARD_DONE_KEY } from '../components/SetupWizard';
+import { SetupWizard, WIZARD_DONE_KEY, ONBOARDING_DONE_KEY } from '../components/SetupWizard';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
 import { getCategories, categoryLabel, type Category } from '../db/categories';
@@ -23,7 +23,7 @@ import { addSyncListener, loadConfig, syncNow as ncSyncNow, getLastSync as ncGet
 import * as gdrive from '../sync/googledrive';
 import { exportEncKey } from '../utils/crypto';
 
-const HELP_SHOWN_KEY = 'help_shown';
+const HELP_SHOWN_LEGACY_KEY = 'help_shown'; // Migration: alter Key
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -266,26 +266,23 @@ export default function IndexScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openTutorialIfNeeded = () => {
-    SecureStore.getItemAsync(HELP_SHOWN_KEY).then((val) => {
-      if (!val) {
-        setShowHelp(true);
-        SecureStore.setItemAsync(HELP_SHOWN_KEY, 'true');
-      }
-    });
-  };
-
   useEffect(() => {
     getCategories().then(setCategories);
-    SecureStore.getItemAsync(WIZARD_DONE_KEY).then((wizardDone) => {
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    SecureStore.getItemAsync(WIZARD_DONE_KEY).then(async (wizardDone) => {
       if (!wizardDone) {
         setShowWizard(true);
-      } else {
-        openTutorialIfNeeded();
+        return;
       }
+      const [done, legacy] = await Promise.all([
+        SecureStore.getItemAsync(ONBOARDING_DONE_KEY),
+        SecureStore.getItemAsync(HELP_SHOWN_LEGACY_KEY),
+      ]);
+      if (!done && !legacy) setShowHelp(true);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []));
 
   const { entries, loading, reload } = useEntries({
     search,
@@ -484,9 +481,15 @@ export default function IndexScreen() {
 
       <SetupWizard
         visible={showWizard}
-        onDone={() => { setShowWizard(false); openTutorialIfNeeded(); }}
+        onDone={() => setShowWizard(false)}
       />
-      <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+      <HelpModal
+        visible={showHelp}
+        onClose={() => {
+          SecureStore.setItemAsync(ONBOARDING_DONE_KEY, 'true');
+          setShowHelp(false);
+        }}
+      />
 
       {/* ── Burger-Menü ── */}
       <Modal visible={showBurgerMenu} transparent animationType="fade" onRequestClose={() => setShowBurgerMenu(false)}>

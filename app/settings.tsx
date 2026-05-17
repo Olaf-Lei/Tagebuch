@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Image, KeyboardAvoidingView, Modal, Platform,
@@ -19,6 +20,7 @@ import { InhalteSection } from '../components/settings/InhalteSection';
 import { SyncSection } from '../components/settings/SyncSection';
 import { SicherheitSection } from '../components/settings/SicherheitSection';
 import { seedDemoData, clearDemoData, hasDemoData } from '../db/demoSeed';
+import { ONBOARDING_DONE_KEY } from '../components/SetupWizard';
 
 type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'experten' | 'about';
 
@@ -39,6 +41,7 @@ function SectionHeader({
 export default function SettingsScreen() {
   const c = useColors();
   const t = useT();
+  const router = useRouter();
   const { preference: themePref, setPreference: setThemePref } = useTheme();
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
@@ -360,6 +363,15 @@ export default function SettingsScreen() {
                 <Text style={styles.aboutLine}>{t.settings.aboutDeveloper}</Text>
                 <Text style={styles.aboutLine}>{t.settings.aboutBuild}</Text>
                 <Text style={styles.aboutLine}>{t.settings.aboutTagline}</Text>
+                <Pressable
+                  style={[styles.saveButton, { marginTop: 16 }]}
+                  onPress={() => {
+                    SecureStore.deleteItemAsync(ONBOARDING_DONE_KEY);
+                    router.back();
+                  }}
+                >
+                  <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.restartTutorial}</Text>
+                </Pressable>
               </View>
             </View>
           )}

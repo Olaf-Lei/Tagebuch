@@ -9,6 +9,7 @@ import { EMOJI_PRESETS } from './qualifiers';
 import { getDb } from '../db/schema';
 
 export const WIZARD_DONE_KEY = 'wizard_done';
+export const ONBOARDING_DONE_KEY = 'onboarding_done';
 
 interface Props {
   visible: boolean;

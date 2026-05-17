@@ -211,6 +211,7 @@ export const en: Strings = {
     aboutDeveloper: 'Developed by Olaf Leichsenring with Claude Code',
     aboutBuild: 'React Native · Android Studio Build',
     aboutTagline: 'Local data · No cloud required',
+    restartTutorial: 'Restart tutorial',
 
     pwSetTitle: 'Set fallback password',
     pwResetTitle: 'Set new password',
@@ -340,33 +341,37 @@ export const en: Strings = {
     btnBack: 'Back',
     btnDone: 'Done',
 
-    step1Title: 'Create an entry',
-    step1Icon: '✍️',
-    step1Text: 'Tap ＋, write your entry and save it with the button in the top right.\n\nOptionally add ratings, location, categories and tags — nothing is required.',
+    step1Title: 'Ishmael is on board',
+    step1Icon: '📖',
+    step1Text: 'This app starts with the journal of the sailor Ishmael — 20 entries from Herman Melville\'s Moby-Dick, spread across ports and oceans.\n\nBrowse the entries to see how the app works. You can remove the demo data any time under Settings → Expert.',
 
-    step2Title: 'Search & filter',
-    step2Icon: '🔍',
-    step2Text: 'The search bar filters entries by keyword, with matches highlighted in colour.\n\nUse the dropdown filters to filter by category or tag. The date filter (Today / Week / Month / All) restricts the time range.',
+    step2Title: 'Create an entry',
+    step2Icon: '✍️',
+    step2Text: 'Tap ＋, write your entry and save it with the button in the top right.\n\nOptionally add ratings, location, categories and tags — nothing is required. The goal is an entry in under 5 seconds.',
 
-    step3Title: 'Calendar',
-    step3Icon: '📅',
-    step3Text: 'The calendar view marks days with entries as dots.\n\nTap a day to see its entries directly below.',
+    step3Title: 'Your own style',
+    step3Icon: '✨',
+    step3Text: 'You already chose categories, ratings and tags in the setup. Under Settings → Content you can adjust them at any time: change colours, add new ones, remove old ones.\n\nRatings appear as an emoji scale (1–5) in every entry.',
 
-    step4Title: 'Statistics',
-    step4Icon: '📊',
-    step4Text: 'Choose a time range (Day / Week / Month / Year / Custom).\n\nSee entry count, streak record, rating trend curves, activity heatmap, and top categories and tags.',
+    step4Title: 'Search & filter',
+    step4Icon: '🔍',
+    step4Text: 'The search bar filters entries by keyword, with matches highlighted in colour.\n\nUse the dropdown filters to filter by category or tag. The date filter (Today / Week / Month / All) restricts the time range.',
 
-    step5Title: 'Sync & backup',
-    step5Icon: '☁️',
-    step5Text: 'Connect the app to Nextcloud or Google Drive under Settings → Sync & Backup — both backends can be active at the same time.\n\nSync manually or choose an automatic interval. Optionally enable encryption before upload.',
+    step5Title: 'Statistics',
+    step5Icon: '📊',
+    step5Text: 'Choose a time range (Day / Week / Month / Year / Custom).\n\nSee entry count, rating trend curves, activity heatmap, and top categories and tags.',
 
-    step6Title: 'Security',
-    step6Icon: '🔒',
-    step6Text: 'Enable biometric lock under Settings → Security.\n\nThe app locks on start or after 15 seconds in the background. Set a fallback password and recovery code to always maintain access.',
+    step6Title: 'Calendar & map',
+    step6Icon: '🗺️',
+    step6Text: 'The calendar view marks days with entries as dots — tap a day to see its entries.\n\nThe map view shows all entries with a GPS location. Both are accessible via the 📊 button in the top right.',
 
-    step7Title: 'Views & map',
-    step7Icon: '🗺️',
-    step7Text: 'The 📊 button in the top right opens a menu with three views: Statistics, Calendar, and Map.\n\nEntries with a GPS location show a tappable 📍 badge — tap it to jump straight to the map.',
+    step7Title: 'Sync & backup',
+    step7Icon: '☁️',
+    step7Text: 'Connect the app to Nextcloud or Google Drive under Settings → Sync & Backup — both backends can be active at the same time.\n\nSync manually or choose an automatic interval. Optionally enable encryption before upload.',
+
+    step8Title: 'Security',
+    step8Icon: '🔒',
+    step8Text: 'Enable biometric lock under Settings → Security.\n\nThe app locks on start or after 15 seconds in the background. Set a fallback password and recovery code to always maintain access.',
   },
 
   lock: {

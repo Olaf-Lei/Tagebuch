@@ -209,6 +209,7 @@ export const de = {
     aboutDeveloper: 'Entwickelt von Olaf Leichsenring mit Claude Code',
     aboutBuild: 'React Native · Android Studio Build',
     aboutTagline: 'Lokale Daten · Kein Cloud-Zwang',
+    restartTutorial: 'Tutorial nochmal starten',
 
     pwSetTitle: 'Fallback-Passwort festlegen',
     pwResetTitle: 'Neues Passwort festlegen',
@@ -338,33 +339,37 @@ export const de = {
     btnBack: 'Zurück',
     btnDone: 'Fertig',
 
-    step1Title: 'Eintrag erstellen',
-    step1Icon: '✍️',
-    step1Text: 'Tippe auf ＋, schreibe deinen Eintrag und speichere ihn oben rechts.\n\nOptional: Bewertungen, Standort, Kategorien und Tags ergänzen — alles ohne Pflichtfelder.',
+    step1Title: 'Ismael ist an Bord',
+    step1Icon: '📖',
+    step1Text: 'Diese App startet mit dem Tagebuch des Seemanns Ismael — 20 Einträge aus Herman Melvilles Moby-Dick, verteilt über Häfen und Weltmeere.\n\nSchau dir die Einträge an, um zu sehen wie die App funktioniert. Du kannst die Demo-Daten jederzeit unter Einstellungen → Experten entfernen.',
 
-    step2Title: 'Suche & Filter',
-    step2Icon: '🔍',
-    step2Text: 'Die Suchleiste filtert Einträge nach Stichwörtern, Treffer werden farbig hervorgehoben.\n\nMit den Dropdown-Filtern kannst du nach Kategorien oder Tags filtern. Der Zeitfilter (Heute / Woche / Monat / Alles) schränkt den Zeitraum ein.',
+    step2Title: 'Eintrag erstellen',
+    step2Icon: '✍️',
+    step2Text: 'Tippe auf ＋, schreibe deinen Eintrag und speichere ihn oben rechts.\n\nOptional: Bewertungen, Standort, Kategorien und Tags ergänzen — alles ohne Pflichtfelder. Ziel ist eine Eingabe in unter 5 Sekunden.',
 
-    step3Title: 'Kalender',
-    step3Icon: '📅',
-    step3Text: 'Die Kalenderansicht zeigt Tage mit Einträgen als Punkte.\n\nTippe auf einen Tag, um seine Einträge direkt darunter zu sehen.',
+    step3Title: 'Dein eigener Stil',
+    step3Icon: '✨',
+    step3Text: 'Du hast im Setup bereits Kategorien, Bewertungen und Tags gewählt. Unter Einstellungen → Inhalte kannst du sie jederzeit anpassen: Farben ändern, neue hinzufügen, alte entfernen.\n\nBewertungen erscheinen als Emoji-Skala (1–5) in jedem Eintrag.',
 
-    step4Title: 'Statistiken',
-    step4Icon: '📊',
-    step4Text: 'Wähle einen Zeitraum (Tag / Woche / Monat / Jahr / Frei).\n\nDu siehst Eintragsanzahl, Streak-Rekord, Bewertungs-Trendkurven, Aktivitätsheatmap sowie Top-Kategorien und Top-Tags.',
+    step4Title: 'Suche & Filter',
+    step4Icon: '🔍',
+    step4Text: 'Die Suchleiste filtert Einträge nach Stichwörtern, Treffer werden farbig hervorgehoben.\n\nMit den Dropdown-Filtern kannst du nach Kategorien oder Tags filtern. Der Zeitfilter (Heute / Woche / Monat / Alles) schränkt den Zeitraum ein.',
 
-    step5Title: 'Sync & Backup',
-    step5Icon: '☁️',
-    step5Text: 'Verbinde die App unter Einstellungen → Sync & Backup mit Nextcloud oder Google Drive — beide Backends können gleichzeitig aktiv sein.\n\nDu kannst manuell synchronisieren oder ein automatisches Intervall wählen. Optional: Verschlüsselung vor dem Upload aktivieren.',
+    step5Title: 'Statistiken',
+    step5Icon: '📊',
+    step5Text: 'Wähle einen Zeitraum (Tag / Woche / Monat / Jahr / Frei).\n\nDu siehst Eintragsanzahl, Bewertungs-Trendkurven, Aktivitätsheatmap sowie Top-Kategorien und Top-Tags.',
 
-    step6Title: 'Sicherheit',
-    step6Icon: '🔒',
-    step6Text: 'Aktiviere den Biometrie-Lock unter Einstellungen → Sicherheit.\n\nDie App sperrt beim Start oder nach 15 Sekunden im Hintergrund. Richte ein Fallback-Passwort und einen Recovery-Code ein, um immer Zugang zu haben.',
+    step6Title: 'Kalender & Karte',
+    step6Icon: '🗺️',
+    step6Text: 'Die Kalenderansicht zeigt Tage mit Einträgen als Punkte — tippe auf einen Tag für seine Einträge.\n\nDie Kartenansicht zeigt alle Einträge mit GPS-Standort. Beides erreichst du über den 📊-Button oben rechts.',
 
-    step7Title: 'Ansichten & Karte',
-    step7Icon: '🗺️',
-    step7Text: 'Der 📊-Button oben rechts öffnet ein Menü mit drei Ansichten: Statistiken, Kalender und Karte.\n\nEinträge mit GPS-Standort zeigen einen tippbaren 📍-Badge — tippe darauf, um direkt zur Karte zu springen.',
+    step7Title: 'Sync & Backup',
+    step7Icon: '☁️',
+    step7Text: 'Verbinde die App unter Einstellungen → Sync & Backup mit Nextcloud oder Google Drive — beide Backends können gleichzeitig aktiv sein.\n\nDu kannst manuell synchronisieren oder ein automatisches Intervall wählen. Optional: Verschlüsselung vor dem Upload aktivieren.',
+
+    step8Title: 'Sicherheit',
+    step8Icon: '🔒',
+    step8Text: 'Aktiviere den Biometrie-Lock unter Einstellungen → Sicherheit.\n\nDie App sperrt beim Start oder nach 15 Sekunden im Hintergrund. Richte ein Fallback-Passwort und einen Recovery-Code ein, um immer Zugang zu haben.',
   },
 
   lock: {
