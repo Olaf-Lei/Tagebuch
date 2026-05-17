@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "2.8.20",
+    "version": "2.8.21",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
         "backgroundColor": "#0F1B2D"
       },
       "package": "com.simpletagebuch.app",
-      "versionCode": 89,
+      "versionCode": 90,
       "targetSdkVersion": 35,
       "minSdkVersion": 24,
       "privacyPolicyUrl": "https://gist.github.com/Olaf-Lei/ab539abc2d8d4db4305b9ee2de4af95d",
