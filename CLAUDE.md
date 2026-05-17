@@ -439,7 +439,7 @@ Zugangsdaten in `/root/.deploy_credentials` (wird von `deploy.sh` nicht automati
 - [x] Phase 3: Setup-Wizard bei Erststart — Kategorien, Qualifiers, Tags vorschlagen und anlegen (`components/SetupWizard.tsx`, Flag `wizard_done`)
 - [x] Phase 4: Tutorial auf 8 Schritte erweitern (Schritt 1: Demo-Erklärung, Schritt 3: Individualisierung); `onboarding_done` erst bei „Fertig" setzen; Tutorial-Neustart in Settings → Über
 - [x] Phase 5: „Demo-Daten löschen?" Alert nach erstem echten Eintrag (`new.tsx` + Flag `demo_asked`)
-- [ ] Phase 6 (Backlog): Kontextuelle Tooltips (`?`-Buttons) in `new.tsx`, SyncSection, `stats.tsx`
+- [x] Phase 6: Kontextuelle Tooltips (`?`-Buttons) in `new.tsx` (Bewertungen), SyncSection (WebDAV), `stats.tsx` (Trend)
 
 **Play Store Veröffentlichung**
 - [ ] Datenschutzerklärung hosten (GitHub Gist o.ä.) → URL in `app.json` (`android.privacyPolicyUrl`) statt `"TODO"` eintragen

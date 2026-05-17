@@ -64,6 +64,7 @@ export const de = {
     locationAdd: '📍 Standort hinzufügen',
     locationPickerTitle: 'Ort wählen',
     locationPickerConfirm: 'Übernehmen',
+    labelQualifiers: 'Bewertungen',
     labelCategories: 'Kategorien',
     categoriesPlaceholder: 'Kategorien wählen…',
     labelTags: 'Tags',
@@ -301,6 +302,17 @@ export const de = {
     dateErrorOrder: 'Von muss vor Bis liegen',
     btnApply: 'Anwenden',
     comparePrev: (n: number) => n > 0 ? `+${n} ggü. Vorperiode` : n < 0 ? `${n} ggü. Vorperiode` : '= gleich',
+  },
+
+  tooltips: {
+    qualifiersTitle: 'Bewertungen',
+    qualifiersText: 'Bewerte täglich ausgewählte Aspekte auf einer Skala von 1 bis 5 — von links (niedrig/schlecht) nach rechts (hoch/gut).\n\nWelche Bewertungen erscheinen, hängt von den gewählten Kategorien ab. Anpassen unter Einstellungen → Inhalte → Bewertungen.',
+
+    webdavTitle: 'Nextcloud / WebDAV',
+    webdavText: 'WebDAV ist ein Protokoll, das Nextcloud, ownCloud, Synology und viele andere selbst gehostete Dienste unterstützen.\n\nDie App lädt deine Datenbank auf deinen Server hoch und wieder herunter — kein Drittanbieter beteiligt.\n\nURL: deine Nextcloud-Adresse\nBenutzername: dein Login\nPfad: Zielordner auf dem Server (z.B. /Tagebuch/)',
+
+    trendTitle: 'Bewertungs-Trend',
+    trendText: 'Zeigt den Durchschnittswert jeder aktiven Bewertung über den gewählten Zeitraum als Kurve.\n\n1 = niedrig/schlecht, 5 = hoch/gut. Jede Bewertung hat eine eigene Farbe. Perioden ohne Einträge werden übersprungen.',
   },
 
   onboarding: {

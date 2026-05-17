@@ -66,6 +66,7 @@ export const en: Strings = {
     locationAdd: '📍 Add location',
     locationPickerTitle: 'Pick location',
     locationPickerConfirm: 'Apply',
+    labelQualifiers: 'Ratings',
     labelCategories: 'Categories',
     categoriesPlaceholder: 'Select categories…',
     labelTags: 'Tags',
@@ -303,6 +304,17 @@ export const en: Strings = {
     dateErrorOrder: 'From must be before To',
     btnApply: 'Apply',
     comparePrev: (n: number) => n > 0 ? `+${n} vs. prev period` : n < 0 ? `${n} vs. prev period` : '= same',
+  },
+
+  tooltips: {
+    qualifiersTitle: 'Ratings',
+    qualifiersText: 'Rate selected aspects daily on a scale of 1 to 5 — from left (low/bad) to right (high/good).\n\nWhich ratings appear depends on the selected categories. Adjust under Settings → Content → Ratings.',
+
+    webdavTitle: 'Nextcloud / WebDAV',
+    webdavText: 'WebDAV is a protocol supported by Nextcloud, ownCloud, Synology and many other self-hosted services.\n\nThe app uploads your database to your server and downloads it back — no third party involved.\n\nURL: your Nextcloud address\nUsername: your login\nPath: target folder on the server (e.g. /Diary/)',
+
+    trendTitle: 'Rating trend',
+    trendText: 'Shows the average value of each active rating over the selected time range as a curve.\n\n1 = low/bad, 5 = high/good. Each rating has its own colour. Periods without entries are skipped.',
   },
 
   onboarding: {

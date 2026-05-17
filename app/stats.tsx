@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Modal, Platform, Pressable,
+  ActivityIndicator, Alert, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
 import { getStats, getQualifierTrend, getPreviousPeriodCount, getQualifierStats, getHourDistribution, getWeekdayDistribution, getAvgTextLength, getQualifierByCategory, type Stats, type QualifierTrendSeries, type QualifierDistribution, type QualifierByCat, type PeriodGroupBy } from '../db/stats';
-import { EMOJI_PRESETS } from '../components/qualifiers';
+import { EMOJI_PRESETS, qualifierLabel } from '../components/qualifiers';
+import { categoryLabel } from '../db/categories';
 import { useT } from '../i18n';
 
 // ── Filter ────────────────────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ function TrendChart({ series, c, noDataLabel }: {
   c: ReturnType<typeof useColors>;
   noDataLabel: string;
 }) {
+  const t = useT();
   const [chartWidth, setChartWidth] = useState(0);
   const CHART_H = 130;
   const PAD_TOP = 8;
@@ -188,7 +190,7 @@ function TrendChart({ series, c, noDataLabel }: {
             <View key={s.qualifier.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <View style={{ width: 14, height: 3, backgroundColor: color, borderRadius: 1.5 }} />
               <Text style={{ fontSize: 11, color: c.muted }}>
-                {preset?.icon} {s.qualifier.name}
+                {preset?.icon} {qualifierLabel(s.qualifier.name, s.qualifier.emoji_preset, t)}
               </Text>
             </View>
           );
@@ -335,6 +337,7 @@ function DistributionChart({ distributions, c }: {
   distributions: QualifierDistribution[];
   c: ReturnType<typeof useColors>;
 }) {
+  const t = useT();
   const BAR_MAX_H = 48;
   const hasData = distributions.some(qd => qd.dist.some(v => v > 0));
   if (!hasData) return null;
@@ -349,7 +352,7 @@ function DistributionChart({ distributions, c }: {
         return (
           <View key={qd.qualifier.id} style={{ gap: 8 }}>
             <Text style={{ fontSize: 12, color: c.muted, fontWeight: '600' }}>
-              {preset?.icon ?? ''}{' '}{qd.qualifier.name}
+              {preset?.icon ?? ''}{' '}{qualifierLabel(qd.qualifier.name, qd.qualifier.emoji_preset, t)}
               {qd.avg != null
                 ? <Text style={{ color, fontWeight: '700' }}> · Ø {qd.avg.toFixed(1)}</Text>
                 : null}
@@ -388,6 +391,7 @@ function QualifierCatTable({ data, c }: {
   data: QualifierByCat[];
   c: ReturnType<typeof useColors>;
 }) {
+  const t = useT();
   const qualifiers = useMemo(() => {
     const seen = new Map<number, { qualifier_id: number; name: string; emoji_preset: string }>();
     for (const cat of data) {
@@ -409,7 +413,7 @@ function QualifierCatTable({ data, c }: {
           return (
             <View key={q.qualifier_id} style={{ flex: 1, alignItems: 'center', gap: 1 }}>
               <Text style={{ fontSize: 14 }}>{preset?.icon}</Text>
-              <Text style={{ fontSize: 8, color: c.muted, textAlign: 'center' }} numberOfLines={1}>{q.name}</Text>
+              <Text style={{ fontSize: 8, color: c.muted, textAlign: 'center' }} numberOfLines={1}>{qualifierLabel(q.name, q.emoji_preset, t)}</Text>
             </View>
           );
         })}
@@ -423,7 +427,7 @@ function QualifierCatTable({ data, c }: {
           }}>
             <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.category.color ?? c.accent }} />
-              <Text style={{ fontSize: 12, color: c.text, flex: 1 }} numberOfLines={1}>{cat.category.name}</Text>
+              <Text style={{ fontSize: 12, color: c.text, flex: 1 }} numberOfLines={1}>{categoryLabel(cat.category, t)}</Text>
             </View>
             {qualifiers.map(q => {
               const avg = avgMap.get(q.qualifier_id);
@@ -536,6 +540,9 @@ export default function StatsScreen() {
     },
     qualAvgItem: { alignItems: 'center', gap: 2, minWidth: 60 },
     section: { fontSize: 11, fontWeight: '700', color: c.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+    sectionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    tooltipBtn: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 9, borderWidth: 1, borderColor: c.border },
+    tooltipBtnText: { fontSize: 10, color: c.muted, fontWeight: '600' },
     block: { backgroundColor: c.surface, borderRadius: 12, padding: 14 },
     loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     empty: { fontSize: 13, color: c.muted, textAlign: 'center', paddingVertical: 8 },
@@ -585,7 +592,7 @@ export default function StatsScreen() {
     count: p.count,
   })) ?? [];
 
-  const catItems = stats?.perCategory.map(x => ({ label: x.name, count: x.count, color: x.color })) ?? [];
+  const catItems = stats?.perCategory.map(x => ({ label: categoryLabel(x, t), count: x.count, color: x.color })) ?? [];
   const tagItems = stats?.perTag.map(x => ({ label: `#${x.name}`, count: x.count })) ?? [];
 
   const qualifierAvgs = useMemo(() =>
@@ -671,7 +678,7 @@ export default function StatsScreen() {
                     <View key={qualifier.id} style={styles.qualAvgItem}>
                       <Text style={{ fontSize: 22 }}>{emoji}</Text>
                       <Text style={{ fontSize: 15, fontWeight: '700', color }}>{avg.toFixed(1)}</Text>
-                      <Text style={{ fontSize: 10, color: c.muted, textAlign: 'center' }}>{qualifier.name}</Text>
+                      <Text style={{ fontSize: 10, color: c.muted, textAlign: 'center' }}>{qualifierLabel(qualifier.name, qualifier.emoji_preset, t)}</Text>
                     </View>
                   );
                 })}
@@ -681,7 +688,16 @@ export default function StatsScreen() {
 
           {trendSeries.length > 0 && (
             <View style={isWide && styles.wideBlock}>
-              <Text style={styles.section}>{t.stats.sectionQualifiers}</Text>
+              <View style={styles.sectionRow}>
+                <Text style={[styles.section, { flex: 1, marginBottom: 0 }]}>{t.stats.sectionQualifiers}</Text>
+                <Pressable
+                  style={styles.tooltipBtn}
+                  onPress={() => Alert.alert(t.tooltips.trendTitle, t.tooltips.trendText)}
+                  hitSlop={8}
+                >
+                  <Text style={styles.tooltipBtnText}>?</Text>
+                </Pressable>
+              </View>
               <View style={[styles.block, { paddingLeft: 24 }]}>
                 <TrendChart series={trendSeries} c={c} noDataLabel={t.stats.noMoodData} />
               </View>

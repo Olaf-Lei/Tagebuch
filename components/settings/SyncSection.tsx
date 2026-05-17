@@ -76,12 +76,15 @@ export function SyncSection({ encEnabled }: Props) {
     logActionBtn: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: 10, alignItems: 'center' },
     logActionBtnText: { color: c.muted, fontSize: 13 },
     subSectionHeader: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       backgroundColor: c.bg, borderRadius: 8,
       paddingHorizontal: 14, paddingVertical: 14, marginTop: 4,
     },
     subSectionHeaderText: { fontSize: 13, fontWeight: '600', color: c.text, textTransform: 'uppercase', letterSpacing: 0.6 },
     subSectionChevron: { fontSize: 16, color: c.muted },
+    subSectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+    tooltipBtn: { paddingHorizontal: 9, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg },
+    tooltipBtnText: { fontSize: 11, color: c.muted, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
     modalBox: { backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 12 },
     modalTitle: { fontSize: 17, fontWeight: '700', color: c.text },
@@ -391,10 +394,19 @@ export function SyncSection({ encEnabled }: Props) {
       )}
 
       {/* Nextcloud / WebDAV */}
-      <Pressable style={styles.subSectionHeader} onPress={() => setOpenNextcloud(v => !v)}>
-        <Text style={styles.subSectionHeaderText}>{t.settings.subNextcloud}</Text>
-        <Text style={styles.subSectionChevron}>{openNextcloud ? '▾' : '▸'}</Text>
-      </Pressable>
+      <View style={styles.subSectionHeaderRow}>
+        <Pressable style={styles.subSectionHeader} onPress={() => setOpenNextcloud(v => !v)}>
+          <Text style={styles.subSectionHeaderText}>{t.settings.subNextcloud}</Text>
+          <Text style={styles.subSectionChevron}>{openNextcloud ? '▾' : '▸'}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tooltipBtn, { marginLeft: 8 }]}
+          onPress={() => Alert.alert(t.tooltips.webdavTitle, t.tooltips.webdavText)}
+          hitSlop={8}
+        >
+          <Text style={styles.tooltipBtnText}>?</Text>
+        </Pressable>
+      </View>
       {openNextcloud && (
         <View style={{ gap: 8, marginTop: 4 }}>
           {!encEnabled && <Text style={styles.warnText}>{t.settings.syncEncryptionHint}</Text>}

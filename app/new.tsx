@@ -50,6 +50,9 @@ export default function NewEntryScreen() {
     mapBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
     headerSave: { paddingHorizontal: 16, paddingVertical: 10 },
     headerSaveText: { fontSize: 16, fontWeight: '700' },
+    labelRow: { flexDirection: 'row', alignItems: 'center' },
+    tooltipBtn: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: c.border },
+    tooltipBtnText: { fontSize: 11, color: c.muted, fontWeight: '600' },
   }), [c]);
 
   const { isWide, formMaxWidth } = useLayout();
@@ -158,6 +161,18 @@ export default function NewEntryScreen() {
             textAlignVertical="top"
           />
 
+          {visibleQualifiers.length > 0 && (
+            <View style={styles.labelRow}>
+              <Text style={[styles.label, { flex: 1 }]}>{t.entry.labelQualifiers}</Text>
+              <Pressable
+                style={styles.tooltipBtn}
+                onPress={() => Alert.alert(t.tooltips.qualifiersTitle, t.tooltips.qualifiersText)}
+                hitSlop={8}
+              >
+                <Text style={styles.tooltipBtnText}>?</Text>
+              </Pressable>
+            </View>
+          )}
           {visibleQualifiers.map((q) => {
             const preset = EMOJI_PRESETS[q.emoji_preset];
             if (!preset) return null;
