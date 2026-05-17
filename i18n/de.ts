@@ -380,9 +380,9 @@ export const de = {
     btnBack: 'Zurück',
     btnDone: 'Fertig',
 
-    step1Title: 'Ismael ist an Bord',
-    step1Icon: '📖',
-    step1Text: 'Diese App startet mit dem Tagebuch des Seemanns Ismael — 20 Einträge aus Herman Melvilles Moby-Dick, verteilt über Häfen und Weltmeere.\n\nSchau dir die Einträge an, um zu sehen wie die App funktioniert. Du kannst die Demo-Daten jederzeit unter Einstellungen → Experten entfernen.',
+    step1Title: 'Willkommen an Bord',
+    step1Icon: '🚢',
+    step1Text: 'Tagebuch ist deine lokale, sichere und datensparende App für persönliche Aufzeichnungen. Keine Konten, keine Cloud-Pflicht — alles bleibt auf deinem Gerät.\n\nFür den Start sind 20 Demo-Einträge aus der Welt von Herman Melvilles Moby-Dick dabei — Notizen eines Matrosen der Pequod über Häfen und Weltmeere.\n\nSchau dir die Einträge an, um die App kennenzulernen. Du kannst sie jederzeit unter Einstellungen → Experten entfernen.',
 
     step2Title: 'Eintrag erstellen',
     step2Icon: '✍️',
@@ -390,7 +390,7 @@ export const de = {
 
     step3Title: 'Dein eigener Stil',
     step3Icon: '✨',
-    step3Text: 'Du hast im Setup bereits Kategorien, Bewertungen und Tags gewählt. Unter Einstellungen → Inhalte kannst du sie jederzeit anpassen: Farben ändern, neue hinzufügen, alte entfernen.\n\nBewertungen erscheinen als Emoji-Skala (1–5) in jedem Eintrag.',
+    step3Text: 'Nach diesem Tutorial kannst du die App einrichten: Kategorien, Bewertungen und Tags anlegen, die zu dir passen. Unter Einstellungen → Inhalte lässt sich alles jederzeit anpassen: Farben ändern, neue hinzufügen, alte entfernen.\n\nBewertungen erscheinen als Emoji-Skala (1–5) in jedem Eintrag.',
 
     step4Title: 'Suche & Filter',
     step4Icon: '🔍',

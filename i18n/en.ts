@@ -382,9 +382,9 @@ export const en: Strings = {
     btnBack: 'Back',
     btnDone: 'Done',
 
-    step1Title: 'Ishmael is on board',
-    step1Icon: '📖',
-    step1Text: 'This app starts with the journal of the sailor Ishmael — 20 entries from Herman Melville\'s Moby-Dick, spread across ports and oceans.\n\nBrowse the entries to see how the app works. You can remove the demo data any time under Settings → Expert.',
+    step1Title: 'Welcome aboard',
+    step1Icon: '🚢',
+    step1Text: 'Tagebuch is your local, secure and privacy-friendly journal app. No accounts, no mandatory cloud — everything stays on your device.\n\nTo get you started, 20 demo entries from the world of Herman Melville\'s Moby-Dick are on board — notes from a sailor on the Pequod, across ports and oceans.\n\nBrowse the entries to explore the app. You can remove them any time under Settings → Expert.',
 
     step2Title: 'Create an entry',
     step2Icon: '✍️',
@@ -392,7 +392,7 @@ export const en: Strings = {
 
     step3Title: 'Your own style',
     step3Icon: '✨',
-    step3Text: 'You already chose categories, ratings and tags in the setup. Under Settings → Content you can adjust them at any time: change colours, add new ones, remove old ones.\n\nRatings appear as an emoji scale (1–5) in every entry.',
+    step3Text: 'After this tutorial you can set up the app: create categories, qualifiers and tags that suit you. Under Settings → Content everything can be adjusted at any time: change colours, add new ones, remove old ones.\n\nQualifiers appear as an emoji scale (1–5) in every entry.',
 
     step4Title: 'Search & filter',
     step4Icon: '🔍',
