@@ -303,6 +303,12 @@ export const de = {
     comparePrev: (n: number) => n > 0 ? `+${n} ggü. Vorperiode` : n < 0 ? `${n} ggü. Vorperiode` : '= gleich',
   },
 
+  onboarding: {
+    clearDemoTitle: 'Demo-Einträge entfernen?',
+    clearDemoMsg: 'Du hast deinen ersten eigenen Eintrag gespeichert. Sollen die 20 Demo-Einträge (Ismaels Moby-Dick-Tagebuch) und die dazugehörigen Demo-Kategorien und -Tags entfernt werden?',
+    clearDemoYes: 'Entfernen',
+  },
+
   wizard: {
     stepLabel: (n: number, total: number) => `Schritt ${n} von ${total}`,
     btnNext: 'Weiter',

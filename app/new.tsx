@@ -1,9 +1,10 @@
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLayout } from '../hooks/useLayout';
 import { DropdownPicker } from '../components/DropdownPicker';
@@ -11,15 +12,18 @@ import { QualifierPicker } from '../components/QualifierPicker';
 import { TagInput } from '../components/TagInput';
 import { IndulgenceChips } from '../components/IndulgenceChips';
 import { TimestampPicker } from '../components/TimestampPicker';
-import { EMOJI_PRESETS } from '../components/qualifiers';
+import { EMOJI_PRESETS, qualifierLabel } from '../components/qualifiers';
 import { getQualifiersForCategories, type Qualifier } from '../db/qualifiers';
 import { captureLocation, type GeoTag } from '../utils/location';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { useColors } from '../components/theme';
-import { getCategories, type Category } from '../db/categories';
+import { getCategories, categoryLabel, type Category } from '../db/categories';
 import { createEntry } from '../db/entries';
+import { hasDemoData, clearDemoData } from '../db/demoSeed';
 import { useT } from '../i18n';
 import { syncIfConfigured } from '../sync/webdav';
+
+const DEMO_ASKED_KEY = 'demo_asked';
 
 export default function NewEntryScreen() {
   const router = useRouter();
@@ -99,6 +103,24 @@ export default function NewEntryScreen() {
       locationName: geoTag?.locationName ?? null,
     });
     syncIfConfigured();
+
+    const asked = await SecureStore.getItemAsync(DEMO_ASKED_KEY);
+    if (!asked) {
+      const hasDemo = await hasDemoData();
+      if (hasDemo) {
+        await SecureStore.setItemAsync(DEMO_ASKED_KEY, 'true');
+        Alert.alert(
+          t.onboarding.clearDemoTitle,
+          t.onboarding.clearDemoMsg,
+          [
+            { text: t.common.cancel, style: 'cancel', onPress: () => router.back() },
+            { text: t.onboarding.clearDemoYes, style: 'destructive', onPress: async () => { await clearDemoData(); router.back(); } },
+          ],
+          { cancelable: false },
+        );
+        return;
+      }
+    }
     router.back();
   };
 
@@ -142,7 +164,7 @@ export default function NewEntryScreen() {
             return (
               <QualifierPicker
                 key={q.id}
-                label={q.name}
+                label={qualifierLabel(q.name, q.emoji_preset, t)}
                 emojis={preset.emojis}
                 value={qualifierValues[q.id] ?? null}
                 onChange={(v) => setQualifierValues((prev) => {
@@ -186,7 +208,7 @@ export default function NewEntryScreen() {
 
           <Text style={styles.label}>{t.entry.labelCategories}</Text>
           <DropdownPicker
-            options={categories}
+            options={categories.map(c => ({ ...c, name: categoryLabel(c, t) }))}
             selected={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
             placeholder={t.entry.categoriesPlaceholder}

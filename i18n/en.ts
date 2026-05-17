@@ -305,6 +305,12 @@ export const en: Strings = {
     comparePrev: (n: number) => n > 0 ? `+${n} vs. prev period` : n < 0 ? `${n} vs. prev period` : '= same',
   },
 
+  onboarding: {
+    clearDemoTitle: 'Remove demo entries?',
+    clearDemoMsg: 'You\'ve saved your first own entry. Should the 20 demo entries (Ishmael\'s Moby-Dick journal) and the associated demo categories and tags be removed?',
+    clearDemoYes: 'Remove',
+  },
+
   wizard: {
     stepLabel: (n: number, total: number) => `Step ${n} of ${total}`,
     btnNext: 'Next',
