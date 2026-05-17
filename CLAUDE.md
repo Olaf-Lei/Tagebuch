@@ -435,6 +435,11 @@ Zugangsdaten in `/root/.deploy_credentials` (wird von `deploy.sh` nicht automati
 
 ### Offen (nach Priorität)
 
+**Onboarding (Phase 3–6)**
+- [ ] Phase 3: Setup-Wizard bei Erststart — Kategorien, Qualifiers, Tags vorschlagen und anlegen (`components/SetupWizard.tsx`, Flag `wizard_done`)
+- [ ] Phase 4: Tutorial auf 8 Schritte erweitern (Schritt 1: Demo-Erklärung, Schritt 3: Individualisierung); `onboarding_done` erst bei „Fertig" setzen; Tutorial-Neustart in Settings → Über
+- [ ] Phase 5: „Demo-Daten löschen?" Alert nach erstem echten Eintrag (`new.tsx` + Flag `demo_asked`)
+- [ ] Phase 6 (Backlog): Kontextuelle Tooltips (`?`-Buttons) in `new.tsx`, SyncSection, `stats.tsx`
 
 **Play Store Veröffentlichung**
 - [ ] Datenschutzerklärung hosten (GitHub Gist o.ä.) → URL in `app.json` (`android.privacyPolicyUrl`) statt `"TODO"` eintragen
@@ -448,6 +453,7 @@ Zugangsdaten in `/root/.deploy_credentials` (wird von `deploy.sh` nicht automati
 - **Google OAuth Fix** — `proxy.config.php` wird jetzt via `deploy.sh` mitdeployt; kanonische Redirect-URI auf `https://www.olovenet.de/tagebuch/` umgestellt; beide Varianten (mit/ohne www) in GCC eingetragen
 - **Mehrfachauswahl** — Long-Press aktiviert Auswahlmodus; Header zeigt Anzahl + „Alle"/„Löschen"-Buttons; `deleteEntries(ids[])` mit Tombstone
 - **Menü-Reihenfolge** — 📊-Bubble: Statistik → Karte → Kalender
+- **Onboarding Phase 1+2** — `is_demo` in `categories`+`tags` (Migration); `seedDemoData(lang)` mehrsprachig (DE/EN, Moby-Dick-Original für EN); `clearDemoData()` löscht auch Demo-Kategorien/-Tags (nur wenn kein echter Entry referenziert, mit Tombstones)
 - **Demo-Modus Fix** — `clearDemoData` schreibt Tombstones; Demo-Einträge kommen nach Sync nicht mehr zurück
 - **Kategorien/Tags Lösch-Persistenz** — Tombstone-Tabellen in Sync-Merge; Löschungen werden bidirektional propagiert
 - **Karten- und Statistik-Filter** — Android + Web: Kategorie-Multi-Select + Qualifier-Bereichsfilter auf Karte; Web Stats: Zeitraum-Chips + freier Datumsbereich; Eintragsliste: „Frei"-Filter

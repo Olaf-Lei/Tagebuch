@@ -135,8 +135,10 @@ export default function SettingsScreen() {
   };
 
   const handleExport = (format: 'json' | 'csv' | 'db') => {
-    const fn = format === 'json' ? exportJSON : format === 'csv' ? exportCSV : exportDB;
-    fn().catch((e) => Alert.alert(t.settings.exportFailTitle, e.message ?? String(e)));
+    const p = format === 'db'
+      ? exportDB(t.settings.exportDbDialogTitle)
+      : format === 'json' ? exportJSON() : exportCSV();
+    p.catch((e) => Alert.alert(t.settings.exportFailTitle, e.message ?? String(e)));
   };
 
   const handleShowWebLoginQR = async () => {
@@ -177,7 +179,7 @@ export default function SettingsScreen() {
       { text: t.common.cancel, style: 'cancel' },
       {
         text: t.common.ok,
-        onPress: () => seedDemoData().then(() => { setDemoActive(true); Alert.alert('', t.settings.demoSeedSuccess); }),
+        onPress: () => seedDemoData(language).then(() => { setDemoActive(true); Alert.alert('', t.settings.demoSeedSuccess); }),
       },
     ]);
   };
@@ -308,7 +310,7 @@ export default function SettingsScreen() {
                   <Text style={styles.exportBtnText}>CSV</Text>
                 </Pressable>
                 <Pressable style={styles.exportBtn} onPress={() => handleExport('db')}>
-                  <Text style={styles.exportBtnText}>Datenbank</Text>
+                  <Text style={styles.exportBtnText}>{t.settings.btnExportDb}</Text>
                 </Pressable>
               </View>
             </View>

@@ -150,6 +150,8 @@ export async function initDb(): Promise<void> {
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN longitude REAL;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN location_name TEXT;'); } catch {}
   try { await db.execAsync('ALTER TABLE entries ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;'); } catch {}
+  try { await db.execAsync('ALTER TABLE categories ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;'); } catch {}
+  try { await db.execAsync('ALTER TABLE tags ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;'); } catch {}
 
   // Migration: entry_tags + entry_categories brauchen ON DELETE CASCADE auf tag_id/category_id
   try {
