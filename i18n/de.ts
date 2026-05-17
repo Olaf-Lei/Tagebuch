@@ -247,6 +247,8 @@ export const de = {
     keyResetMsg: 'Bestehende Backups auf Nextcloud können danach nicht mehr entschlüsselt werden.',
     keyResetBtn: 'Zurücksetzen',
     exportFailTitle: 'Export fehlgeschlagen',
+    btnExportDb: 'Datenbank',
+    exportDbDialogTitle: 'Datenbank exportieren',
     pushLocalTitle: 'Lokale DB hochladen',
     pushLocalMsg: 'Die lokale Datenbank wird ohne Merge direkt nach Nextcloud hochgeladen. Die Remote-Datei wird überschrieben.',
     pushLocalGDriveMsg: 'Die lokale Datenbank wird ohne Merge direkt nach Google Drive hochgeladen. Die Remote-Datei wird überschrieben.',
@@ -300,6 +302,35 @@ export const de = {
     comparePrev: (n: number) => n > 0 ? `+${n} ggü. Vorperiode` : n < 0 ? `${n} ggü. Vorperiode` : '= gleich',
   },
 
+  wizard: {
+    stepLabel: (n: number, total: number) => `Schritt ${n} von ${total}`,
+    btnNext: 'Weiter',
+    btnBack: 'Zurück',
+    btnDone: 'Loslegen',
+    addPlaceholder: 'Eigene hinzufügen…',
+
+    catTitle: 'Deine Kategorien',
+    catIcon: '📂',
+    catText: 'Wähle Bereiche aus, die du erfassen möchtest. Du kannst jederzeit weitere in den Einstellungen anlegen.',
+    catSuggestions: [
+      { name: 'Arbeit',     color: '#4C9DC9' },
+      { name: 'Familie',    color: '#4CC984' },
+      { name: 'Gesundheit', color: '#9D4CC9' },
+      { name: 'Alltag',     color: '#C9A84C' },
+      { name: 'Freizeit',   color: '#C9844C' },
+      { name: 'Reisen',     color: '#4CC9C9' },
+    ] as { name: string; color: string }[],
+
+    qualTitle: 'Deine Bewertungen',
+    qualIcon: '⭐',
+    qualText: 'Welche Aspekte möchtest du täglich bewerten? Jede Bewertung erscheint als Emoji-Skala (1–5) beim Erstellen eines Eintrags.',
+
+    tagTitle: 'Wiederkehrende Themen',
+    tagIcon: '🏷️',
+    tagText: 'Tags helfen dir, Einträge schnell zu filtern. Du kannst Tags auch jederzeit spontan beim Schreiben hinzufügen.',
+    tagSuggestions: ['Sport', 'Freunde', 'Urlaub', 'Musik', 'Kochen', 'Lesen'] as string[],
+  },
+
   help: {
     title: 'Hilfe-Tour',
     stepLabel: (n: number, total: number) => `${n} / ${total}`,
@@ -347,6 +378,7 @@ export const de = {
     recoveryPlaceholder: 'XXXX-XXXX',
     errorPassword: 'Falsches Passwort',
     errorRecovery: 'Ungültiger Recovery-Code',
+    lockoutWait: 'Bitte warten:',
   },
 
   calendar: {
@@ -373,6 +405,23 @@ export const de = {
   burgerMenu: {
     settings: 'Einstellungen',
     webLoginQR: 'Web-Login QR-Code',
+  },
+
+  qualifierPresets: {
+    mood: 'Laune',
+    health: 'Befinden',
+    sleep: 'Schlaf',
+    energy: 'Energie',
+    pain: 'Schmerz',
+    stress: 'Stress',
+  },
+
+  defaultCategories: {
+    diary: 'Tagebuch',
+    health: 'Gesundheit',
+    nutrition: 'Ernährung',
+    sports: 'Sport',
+    wellbeing: 'Befinden',
   },
 };
 

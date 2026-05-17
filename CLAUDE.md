@@ -436,7 +436,7 @@ Zugangsdaten in `/root/.deploy_credentials` (wird von `deploy.sh` nicht automati
 ### Offen (nach Priorität)
 
 **Onboarding (Phase 3–6)**
-- [ ] Phase 3: Setup-Wizard bei Erststart — Kategorien, Qualifiers, Tags vorschlagen und anlegen (`components/SetupWizard.tsx`, Flag `wizard_done`)
+- [x] Phase 3: Setup-Wizard bei Erststart — Kategorien, Qualifiers, Tags vorschlagen und anlegen (`components/SetupWizard.tsx`, Flag `wizard_done`)
 - [ ] Phase 4: Tutorial auf 8 Schritte erweitern (Schritt 1: Demo-Erklärung, Schritt 3: Individualisierung); `onboarding_done` erst bei „Fertig" setzen; Tutorial-Neustart in Settings → Über
 - [ ] Phase 5: „Demo-Daten löschen?" Alert nach erstem echten Eintrag (`new.tsx` + Flag `demo_asked`)
 - [ ] Phase 6 (Backlog): Kontextuelle Tooltips (`?`-Buttons) in `new.tsx`, SyncSection, `stats.tsx`

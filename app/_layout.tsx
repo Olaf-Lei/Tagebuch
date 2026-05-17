@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+import * as Localization from 'expo-localization';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { BiometricProvider } from '../contexts/BiometricContext';
-import { LanguageProvider } from '../contexts/LanguageContext';
+import { LanguageProvider, type Language } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
@@ -15,6 +17,8 @@ import { ensureReminderScheduled } from '../utils/notifications';
 import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
 import { syncIfConfigured as gdriveSyncIfConfigured, syncNow as gdriveSyncNow, isConnected as gdriveIsConnected, getLastSyncMs as gdriveGetLastSyncMs } from '../sync/googledrive';
 import { getAutoSyncInterval, ensureBackgroundSyncRegistered } from '../sync/backgroundSync';
+import { seedDemoData } from '../db/demoSeed';
+import { WIZARD_DONE_KEY } from '../components/SetupWizard';
 
 function AppShell() {
   const { mode } = useTheme();
@@ -59,7 +63,15 @@ export default function RootLayout() {
       useNativeDriver: true,
     }).start();
 
-    initDb().then(() => {
+    initDb().then(async () => {
+      const wizardDone = await SecureStore.getItemAsync(WIZARD_DONE_KEY);
+      if (!wizardDone) {
+        const saved = await SecureStore.getItemAsync('app_language');
+        const lang: Language = (saved === 'en' || saved === 'de')
+          ? saved
+          : (Localization.getLocales()[0]?.languageCode?.startsWith('en') ? 'en' : 'de');
+        await seedDemoData(lang);
+      }
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});

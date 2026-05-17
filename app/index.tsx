@@ -10,9 +10,10 @@ import QRCode from 'react-native-qrcode-svg';
 import { DropdownPicker } from '../components/DropdownPicker';
 import { EntryCard } from '../components/EntryCard';
 import { HelpModal } from '../components/HelpModal';
+import { SetupWizard, WIZARD_DONE_KEY } from '../components/SetupWizard';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
-import { getCategories, type Category } from '../db/categories';
+import { getCategories, categoryLabel, type Category } from '../db/categories';
 import { useEntries } from '../hooks/useEntries';
 import { useTags } from '../hooks/useTags';
 import { useQualifiers } from '../hooks/useQualifiers';
@@ -105,6 +106,7 @@ export default function IndexScreen() {
   const [toInput, setToInput] = useState('');
   const [dateError, setDateError] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showWizard, setShowWizard] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -264,14 +266,25 @@ export default function IndexScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    getCategories().then(setCategories);
+  const openTutorialIfNeeded = () => {
     SecureStore.getItemAsync(HELP_SHOWN_KEY).then((val) => {
       if (!val) {
         setShowHelp(true);
         SecureStore.setItemAsync(HELP_SHOWN_KEY, 'true');
       }
     });
+  };
+
+  useEffect(() => {
+    getCategories().then(setCategories);
+    SecureStore.getItemAsync(WIZARD_DONE_KEY).then((wizardDone) => {
+      if (!wizardDone) {
+        setShowWizard(true);
+      } else {
+        openTutorialIfNeeded();
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { entries, loading, reload } = useEntries({
@@ -374,7 +387,7 @@ export default function IndexScreen() {
         </View>
         <View style={styles.filterRow}>
           <DropdownPicker
-            options={categories}
+            options={categories.map(c => ({ ...c, name: categoryLabel(c, t) }))}
             selected={selectedCategories}
             onChange={setSelectedCategories}
             placeholder={t.list.filterCategories}
@@ -469,6 +482,10 @@ export default function IndexScreen() {
         </Pressable>
       </Modal>
 
+      <SetupWizard
+        visible={showWizard}
+        onDone={() => { setShowWizard(false); openTutorialIfNeeded(); }}
+      />
       <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* ── Burger-Menü ── */}

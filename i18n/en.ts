@@ -249,6 +249,8 @@ export const en: Strings = {
     keyResetMsg: 'Existing backups on Nextcloud can no longer be decrypted.',
     keyResetBtn: 'Reset',
     exportFailTitle: 'Export failed',
+    btnExportDb: 'Database',
+    exportDbDialogTitle: 'Export database',
     pushLocalTitle: 'Upload local DB',
     pushLocalMsg: 'The local database will be uploaded directly to Nextcloud without merging. The remote file will be overwritten.',
     pushLocalGDriveMsg: 'The local database will be uploaded directly to Google Drive without merging. The remote file will be overwritten.',
@@ -302,6 +304,35 @@ export const en: Strings = {
     comparePrev: (n: number) => n > 0 ? `+${n} vs. prev period` : n < 0 ? `${n} vs. prev period` : '= same',
   },
 
+  wizard: {
+    stepLabel: (n: number, total: number) => `Step ${n} of ${total}`,
+    btnNext: 'Next',
+    btnBack: 'Back',
+    btnDone: 'Get started',
+    addPlaceholder: 'Add custom…',
+
+    catTitle: 'Your categories',
+    catIcon: '📂',
+    catText: 'Choose areas you want to track. You can always add more in Settings.',
+    catSuggestions: [
+      { name: 'Work',    color: '#4C9DC9' },
+      { name: 'Family',  color: '#4CC984' },
+      { name: 'Health',  color: '#9D4CC9' },
+      { name: 'Daily',   color: '#C9A84C' },
+      { name: 'Leisure', color: '#C9844C' },
+      { name: 'Travel',  color: '#4CC9C9' },
+    ] as { name: string; color: string }[],
+
+    qualTitle: 'Your ratings',
+    qualIcon: '⭐',
+    qualText: 'Which aspects do you want to rate daily? Each rating appears as an emoji scale (1–5) when creating an entry.',
+
+    tagTitle: 'Recurring topics',
+    tagIcon: '🏷️',
+    tagText: 'Tags help you quickly filter entries. You can also add tags on the fly while writing.',
+    tagSuggestions: ['Sports', 'Friends', 'Vacation', 'Music', 'Cooking', 'Reading'] as string[],
+  },
+
   help: {
     title: 'Help Tour',
     stepLabel: (n: number, total: number) => `${n} / ${total}`,
@@ -349,6 +380,7 @@ export const en: Strings = {
     recoveryPlaceholder: 'XXXX-XXXX',
     errorPassword: 'Wrong password',
     errorRecovery: 'Invalid recovery code',
+    lockoutWait: 'Please wait:',
   },
 
   calendar: {
@@ -375,5 +407,22 @@ export const en: Strings = {
   burgerMenu: {
     settings: 'Settings',
     webLoginQR: 'Web login QR code',
+  },
+
+  qualifierPresets: {
+    mood: 'Mood',
+    health: 'Health',
+    sleep: 'Sleep',
+    energy: 'Energy',
+    pain: 'Pain',
+    stress: 'Stress',
+  },
+
+  defaultCategories: {
+    diary: 'Diary',
+    health: 'Health',
+    nutrition: 'Nutrition',
+    sports: 'Sports',
+    wellbeing: 'Well-being',
   },
 };
