@@ -21,19 +21,35 @@ import { SyncSection } from '../components/settings/SyncSection';
 import { SicherheitSection } from '../components/settings/SicherheitSection';
 import { seedDemoData, clearDemoData, hasDemoData } from '../db/demoSeed';
 import { ONBOARDING_DONE_KEY } from '../components/SetupWizard';
+import { SectionHelpModal } from '../components/SectionHelpModal';
 
 type SectionKey = 'inhalte' | 'sync' | 'sicherheit' | 'erinnerungen' | 'darstellung' | 'export' | 'experten' | 'about';
 
 function SectionHeader({
-  title, open, onToggle, styles,
+  title, open, onToggle, onHelp, styles,
 }: {
-  title: string; open: boolean; onToggle: () => void;
+  title: string; open: boolean; onToggle: () => void; onHelp?: () => void;
   styles: { header: object; headerText: object; chevron: object };
 }) {
+  const c = useColors();
   return (
     <Pressable style={styles.header} onPress={onToggle}>
       <Text style={styles.headerText}>{title}</Text>
-      <Text style={styles.chevron}>{open ? '▾' : '▸'}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {onHelp && (
+          <Pressable
+            onPress={e => { e.stopPropagation(); onHelp(); }}
+            hitSlop={10}
+            style={{
+              width: 22, height: 22, borderRadius: 11,
+              backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', lineHeight: 14 }}>?</Text>
+          </Pressable>
+        )}
+        <Text style={styles.chevron}>{open ? '▾' : '▸'}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -59,6 +75,7 @@ export default function SettingsScreen() {
   const [relayCode, setRelayCode] = useState<string | null>(null);
   const [relayLoading, setRelayLoading] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
+  const [sectionHelpKey, setSectionHelpKey] = useState<SectionKey | null>(null);
   useEffect(() => { hasDemoData().then(setDemoActive); }, []);
 
   const styles = useMemo(() => StyleSheet.create({
@@ -203,7 +220,7 @@ export default function SettingsScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {/* ── Inhalte ── */}
-          <SectionHeader title={t.settings.sectionContent} open={open.inhalte} onToggle={() => toggle('inhalte')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionContent} open={open.inhalte} onToggle={() => toggle('inhalte')} onHelp={() => setSectionHelpKey('inhalte')} styles={headerStyles} />
           {open.inhalte && (
             <View style={styles.sectionBody}>
               <InhalteSection />
@@ -211,7 +228,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Sync & Backup ── */}
-          <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} onHelp={() => setSectionHelpKey('sync')} styles={headerStyles} />
           {open.sync && (
             <View style={styles.sectionBody}>
               <SyncSection encEnabled={encEnabled} />
@@ -219,7 +236,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Sicherheit ── */}
-          <SectionHeader title={t.settings.sectionSecurity} open={open.sicherheit} onToggle={() => toggle('sicherheit')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionSecurity} open={open.sicherheit} onToggle={() => toggle('sicherheit')} onHelp={() => setSectionHelpKey('sicherheit')} styles={headerStyles} />
           {open.sicherheit && (
             <View style={styles.sectionBody}>
               <SicherheitSection encEnabled={encEnabled} onEncEnabledChange={setEncEnabled} />
@@ -227,7 +244,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Erinnerungen ── */}
-          <SectionHeader title={t.settings.sectionReminders} open={open.erinnerungen} onToggle={() => toggle('erinnerungen')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionReminders} open={open.erinnerungen} onToggle={() => toggle('erinnerungen')} onHelp={() => setSectionHelpKey('erinnerungen')} styles={headerStyles} />
           {open.erinnerungen && (
             <View style={styles.sectionBody}>
               <View style={styles.switchRow}>
@@ -264,7 +281,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Darstellung ── */}
-          <SectionHeader title={t.settings.sectionAppearance} open={open.darstellung} onToggle={() => toggle('darstellung')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionAppearance} open={open.darstellung} onToggle={() => toggle('darstellung')} onHelp={() => setSectionHelpKey('darstellung')} styles={headerStyles} />
           {open.darstellung && (
             <View style={styles.sectionBody}>
               <Text style={styles.subLabel}>{t.settings.subColorMode}</Text>
@@ -302,7 +319,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Export ── */}
-          <SectionHeader title={t.settings.sectionExport} open={open.export} onToggle={() => toggle('export')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionExport} open={open.export} onToggle={() => toggle('export')} onHelp={() => setSectionHelpKey('export')} styles={headerStyles} />
           {open.export && (
             <View style={styles.sectionBody}>
               <View style={styles.exportRow}>
@@ -320,7 +337,7 @@ export default function SettingsScreen() {
           )}
 
           {/* ── Experten ── */}
-          <SectionHeader title={t.settings.sectionExperten} open={open.experten} onToggle={() => toggle('experten')} styles={headerStyles} />
+          <SectionHeader title={t.settings.sectionExperten} open={open.experten} onToggle={() => toggle('experten')} onHelp={() => setSectionHelpKey('experten')} styles={headerStyles} />
           {open.experten && (
             <View style={styles.sectionBody}>
               <Text style={styles.subLabel}>{t.settings.subWebTagebuch}</Text>
@@ -378,6 +395,23 @@ export default function SettingsScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {(() => {
+        const h = t.sectionHelp;
+        const helpMap: Partial<Record<SectionKey, { title: string; body: string }>> = {
+          inhalte:     { title: h.inhalteTitle,     body: h.inhalteBody },
+          sync:        { title: h.syncTitle,         body: h.syncBody },
+          sicherheit:  { title: h.sicherheitTitle,   body: h.sicherheitBody },
+          erinnerungen:{ title: h.erinnerungenTitle, body: h.erinnerungenBody },
+          darstellung: { title: h.darstellungTitle,  body: h.darstellungBody },
+          export:      { title: h.exportTitle,       body: h.exportBody },
+          experten:    { title: h.expertenTitle,     body: h.expertenBody },
+        };
+        const { title = '', body = '' } = (sectionHelpKey && helpMap[sectionHelpKey]) || {};
+        return (
+          <SectionHelpModal visible={sectionHelpKey !== null} title={title} body={body} onClose={() => setSectionHelpKey(null)} />
+        );
+      })()}
 
       {/* Web-Login QR Modal */}
       <Modal visible={!!webLoginQR} transparent animationType="fade" onRequestClose={() => { setWebLoginQR(null); setRelayCode(null); }}>

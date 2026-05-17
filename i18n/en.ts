@@ -265,6 +265,29 @@ export const en: Strings = {
     deleteTagMsg: 'The tag will be removed from all entries.',
   },
 
+  sectionHelp: {
+    inhalteTitle: 'Content',
+    inhalteBody: 'Categories\nCategories group your entries. An entry can have multiple categories. The colour symbol opens a colour picker. Use 📊 to assign qualifiers to a category — they will appear first when creating an entry.\n\nQualifiers\nQualifiers are emoji scales from 1–5 (mood, wellbeing, sleep, energy, etc.). Category-linked qualifiers are shown automatically when the category is selected. Long-press to reorder.\n\nTags\nTags are free-form keywords. Type them directly in the entry — they are created automatically and suggested via autocomplete next time.',
+
+    syncTitle: 'Sync & Backup',
+    syncBody: 'Nextcloud (WebDAV)\nEnter URL, username, password and path (e.g. /remote.php/dav/files/USER/Diary). Then tap Sync.\n\nGoogle Drive\nTap "Connect Google Drive" and sign in with your Google account. Select a folder — the app stores the database there.\n\nBoth backends at once\nNextcloud and Google Drive can both be active simultaneously. During dual sync, Nextcloud is synced first, then Google Drive.\n\nEncryption before upload\nIf enabled under Security, the database is encrypted with AES-256 before uploading. Nextcloud/Google Drive only see an unreadable blob — the key stays on your device.\n\nAuto-sync\nChoose an interval (5 min to 1 hour) or disable auto-sync. The primary trigger is returning to the foreground.',
+
+    sicherheitTitle: 'Security',
+    sicherheitBody: 'Biometric lock\nWhen enabled, the app locks on start and after 15 seconds in the background. Unlock with fingerprint, face recognition or password. System dialogs (e.g. GPS permission) do not trigger the lock.\n\nPassword\nUsed as a fallback to biometrics or as the sole method. The hash (SHA-256) is stored in the device\'s secure storage — the plaintext password never leaves the app. Use the 📷 button to reset the password via biometrics.\n\nEncryption\nThe database is encrypted with AES-256 before upload. Find the key under "Export key" — copy it to every device you want to sync. Without this key, backups cannot be restored.',
+
+    erinnerungenTitle: 'Reminders',
+    erinnerungenBody: 'Enable a daily reminder so you don\'t forget to write. Set the time — the notification appears every day at the chosen time.\n\nThe app needs notification permission. If you declined it on first launch, you can grant it later in the Android system settings.',
+
+    darstellungTitle: 'Appearance',
+    darstellungBody: 'Colour mode\nChoose between Light, Dark, or Automatic (follows system settings). Dark mode is the recommended default.\n\nLanguage\nThe app is available in German and English. The language applies to all UI text; entry content and tags are not translated.',
+
+    exportTitle: 'Export',
+    exportBody: 'JSON\nExports all entries with metadata (categories, tags, qualifiers, location, timestamps) as machine-readable JSON.\n\nCSV\nExports all entries as a table — suitable for Excel, LibreOffice or other spreadsheet applications. Qualifiers are added as separate columns.\n\nExported files can be saved or shared via the Android share menu.',
+
+    expertenTitle: 'Expert settings',
+    expertenBody: 'Web frontend URL\nEnter the URL of your own web client (e.g. https://your-domain.com/diary/). This URL is used for relay-code login.\n\nWeb login QR code\nGenerates a QR code containing sync credentials (Nextcloud, Google Drive, encryption key). This lets you set up the web client instantly without manually entering your details. A 6-digit relay code (valid for 5 minutes) is also available.\n\nRemove demo data\nDeletes the demo entries created on first launch, along with their demo categories and tags.',
+  },
+
   stats: {
     filterDay: 'Day',
     filterWeek: 'Week',
@@ -430,6 +453,7 @@ export const en: Strings = {
   burgerMenu: {
     settings: 'Settings',
     webLoginQR: 'Web login QR code',
+    help: 'Help & tour',
   },
 
   qualifierPresets: {

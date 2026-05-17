@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Modal, Pressable, ScrollView, StyleSheet, Text, View,
+  Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useColors } from './theme';
 import { useT } from '../i18n';
@@ -83,7 +83,11 @@ export function HelpModal({ visible, onClose }: Props) {
             <Text style={styles.iconText}>{current.icon}</Text>
             <Text style={styles.title}>{current.title}</Text>
 
-            <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ maxHeight: Math.max(200, Dimensions.get('window').height * 0.3) }}
+              showsVerticalScrollIndicator
+              nestedScrollEnabled
+            >
               <Text style={styles.body}>{current.text}</Text>
             </ScrollView>
 

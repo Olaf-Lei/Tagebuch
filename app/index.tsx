@@ -271,16 +271,16 @@ export default function IndexScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    SecureStore.getItemAsync(WIZARD_DONE_KEY).then(async (wizardDone) => {
-      if (!wizardDone) {
+    Promise.all([
+      SecureStore.getItemAsync(ONBOARDING_DONE_KEY),
+      SecureStore.getItemAsync(HELP_SHOWN_LEGACY_KEY),
+      SecureStore.getItemAsync(WIZARD_DONE_KEY),
+    ]).then(([onboardingDone, legacyDone, wizardDone]) => {
+      if (!onboardingDone && !legacyDone) {
+        setShowHelp(true);
+      } else if (!wizardDone) {
         setShowWizard(true);
-        return;
       }
-      const [done, legacy] = await Promise.all([
-        SecureStore.getItemAsync(ONBOARDING_DONE_KEY),
-        SecureStore.getItemAsync(HELP_SHOWN_LEGACY_KEY),
-      ]);
-      if (!done && !legacy) setShowHelp(true);
     });
   }, []));
 
@@ -363,7 +363,7 @@ export default function IndexScreen() {
               <Text style={{ fontSize: 20, color: c.accent }}>↻</Text>
             </Pressable>
             <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
-              <Text style={{ fontSize: 18, color: c.muted, fontWeight: '600' }}>?</Text>
+              <Text style={{ fontSize: 18, color: c.accent, fontWeight: '700' }}>?</Text>
             </Pressable>
             <Pressable onPress={() => setShowViewMenu(true)} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
               <Text style={{ fontSize: 20, color: c.accent }}>📊</Text>
@@ -488,6 +488,9 @@ export default function IndexScreen() {
         onClose={() => {
           SecureStore.setItemAsync(ONBOARDING_DONE_KEY, 'true');
           setShowHelp(false);
+          SecureStore.getItemAsync(WIZARD_DONE_KEY).then(done => {
+            if (!done) setShowWizard(true);
+          });
         }}
       />
 
@@ -502,6 +505,7 @@ export default function IndexScreen() {
           }}>
             {([
               { label: t.burgerMenu.settings, icon: '⚙', onPress: () => { setShowBurgerMenu(false); router.push('/settings'); } },
+              { label: t.burgerMenu.help, icon: '❓', onPress: () => { setShowBurgerMenu(false); setShowHelp(true); } },
               { label: t.burgerMenu.webLoginQR, icon: '📷', onPress: handleShowWebLoginQR },
             ]).map(({ label, icon, onPress }, i, arr) => (
               <Pressable

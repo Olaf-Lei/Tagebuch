@@ -263,6 +263,29 @@ export const de = {
     deleteTagMsg: 'Der Tag wird aus allen Einträgen entfernt.',
   },
 
+  sectionHelp: {
+    inhalteTitle: 'Inhalte',
+    inhalteBody: 'Kategorien\nKategorien gruppieren deine Einträge. Einem Eintrag können mehrere Kategorien zugewiesen werden. Das Farbsymbol öffnet den Farbpicker. Mit 📊 weist du einer Kategorie Bewertungen (Qualifiers) zu — diese erscheinen dann beim Erstellen eines Eintrags an erster Stelle.\n\nBewertungen\nBewertungen sind Emoji-Skalen von 1–5 (Laune, Befinden, Schlaf, Energie usw.). Sie erscheinen beim Erstellen eines Eintrags. Kategorie-gebundene Bewertungen werden automatisch eingeblendet, wenn die Kategorie ausgewählt ist. Mit Langdruck kannst du die Reihenfolge anpassen.\n\nTags\nTags sind freie Stichworte ohne feste Struktur. Du tippst sie direkt im Eintrag — sie werden automatisch angelegt und beim nächsten Mal im Autocomplete vorgeschlagen.',
+
+    syncTitle: 'Sync & Backup',
+    syncBody: 'Nextcloud (WebDAV)\nTrage URL, Benutzername, Passwort und Pfad ein (z.B. /remote.php/dav/files/BENUTZER/Tagebuch). Tippe anschließend auf Synchronisieren.\n\nGoogle Drive\nTippe auf „Google Drive verbinden" und melde dich mit deinem Google-Konto an. Wähle danach einen Ordner — die App speichert die Datenbank dort.\n\nBeide Backends gleichzeitig\nNextcloud und Google Drive können gleichzeitig aktiv sein. Beim dualen Sync wird zuerst mit Nextcloud synchronisiert, dann mit Google Drive.\n\nVerschlüsselung vor Upload\nWenn unter Sicherheit aktiviert, wird die Datenbank vor dem Upload mit AES-256 verschlüsselt. Nextcloud/Google Drive sehen nur einen unlesbaren Blob — der Schlüssel bleibt auf deinem Gerät.\n\nAuto-Sync\nWähle ein Intervall (5 min bis 1 Stunde) oder schalte den Auto-Sync ab. Der primäre Trigger ist das Wechsel in den Vordergrund.',
+
+    sicherheitTitle: 'Sicherheit',
+    sicherheitBody: 'Biometrie-Lock\nWenn aktiviert, sperrt die App beim Start und nach 15 Sekunden im Hintergrund. Du entsperrst mit Fingerabdruck, Gesichtserkennung oder Passwort. System-Dialoge (z.B. GPS-Berechtigung) lösen keinen Lock aus.\n\nPasswort\nAls Fallback zum Biometrie-Lock oder als alleinige Methode. Der Hash (SHA-256) wird in der SecureStore-Verschlüsselung des Geräts gespeichert — das Klartext-Passwort verlässt niemals die App. Mit dem 📷-Button kannst du das Passwort über Biometrie zurücksetzen.\n\nVerschlüsselung\nDie Datenbank wird vor dem Upload mit AES-256 verschlüsselt. Den Schlüssel findest du unter „Schlüssel exportieren" — kopiere ihn auf jedes weitere Gerät, das synchronisiert werden soll. Ohne diesen Schlüssel sind Backups nicht wiederherstellbar.',
+
+    erinnerungenTitle: 'Erinnerungen',
+    erinnerungenBody: 'Aktiviere eine tägliche Erinnerung, damit du das Schreiben nicht vergisst. Stelle die Uhrzeit ein — die Benachrichtigung erscheint jeden Tag zur gewählten Zeit.\n\nDie App benötigt die Berechtigung für Benachrichtigungen. Falls du sie beim ersten Start abgelehnt hast, kannst du sie in den Android-Systemeinstellungen nachträglich erteilen.',
+
+    darstellungTitle: 'Darstellung',
+    darstellungBody: 'Farbmodus\nWähle zwischen Hell, Dunkel oder Automatisch (folgt den Systemeinstellungen). Der Dunkelmodus ist der empfohlene Standard.\n\nSprache\nDie App ist auf Deutsch und Englisch verfügbar. Die Sprache gilt für alle UI-Texte; Eintragsinhalt und Tags werden nicht übersetzt.',
+
+    exportTitle: 'Export',
+    exportBody: 'JSON\nExportiert alle Einträge mit Metadaten (Kategorien, Tags, Bewertungen, Standortdaten, Timestamps) als maschinenlesbares JSON.\n\nCSV\nExportiert alle Einträge als Tabelle — geeignet für Excel, LibreOffice oder andere Tabellenkalkulationen. Qualifiers werden als separate Spalten angelegt.\n\nDie exportierten Dateien können über das Android-Teilen-Menü gespeichert oder weitergeleitet werden.',
+
+    expertenTitle: 'Experten',
+    expertenBody: 'Web-Frontend URL\nTrage hier die URL deines eigenen Web-Clients ein (z.B. https://deine-domain.de/tagebuch/). Diese URL wird für den Relay-Code-Login verwendet.\n\nWeb-Login QR-Code\nErzeugt einen QR-Code mit den Sync-Zugangsdaten (Nextcloud, Google Drive, Verschlüsselungsschlüssel). Damit kannst du den Web-Client sofort einrichten, ohne die Daten manuell einzutippen. Alternativ wird ein 6-stelliger Relay-Code erzeugt, der 5 Minuten gültig ist.\n\nDemo-Daten entfernen\nLöscht die beim ersten App-Start angelegten Demo-Einträge mitsamt Demo-Kategorien und -Tags.',
+  },
+
   stats: {
     filterDay: 'Tag',
     filterWeek: 'Woche',
@@ -428,6 +451,7 @@ export const de = {
   burgerMenu: {
     settings: 'Einstellungen',
     webLoginQR: 'Web-Login QR-Code',
+    help: 'Hilfe & Tour',
   },
 
   qualifierPresets: {
