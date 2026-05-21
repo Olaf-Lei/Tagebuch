@@ -448,6 +448,14 @@ export const en: Strings = {
     syncAll: 'Sync all',
     close: 'Close',
     syncError: (msg: string) => `Error: ${msg}`,
+    remoteCorrupt: 'Remote backup corrupted — your local data is untouched.',
+    localCorrupt: 'Local database corrupted.',
+    pushToRemote: 'Overwrite remote',
+    restoreFromRemote: 'Restore',
+    pushConfirmTitle: 'Overwrite remote?',
+    pushConfirmMsg: 'The corrupted remote file will be replaced with your local database.',
+    restoreConfirmRecoveryTitle: 'Restore from backup?',
+    restoreConfirmRecoveryMsg: 'The local database will be replaced with the remote backup. Unsaved entries will be lost.',
   },
 
   burgerMenu: {

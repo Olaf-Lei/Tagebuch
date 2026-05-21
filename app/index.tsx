@@ -19,7 +19,7 @@ import { useTags } from '../hooks/useTags';
 import { useQualifiers } from '../hooks/useQualifiers';
 import { useT } from '../i18n';
 import { deleteEntries } from '../db/entries';
-import { addSyncListener, loadConfig, syncNow as ncSyncNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
+import { addSyncListener, loadConfig, syncNow as ncSyncNow, pushNow as ncPushNow, restoreNow as ncRestoreNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { getSyncErrors, addSyncStateListener } from '../sync/syncState';
 import { exportEncKey } from '../utils/crypto';
@@ -123,11 +123,15 @@ export default function IndexScreen() {
   const [ncLastMs, setNcLastMs] = useState<number | null>(null);
   const [ncLastStr, setNcLastStr] = useState<string | null>(null);
   const [ncSyncing, setNcSyncing] = useState(false);
+  const [ncPushing, setNcPushing] = useState(false);
+  const [ncRestoring, setNcRestoring] = useState(false);
   const [ncError, setNcError] = useState<string | null>(null);
   const [gdriveConnectedState, setGDriveConnectedState] = useState(false);
   const [gdriveLastMs, setGDriveLastMs] = useState<number | null>(null);
   const [gdriveLastStr, setGDriveLastStr] = useState<string | null>(null);
   const [gdriveSyncingState, setGDriveSyncingState] = useState(false);
+  const [gdrivePushing, setGDrivePushing] = useState(false);
+  const [gdriveRestoring, setGDriveRestoring] = useState(false);
   const [gdriveError, setGDriveError] = useState<string | null>(null);
 
   const allTags = useTags();
@@ -225,6 +229,103 @@ export default function IndexScreen() {
   const handleSyncAll = async () => {
     if (ncConfigured) await handleNcSync();
     if (gdriveConnectedState) await handleGDriveSync();
+  };
+
+  function recoveryType(err: string | null): 'remote_corrupt' | 'local_corrupt' | null {
+    if (!err) return null;
+    if (err.includes('remote_corrupt:')) return 'remote_corrupt';
+    if (err.includes('local_corrupt:') || err.includes('malformed')) return 'local_corrupt';
+    return null;
+  }
+
+  const handleNcPush = () => {
+    Alert.alert(t.syncStatus.pushConfirmTitle, t.syncStatus.pushConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.syncStatus.pushToRemote, style: 'destructive',
+        onPress: async () => {
+          setNcPushing(true);
+          try {
+            await ncPushNow();
+            setNcError(null);
+            const [ms, str] = await Promise.all([ncGetLastSyncMs(), ncGetLastSync()]);
+            setNcLastMs(ms);
+            setNcLastStr(str);
+          } catch (e: any) {
+            setNcError(e.message ?? 'Fehler');
+          } finally {
+            setNcPushing(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleNcRestore = () => {
+    Alert.alert(t.syncStatus.restoreConfirmRecoveryTitle, t.syncStatus.restoreConfirmRecoveryMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.syncStatus.restoreFromRemote, style: 'destructive',
+        onPress: async () => {
+          setNcRestoring(true);
+          try {
+            await ncRestoreNow();
+            setNcError(null);
+            reload();
+            setShowSyncModal(false);
+          } catch (e: any) {
+            setNcError(e.message ?? 'Fehler');
+          } finally {
+            setNcRestoring(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleGDrivePush = () => {
+    Alert.alert(t.syncStatus.pushConfirmTitle, t.syncStatus.pushConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.syncStatus.pushToRemote, style: 'destructive',
+        onPress: async () => {
+          setGDrivePushing(true);
+          try {
+            await gdrive.pushNow();
+            setGDriveError(null);
+            const [ms, str] = await Promise.all([gdrive.getLastSyncMs(), gdrive.getLastSync()]);
+            setGDriveLastMs(ms);
+            setGDriveLastStr(str);
+          } catch (e: any) {
+            setGDriveError(e.message ?? 'Fehler');
+          } finally {
+            setGDrivePushing(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleGDriveRestore = () => {
+    Alert.alert(t.syncStatus.restoreConfirmRecoveryTitle, t.syncStatus.restoreConfirmRecoveryMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.syncStatus.restoreFromRemote, style: 'destructive',
+        onPress: async () => {
+          setGDriveRestoring(true);
+          try {
+            await gdrive.restoreNow();
+            setGDriveError(null);
+            reload();
+            setShowSyncModal(false);
+          } catch (e: any) {
+            setGDriveError(e.message ?? 'Fehler');
+          } finally {
+            setGDriveRestoring(false);
+          }
+        },
+      },
+    ]);
   };
 
   const handleShowWebLoginQR = async () => {
@@ -638,7 +739,35 @@ export default function IndexScreen() {
                       ? t.syncStatus.lastSync(ncLastStr)
                       : t.syncStatus.never}
                 </Text>
-                {ncError && <Text style={{ fontSize: 13, color: '#FF3B30' }}>{t.syncStatus.syncError(ncError)}</Text>}
+                {ncError && (
+                  <>
+                    <Text style={{ fontSize: 13, color: recoveryType(ncError) ? '#FF9500' : '#FF3B30' }}>
+                      {recoveryType(ncError) === 'remote_corrupt'
+                        ? t.syncStatus.remoteCorrupt
+                        : recoveryType(ncError) === 'local_corrupt'
+                          ? t.syncStatus.localCorrupt
+                          : t.syncStatus.syncError(ncError)}
+                    </Text>
+                    {recoveryType(ncError) === 'remote_corrupt' && (
+                      <Pressable
+                        style={{ backgroundColor: '#FF9500', borderRadius: 8, padding: 10, alignItems: 'center', opacity: ncPushing ? 0.6 : 1 }}
+                        onPress={handleNcPush}
+                        disabled={ncPushing}
+                      >
+                        {ncPushing ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t.syncStatus.pushToRemote}</Text>}
+                      </Pressable>
+                    )}
+                    {recoveryType(ncError) === 'local_corrupt' && (
+                      <Pressable
+                        style={{ backgroundColor: '#FF3B30', borderRadius: 8, padding: 10, alignItems: 'center', opacity: ncRestoring ? 0.6 : 1 }}
+                        onPress={handleNcRestore}
+                        disabled={ncRestoring}
+                      >
+                        {ncRestoring ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t.syncStatus.restoreFromRemote}</Text>}
+                      </Pressable>
+                    )}
+                  </>
+                )}
                 {ncConfigured && (
                   <Pressable
                     style={{ backgroundColor: c.accent, borderRadius: 8, padding: 12, alignItems: 'center', opacity: ncSyncing ? 0.6 : 1 }}
@@ -665,7 +794,35 @@ export default function IndexScreen() {
                       ? t.syncStatus.lastSync(gdriveLastStr)
                       : t.syncStatus.never}
                 </Text>
-                {gdriveError && <Text style={{ fontSize: 13, color: '#FF3B30' }}>{t.syncStatus.syncError(gdriveError)}</Text>}
+                {gdriveError && (
+                  <>
+                    <Text style={{ fontSize: 13, color: recoveryType(gdriveError) ? '#FF9500' : '#FF3B30' }}>
+                      {recoveryType(gdriveError) === 'remote_corrupt'
+                        ? t.syncStatus.remoteCorrupt
+                        : recoveryType(gdriveError) === 'local_corrupt'
+                          ? t.syncStatus.localCorrupt
+                          : t.syncStatus.syncError(gdriveError)}
+                    </Text>
+                    {recoveryType(gdriveError) === 'remote_corrupt' && (
+                      <Pressable
+                        style={{ backgroundColor: '#FF9500', borderRadius: 8, padding: 10, alignItems: 'center', opacity: gdrivePushing ? 0.6 : 1 }}
+                        onPress={handleGDrivePush}
+                        disabled={gdrivePushing}
+                      >
+                        {gdrivePushing ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t.syncStatus.pushToRemote}</Text>}
+                      </Pressable>
+                    )}
+                    {recoveryType(gdriveError) === 'local_corrupt' && (
+                      <Pressable
+                        style={{ backgroundColor: '#FF3B30', borderRadius: 8, padding: 10, alignItems: 'center', opacity: gdriveRestoring ? 0.6 : 1 }}
+                        onPress={handleGDriveRestore}
+                        disabled={gdriveRestoring}
+                      >
+                        {gdriveRestoring ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t.syncStatus.restoreFromRemote}</Text>}
+                      </Pressable>
+                    )}
+                  </>
+                )}
                 {gdriveConnectedState && (
                   <Pressable
                     style={{ backgroundColor: c.accent, borderRadius: 8, padding: 12, alignItems: 'center', opacity: gdriveSyncingState ? 0.6 : 1 }}

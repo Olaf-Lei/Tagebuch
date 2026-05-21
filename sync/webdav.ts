@@ -199,8 +199,14 @@ async function _uploadWebdav(
   credentials: string,
   buildUrl: (filename: string) => string,
 ): Promise<void> {
-  // WAL in Hauptdatei flushen — sonst enthält die .db beim Upload nur 1 leere Page
   const db = await getDb();
+  const localCheck = await db.getFirstAsync<{ integrity_check: string }>(`PRAGMA integrity_check`);
+  if (localCheck?.integrity_check !== 'ok') {
+    const details = localCheck?.integrity_check ?? 'unbekannt';
+    await appendLog('error', `Lokale DB beschädigt, Upload abgebrochen: ${details}`);
+    throw new Error(`local_corrupt: ${details}`);
+  }
+  // WAL in Hauptdatei flushen — sonst enthält die .db beim Upload nur 1 leere Page
   await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
 
   const encrypted = await isEncryptionEnabled();

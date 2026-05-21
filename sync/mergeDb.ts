@@ -38,9 +38,9 @@ export async function mergeRemoteDb(
       `PRAGMA remote.integrity_check`,
     );
     if (integrityRow?.integrity_check !== 'ok') {
-      const msg = `Remote-DB ist beschädigt: ${integrityRow?.integrity_check ?? 'unbekannt'}`;
-      await appendLog('error', msg);
-      throw new Error(msg);
+      const details = integrityRow?.integrity_check ?? 'unbekannt';
+      await appendLog('error', `Remote-DB ist beschädigt: ${details}`);
+      throw new Error(`remote_corrupt: ${details}`);
     }
 
     const schemaCheck = await db.getFirstAsync<{ cnt: number }>(

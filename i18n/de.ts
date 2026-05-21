@@ -446,6 +446,14 @@ export const de = {
     syncAll: 'Alle synchronisieren',
     close: 'Schließen',
     syncError: (msg: string) => `Fehler: ${msg}`,
+    remoteCorrupt: 'Remote-Backup beschädigt — deine lokalen Daten sind unberührt.',
+    localCorrupt: 'Lokale Datenbank beschädigt.',
+    pushToRemote: 'Remote überschreiben',
+    restoreFromRemote: 'Wiederherstellen',
+    pushConfirmTitle: 'Remote überschreiben?',
+    pushConfirmMsg: 'Die beschädigte Remote-Datei wird durch deine lokale Datenbank ersetzt.',
+    restoreConfirmRecoveryTitle: 'Aus Backup wiederherstellen?',
+    restoreConfirmRecoveryMsg: 'Die lokale Datenbank wird durch das Remote-Backup ersetzt. Nicht gesicherte Einträge gehen verloren.',
   },
 
   burgerMenu: {
