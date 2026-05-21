@@ -21,6 +21,7 @@ import { useT } from '../i18n';
 import { deleteEntries } from '../db/entries';
 import { addSyncListener, loadConfig, syncNow as ncSyncNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
+import { getSyncErrors, addSyncStateListener } from '../sync/syncState';
 import { exportEncKey } from '../utils/crypto';
 
 const HELP_SHOWN_LEGACY_KEY = 'help_shown'; // Migration: alter Key
@@ -133,13 +134,14 @@ export default function IndexScreen() {
   const qualifiers = useQualifiers();
 
   const loadSyncStatus = useCallback(async () => {
-    const [cfg, lastMs, lastStr, connected, gLastMs, gLastStr] = await Promise.all([
+    const [cfg, lastMs, lastStr, connected, gLastMs, gLastStr, errors] = await Promise.all([
       loadConfig(),
       ncGetLastSyncMs(),
       ncGetLastSync(),
       gdrive.isConnected(),
       gdrive.getLastSyncMs(),
       gdrive.getLastSync(),
+      getSyncErrors(),
     ]);
     setNcConfigured(!!(cfg.url && cfg.username && cfg.password));
     setNcLastMs(lastMs);
@@ -147,6 +149,8 @@ export default function IndexScreen() {
     setGDriveConnectedState(connected);
     setGDriveLastMs(gLastMs);
     setGDriveLastStr(gLastStr);
+    if (errors.nc !== null) setNcError(errors.nc);
+    if (errors.gdrive !== null) setGDriveError(errors.gdrive);
   }, []);
 
   const handleOpenSyncModal = useCallback(async () => {
@@ -219,10 +223,8 @@ export default function IndexScreen() {
   };
 
   const handleSyncAll = async () => {
-    const tasks: Promise<void>[] = [];
-    if (ncConfigured) tasks.push(handleNcSync());
-    if (gdriveConnectedState) tasks.push(handleGDriveSync());
-    await Promise.allSettled(tasks);
+    if (ncConfigured) await handleNcSync();
+    if (gdriveConnectedState) await handleGDriveSync();
   };
 
   const handleShowWebLoginQR = async () => {
@@ -261,8 +263,25 @@ export default function IndexScreen() {
     return { color: '#FF3B30', dot: '🔴' };
   }
 
+  function syncButtonColor(): string {
+    if (ncSyncing || gdriveSyncingState) return c.accent;
+    const anyError = !!(ncError || gdriveError);
+    if (anyError) return '#FF3B30';
+    const configured = ncConfigured || gdriveConnectedState;
+    if (!configured) return c.accent;
+    const latestSync = Math.max(ncLastMs ?? 0, gdriveLastMs ?? 0);
+    if (latestSync === 0) return c.muted;
+    const age = Date.now() - latestSync;
+    if (age < 24 * 3600_000) return '#34C759';
+    if (age < 72 * 3600_000) return '#FF9500';
+    return '#FF3B30';
+  }
+
   useEffect(() => {
-    return addSyncListener(() => reload());
+    loadSyncStatus();
+    const unsubSync = addSyncListener(() => reload());
+    const unsubState = addSyncStateListener(() => loadSyncStatus());
+    return () => { unsubSync(); unsubState(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -360,7 +379,7 @@ export default function IndexScreen() {
         ) : (
           <View style={{ flexDirection: 'row' }}>
             <Pressable onPress={handleOpenSyncModal} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
-              <Text style={{ fontSize: 20, color: c.accent }}>↻</Text>
+              <Text style={{ fontSize: 20, color: syncButtonColor() }}>{(ncSyncing || gdriveSyncingState) ? '⟳' : '↻'}</Text>
             </Pressable>
             <Pressable onPress={() => setShowHelp(true)} style={{ paddingHorizontal: 10, paddingVertical: 10 }}>
               <Text style={{ fontSize: 18, color: c.accent, fontWeight: '700' }}>?</Text>

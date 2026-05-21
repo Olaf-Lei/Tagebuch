@@ -12,6 +12,7 @@ import { getDbPath, closeDb, initDb, getDb } from '../db/schema';
 import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
+import { acquireSyncLock, releaseSyncLock, setSyncError } from './syncState';
 
 function buildWebDavUrl(base: string, dir: string, username: string, filename: string): string {
   const p = `${dir}/${filename}`;
@@ -71,7 +72,6 @@ export async function getLastSyncMs(): Promise<number | null> {
   return v ? Number(v) : null;
 }
 
-let _syncInProgress = false;
 const _syncListeners: Set<() => void> = new Set();
 
 export function addSyncListener(cb: () => void): () => void {
@@ -90,13 +90,16 @@ export async function syncIfConfigured(): Promise<void> {
 }
 
 export async function syncNow(): Promise<void> {
-  if (_syncInProgress) return;
-  _syncInProgress = true;
+  if (!acquireSyncLock()) return;
   try {
+    await setSyncError('nc', null);
     await _doSync();
     _notifySyncListeners();
+  } catch (e: any) {
+    await setSyncError('nc', e.message ?? String(e));
+    throw e;
   } finally {
-    _syncInProgress = false;
+    releaseSyncLock();
   }
 }
 
@@ -261,13 +264,12 @@ async function _uploadWebdav(
 }
 
 export async function pushNow(): Promise<void> {
-  if (_syncInProgress) return;
-  _syncInProgress = true;
+  if (!acquireSyncLock()) return;
   try {
     await _doPush();
     _notifySyncListeners();
   } finally {
-    _syncInProgress = false;
+    releaseSyncLock();
   }
 }
 

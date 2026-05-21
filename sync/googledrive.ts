@@ -13,6 +13,7 @@ import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } fro
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig';
+import { acquireSyncLock, releaseSyncLock, setSyncError } from './syncState';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email';
 
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
@@ -99,7 +100,6 @@ export async function listDriveFolders(parentId: string = 'root'): Promise<{ id:
   return (data.files ?? []) as { id: string; name: string }[];
 }
 
-let _syncInProgress = false;
 const _syncListeners: Set<() => void> = new Set();
 
 export function addSyncListener(cb: () => void): () => void {
@@ -299,13 +299,16 @@ export async function syncIfConfigured(): Promise<void> {
 }
 
 export async function syncNow(): Promise<void> {
-  if (_syncInProgress) return;
-  _syncInProgress = true;
+  if (!acquireSyncLock()) return;
   try {
+    await setSyncError('gdrive', null);
     await _doSync();
     _notifySyncListeners();
+  } catch (e: any) {
+    await setSyncError('gdrive', e.message ?? String(e));
+    throw e;
   } finally {
-    _syncInProgress = false;
+    releaseSyncLock();
   }
 }
 
@@ -406,13 +409,12 @@ async function _uploadGDrive(
 }
 
 export async function pushNow(): Promise<void> {
-  if (_syncInProgress) return;
-  _syncInProgress = true;
+  if (!acquireSyncLock()) return;
   try {
     await _doPush();
     _notifySyncListeners();
   } finally {
-    _syncInProgress = false;
+    releaseSyncLock();
   }
 }
 

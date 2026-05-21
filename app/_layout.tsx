@@ -49,6 +49,17 @@ function AppShell() {
   );
 }
 
+async function _syncAllIfConfigured() {
+  const config = await loadConfig();
+  if (config.url && config.username && config.password) {
+    try { await syncNow(); } catch {}
+  }
+  const connected = await gdriveIsConnected();
+  if (connected) {
+    try { await gdriveSyncNow(); } catch {}
+  }
+}
+
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -75,40 +86,40 @@ export default function RootLayout() {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
-      syncIfConfigured(); // App-Start
-      gdriveSyncIfConfigured();
+      _syncAllIfConfigured(); // App-Start: NC zuerst, dann GDrive
     });
 
     const sub = AppState.addEventListener('change', async (nextState) => {
       if (nextState === 'background') {
-        syncIfConfigured(); // Beenden: letzte Chance, Daten zu sichern
-        gdriveSyncIfConfigured();
+        _syncAllIfConfigured(); // Beenden: letzte Chance, Daten zu sichern
         return;
       }
       if (nextState !== 'active') return;
       // Foreground: nur bei konfiguriertem Intervall und abgelaufener Wartezeit
-      try {
-        const [config, intervalMin, lastMs] = await Promise.all([
-          loadConfig(),
-          getAutoSyncInterval(),
-          getLastSyncMs(),
-        ]);
-        if (config.url && config.username && config.password) {
-          if (intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
-            syncNow().catch(() => {});
+      (async () => {
+        try {
+          const [config, intervalMin, lastMs] = await Promise.all([
+            loadConfig(),
+            getAutoSyncInterval(),
+            getLastSyncMs(),
+          ]);
+          if (config.url && config.username && config.password) {
+            if (intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
+              try { await syncNow(); } catch {}
+            }
           }
-        }
-      } catch {}
-      try {
-        const [connected, intervalMin, lastMs] = await Promise.all([
-          gdriveIsConnected(),
-          getAutoSyncInterval(),
-          gdriveGetLastSyncMs(),
-        ]);
-        if (connected && intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
-          gdriveSyncNow().catch(() => {});
-        }
-      } catch {}
+        } catch {}
+        try {
+          const [connected, intervalMin, lastMs] = await Promise.all([
+            gdriveIsConnected(),
+            getAutoSyncInterval(),
+            gdriveGetLastSyncMs(),
+          ]);
+          if (connected && intervalMin > 0 && (lastMs === null || Date.now() - lastMs >= intervalMin * 60_000)) {
+            try { await gdriveSyncNow(); } catch {}
+          }
+        } catch {}
+      })();
     });
     return () => sub.remove();
   }, []);
