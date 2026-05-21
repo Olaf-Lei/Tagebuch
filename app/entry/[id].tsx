@@ -10,13 +10,13 @@ import { QualifierPicker } from '../../components/QualifierPicker';
 import { TagInput } from '../../components/TagInput';
 import { IndulgenceChips } from '../../components/IndulgenceChips';
 import { TimestampPicker } from '../../components/TimestampPicker';
-import { EMOJI_PRESETS } from '../../components/qualifiers';
+import { getEmojisForPreset, qualifierLabel } from '../../components/qualifiers';
 import { getQualifiersForCategories, type Qualifier } from '../../db/qualifiers';
 import { captureLocation, type GeoTag } from '../../utils/location';
 import { LocationPickerModal } from '../../components/LocationPickerModal';
 import { useColors } from '../../components/theme';
 import { useLayout } from '../../hooks/useLayout';
-import { getCategories, type Category } from '../../db/categories';
+import { getCategories, categoryLabel, type Category } from '../../db/categories';
 import { deleteEntry, getEntry, updateEntry } from '../../db/entries';
 import { getTags } from '../../db/tags';
 import { useT } from '../../i18n';
@@ -184,13 +184,11 @@ export default function EditEntryScreen() {
           />
 
           {visibleQualifiers.map((q) => {
-            const preset = EMOJI_PRESETS[q.emoji_preset];
-            if (!preset) return null;
             return (
               <QualifierPicker
                 key={q.id}
-                label={q.name}
-                emojis={preset.emojis}
+                label={qualifierLabel(q.name, q.emoji_preset, t)}
+                emojis={getEmojisForPreset(q.emoji_preset)}
                 value={qualifierValues[q.id] ?? null}
                 onChange={(v) => setQualifierValues((prev) => {
                   const next = { ...prev };
@@ -233,7 +231,7 @@ export default function EditEntryScreen() {
 
           <Text style={styles.label}>{t.entry.labelCategories}</Text>
           <DropdownPicker
-            options={categories}
+            options={categories.map(c => ({ ...c, name: categoryLabel(c, t) }))}
             selected={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
             placeholder={t.entry.categoriesPlaceholder}

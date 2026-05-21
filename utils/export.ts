@@ -56,10 +56,10 @@ export async function exportCSV(): Promise<void> {
   await Sharing.shareAsync(path, { mimeType: 'text/csv', dialogTitle: 'Tagebuch exportieren' });
 }
 
-export async function exportDB(): Promise<void> {
+export async function exportDB(dialogTitle = 'Export database'): Promise<void> {
   const dbPath = await getDbPath();
   const src = dbPath.startsWith('file://') ? dbPath : `file://${dbPath}`;
   const dest = FileSystem.cacheDirectory + 'tagebuch_export.db';
   await FileSystem.copyAsync({ from: src, to: dest });
-  await Sharing.shareAsync(dest, { mimeType: 'application/octet-stream', dialogTitle: 'Datenbank exportieren' });
+  await Sharing.shareAsync(dest, { mimeType: 'application/octet-stream', dialogTitle });
 }

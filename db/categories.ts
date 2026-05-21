@@ -1,4 +1,5 @@
 import { getDb } from './schema';
+import type { Strings } from '../i18n';
 
 export const CATEGORY_COLORS = [
   '#C9A84C', // Gold
@@ -17,11 +18,17 @@ export interface Category {
   id: number;
   name: string;
   color: string | null;
+  key?: string | null;
+}
+
+export function categoryLabel(cat: { name: string; key?: string | null }, t: Strings): string {
+  if (cat.key) return (t.defaultCategories as Record<string, string>)[cat.key] ?? cat.name;
+  return cat.name;
 }
 
 export async function getCategories(): Promise<Category[]> {
   const db = await getDb();
-  return db.getAllAsync<Category>(`SELECT id, name, color FROM categories ORDER BY name`);
+  return db.getAllAsync<Category>(`SELECT id, name, color, key FROM categories ORDER BY name`);
 }
 
 export async function createCategory(name: string): Promise<number> {

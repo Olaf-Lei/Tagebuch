@@ -19,6 +19,7 @@ npm run build
 UPLOAD_DIR=$(mktemp -d)
 cp -r dist/. "$UPLOAD_DIR/"
 cp proxy.php "$UPLOAD_DIR/"
+cp proxy.config.php "$UPLOAD_DIR/"
 
 echo "→ Deploy via FTP zu $FTP_HOST$FTP_PATH..."
 lftp -c "

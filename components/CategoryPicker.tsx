@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { categoryLabel } from '../db/categories';
 import type { Category } from '../db/categories';
 import { useColors } from './theme';
+import { useT } from '../i18n';
 
 interface Props {
   categories: Category[];
@@ -11,6 +13,7 @@ interface Props {
 
 export function CategoryPicker({ categories, selected, onChange }: Props) {
   const c = useColors();
+  const t = useT();
   const styles = useMemo(() => StyleSheet.create({
     wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { borderWidth: 1, borderColor: c.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
@@ -33,7 +36,7 @@ export function CategoryPicker({ categories, selected, onChange }: Props) {
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => toggle(cat.id)}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{cat.name}</Text>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{categoryLabel(cat, t)}</Text>
           </Pressable>
         );
       })}

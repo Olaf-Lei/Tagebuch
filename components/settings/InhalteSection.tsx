@@ -7,7 +7,7 @@ import { useColors } from '../theme';
 import { useT } from '../../i18n';
 import {
   createCategory, deleteCategory, getCategories,
-  renameCategory, updateCategoryColor, type Category,
+  renameCategory, updateCategoryColor, categoryLabel, type Category,
 } from '../../db/categories';
 import { getTags, renameTag, deleteTag, type Tag } from '../../db/tags';
 import {
@@ -16,7 +16,7 @@ import {
   getCategoryQualifierIds, setCategoryQualifiers,
   type Qualifier,
 } from '../../db/qualifiers';
-import { EMOJI_PRESETS } from '../qualifiers';
+import { EMOJI_PRESETS, getEmojisForPreset, getIconForPreset, qualifierLabel } from '../qualifiers';
 
 const DEFAULT_CAT_COLOR = '#C9A84C';
 
@@ -50,9 +50,11 @@ export function InhalteSection() {
   const [qualifiers, setQualifiers] = useState<Qualifier[]>([]);
   const [newQualName, setNewQualName] = useState('');
   const [newQualPreset, setNewQualPreset] = useState('mood');
+  const [newQualCustom, setNewQualCustom] = useState(['', '', '', '', '']);
   const [editingQualId, setEditingQualId] = useState<number | null>(null);
   const [editingQualName, setEditingQualName] = useState('');
   const [editingQualPreset, setEditingQualPreset] = useState('mood');
+  const [editingQualCustom, setEditingQualCustom] = useState(['', '', '', '', '']);
 
   const [catQualModal, setCatQualModal] = useState<Category | null>(null);
   const [catQualSelected, setCatQualSelected] = useState<number[]>([]);
@@ -148,9 +150,13 @@ export function InhalteSection() {
 
   const addQualifier = async () => {
     if (!newQualName.trim()) return;
-    await createQualifier(newQualName.trim(), newQualPreset);
+    const preset = newQualPreset === 'custom'
+      ? JSON.stringify(newQualCustom.map(e => e || '❓'))
+      : newQualPreset;
+    await createQualifier(newQualName.trim(), preset);
     setNewQualName('');
     setNewQualPreset('mood');
+    setNewQualCustom(['', '', '', '', '']);
     getQualifiers().then(setQualifiers);
   };
 
@@ -163,7 +169,10 @@ export function InhalteSection() {
 
   const saveQualEdit = async () => {
     if (editingQualId === null) return;
-    await updateQualifier(editingQualId, editingQualName, editingQualPreset);
+    const preset = editingQualPreset === 'custom'
+      ? JSON.stringify(editingQualCustom.map(e => e || '❓'))
+      : editingQualPreset;
+    await updateQualifier(editingQualId, editingQualName, preset);
     setEditingQualId(null);
     getQualifiers().then(setQualifiers);
   };
@@ -196,7 +205,7 @@ export function InhalteSection() {
           ) : (
             <>
               <Pressable style={[styles.colorSwatch, { backgroundColor: cat.color ?? c.accent }]} onPress={() => openColorPicker(cat)} />
-              <Text style={styles.catName}>{cat.name}</Text>
+              <Text style={styles.catName}>{categoryLabel(cat, t)}</Text>
               <Pressable style={styles.catAction} onPress={() => openCatQualModal(cat)}>
                 <Text style={{ fontSize: 15, color: c.muted }}>📊</Text>
               </Pressable>
@@ -245,17 +254,13 @@ export function InhalteSection() {
         editingQualId === q.id ? (
           <View key={q.id} style={{ backgroundColor: c.bg, borderRadius: 10, padding: 12, gap: 8 }}>
             <TextInput style={[styles.catInput, { marginHorizontal: 0 }]} value={editingQualName} onChangeText={setEditingQualName} autoFocus returnKeyType="done" />
-            <View style={{ gap: 4 }}>
-              {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
-                <Pressable key={key} onPress={() => setEditingQualPreset(key)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
-                    backgroundColor: editingQualPreset === key ? c.accent + '22' : 'transparent',
-                    borderWidth: 1, borderColor: editingQualPreset === key ? c.accent : 'transparent' }}>
-                  <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
-                  {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
-                </Pressable>
-              ))}
-            </View>
+            <PresetPickerRows
+              selected={editingQualPreset}
+              customEmojis={editingQualCustom}
+              onSelect={key => { setEditingQualPreset(key); if (key !== 'custom') setEditingQualCustom(['','','','','']); }}
+              onCustomChange={(i, v) => { const next = [...editingQualCustom]; next[i] = v; setEditingQualCustom(next); }}
+              c={c} t={t}
+            />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
               <Pressable style={styles.catAction} onPress={() => setEditingQualId(null)}><Text style={styles.mutedText}>✕</Text></Pressable>
               <Pressable style={styles.catAction} onPress={saveQualEdit}><Text style={styles.accentText}>{t.common.ok}</Text></Pressable>
@@ -264,25 +269,30 @@ export function InhalteSection() {
         ) : (
           <View key={q.id} style={styles.catRow}>
             <View style={{ flexDirection: 'row', gap: 1, marginRight: 6 }}>
-              {(EMOJI_PRESETS[q.emoji_preset]?.emojis ?? ['❓', '❓', '❓', '❓', '❓']).map((e, i) => (
+              {getEmojisForPreset(q.emoji_preset).map((e, i) => (
                 <Text key={i} style={{ fontSize: 13 }}>{e}</Text>
               ))}
             </View>
-            <Text style={[styles.catName, { fontSize: 13 }]}>{q.name}</Text>
+            <Text style={[styles.catName, { fontSize: 13 }]}>{qualifierLabel(q.name, q.emoji_preset, t)}</Text>
             <Switch
               value={q.active === 1}
               onValueChange={async (v) => { await setQualifierActive(q.id, v); getQualifiers().then(setQualifiers); }}
               trackColor={{ false: c.border, true: c.accent + '88' }}
               thumbColor={q.active === 1 ? c.accent : c.muted}
             />
-            <Pressable style={styles.catAction} onPress={() => { setEditingQualId(q.id); setEditingQualName(q.name); setEditingQualPreset(q.emoji_preset); }}><Text style={styles.mutedText}>✎</Text></Pressable>
+            <Pressable style={styles.catAction} onPress={() => {
+              setEditingQualId(q.id); setEditingQualName(q.name);
+              const isCustom = !EMOJI_PRESETS[q.emoji_preset];
+              setEditingQualPreset(isCustom ? 'custom' : q.emoji_preset);
+              setEditingQualCustom(isCustom ? getEmojisForPreset(q.emoji_preset) : ['', '', '', '', '']);
+            }}><Text style={styles.mutedText}>✎</Text></Pressable>
             <Pressable style={styles.catAction} onPress={() => confirmQualDelete(q)}><Text style={styles.dangerText}>✕</Text></Pressable>
           </View>
         )
       )}
       {(() => {
         const available = Object.entries(EMOJI_PRESETS).filter(
-          ([, preset]) => !qualifiers.some(q => q.name === preset.label)
+          ([key]) => !qualifiers.some(q => q.emoji_preset === key)
         );
         if (available.length === 0) return null;
         return (
@@ -292,8 +302,8 @@ export function InhalteSection() {
               {available.map(([key, preset]) => (
                 <Pressable key={key}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: c.border }}
-                  onPress={async () => { await createQualifier(preset.label, key); getQualifiers().then(setQualifiers); }}>
-                  <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
+                  onPress={async () => { await createQualifier((t.qualifierPresets as Record<string, string>)[key] ?? preset.label, key); getQualifiers().then(setQualifiers); }}>
+                  <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{(t.qualifierPresets as Record<string, string>)[key] ?? preset.label}</Text>
                   {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
                   <Text style={{ marginLeft: 4, fontSize: 12, color: c.accent }}>＋</Text>
                 </Pressable>
@@ -308,17 +318,13 @@ export function InhalteSection() {
           placeholder={t.settings.newQualifierPlaceholder} placeholderTextColor={c.muted}
           returnKeyType="done"
         />
-        <View style={{ gap: 4 }}>
-          {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
-            <Pressable key={key} onPress={() => setNewQualPreset(key)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
-                backgroundColor: newQualPreset === key ? c.accent + '22' : 'transparent',
-                borderWidth: 1, borderColor: newQualPreset === key ? c.accent : 'transparent' }}>
-              <Text style={{ width: 58, fontSize: 12, color: c.muted }}>{preset.label}</Text>
-              {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
-            </Pressable>
-          ))}
-        </View>
+        <PresetPickerRows
+          selected={newQualPreset}
+          customEmojis={newQualCustom}
+          onSelect={key => { setNewQualPreset(key); if (key !== 'custom') setNewQualCustom(['','','','','']); }}
+          onCustomChange={(i, v) => { const next = [...newQualCustom]; next[i] = v; setNewQualCustom(next); }}
+          c={c} t={t}
+        />
         <Pressable style={[styles.addButton, { alignSelf: 'flex-end', width: 'auto', paddingHorizontal: 20 }]} onPress={addQualifier} disabled={!newQualName.trim()}>
           <Text style={styles.addButtonText}>＋ {newQualName.trim() || t.settings.newQualifierPlaceholder}</Text>
         </Pressable>
@@ -328,18 +334,17 @@ export function InhalteSection() {
         <Pressable style={styles.modalOverlay} onPress={() => setCatQualModal(null)}>
           <Pressable onPress={e => e.stopPropagation()}>
             <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>{catQualModal ? t.settings.categoryQualifiersTitle(catQualModal.name) : ''}</Text>
+              <Text style={styles.modalTitle}>{catQualModal ? t.settings.categoryQualifiersTitle(categoryLabel(catQualModal, t)) : ''}</Text>
               <Text style={[styles.warnText, { marginBottom: 4 }]}>{t.settings.categoryQualifiersHint}</Text>
               {qualifiers.map((q) => {
-                const preset = EMOJI_PRESETS[q.emoji_preset];
                 const checked = catQualSelected.includes(q.id);
                 return (
                   <Pressable key={q.id}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}
                     onPress={() => setCatQualSelected(prev => checked ? prev.filter(id => id !== q.id) : [...prev, q.id])}>
                     <Text style={{ fontSize: 20 }}>{checked ? '☑' : '☐'}</Text>
-                    <Text style={{ fontSize: 17 }}>{preset?.icon}</Text>
-                    <Text style={{ fontSize: 15, color: c.text }}>{q.name}</Text>
+                    <Text style={{ fontSize: 17 }}>{getIconForPreset(q.emoji_preset)}</Text>
+                    <Text style={{ fontSize: 15, color: c.text }}>{qualifierLabel(q.name, q.emoji_preset, t)}</Text>
                   </Pressable>
                 );
               })}
@@ -394,5 +399,57 @@ export function InhalteSection() {
         </KeyboardAvoidingView>
       </Modal>
     </>
+  );
+}
+
+function PresetPickerRows({ selected, customEmojis, onSelect, onCustomChange, c, t }: {
+  selected: string;
+  customEmojis: string[];
+  onSelect: (key: string) => void;
+  onCustomChange: (i: number, v: string) => void;
+  c: ReturnType<typeof useColors>;
+  t: ReturnType<typeof useT>;
+}) {
+  return (
+    <View style={{ gap: 4 }}>
+      {Object.entries(EMOJI_PRESETS).map(([key, preset]) => (
+        <Pressable key={key} onPress={() => onSelect(key)}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
+            backgroundColor: selected === key ? c.accent + '22' : 'transparent',
+            borderWidth: 1, borderColor: selected === key ? c.accent : 'transparent',
+          }}>
+          <Text style={{ width: 58, fontSize: 12, color: c.muted }}>
+            {(t.qualifierPresets as Record<string, string>)[key] ?? preset.label}
+          </Text>
+          {preset.emojis.map((e, i) => <Text key={i} style={{ fontSize: 20 }}>{e}</Text>)}
+        </Pressable>
+      ))}
+      <Pressable onPress={() => onSelect('custom')}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 8,
+          paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
+          backgroundColor: selected === 'custom' ? c.accent + '22' : 'transparent',
+          borderWidth: 1, borderColor: selected === 'custom' ? c.accent : 'transparent',
+        }}>
+        <Text style={{ width: 58, fontSize: 12, color: c.muted }}>Eigene</Text>
+        {selected === 'custom'
+          ? [0, 1, 2, 3, 4].map(i => (
+              <TextInput
+                key={i}
+                value={customEmojis[i] ?? ''}
+                onChangeText={v => onCustomChange(i, Array.from(v).slice(0, 2).join(''))}
+                style={{
+                  width: 36, height: 36, borderWidth: 1, borderColor: c.border,
+                  borderRadius: 6, textAlign: 'center', fontSize: 20,
+                  color: c.text, backgroundColor: c.bg,
+                }}
+              />
+            ))
+          : <Text style={{ fontSize: 12, color: c.muted }}>✏️ Eigene Emojis</Text>
+        }
+      </Pressable>
+    </View>
   );
 }

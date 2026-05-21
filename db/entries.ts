@@ -4,6 +4,7 @@ import { getEntryQualifierValues, setEntryQualifierValues } from './qualifiers';
 export interface EntryCategory {
   name: string;
   color: string | null;
+  key?: string | null;
 }
 
 export interface Entry {
@@ -93,7 +94,7 @@ export async function getEntries(opts?: {
   return Promise.all(rows.map(async (row) => {
     const [categories, tags, qualifierValues] = await Promise.all([
       db.getAllAsync<EntryCategory>(
-        `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+        `SELECT c.name, c.color, c.key FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
         [row.id]
       ),
       db.getAllAsync<{ name: string }>(
@@ -122,7 +123,7 @@ export async function getEntry(id: number): Promise<Entry | null> {
 
   const [categories, tags, qualifierValues] = await Promise.all([
     db.getAllAsync<EntryCategory>(
-      `SELECT c.name, c.color FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
+      `SELECT c.name, c.color, c.key FROM categories c JOIN entry_categories ec ON c.id = ec.category_id WHERE ec.entry_id = ?`,
       [id]
     ),
     db.getAllAsync<{ name: string }>(

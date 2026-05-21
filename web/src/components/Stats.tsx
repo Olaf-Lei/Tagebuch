@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { getStatsOverview, getQualifierTrend, getCategoryStats, getTagStats } from '../db/database'
+import { getStatsOverview, getQualifierTrend, getCategoryStats, getTagStats, getEntryDateRange } from '../db/database'
+import DateRangeSlider from './DateRangeSlider'
 
 const EMOJI_PRESETS: Record<string, string[]> = {
   mood:   ['😢','😕','😐','🙂','😄'],
@@ -128,23 +129,29 @@ function monthAgoStr() {
 
 export default function Stats() {
   const [period, setPeriod] = useState<Period>('all')
-  const [customFrom, setCustomFrom] = useState(monthAgoStr)
-  const [customTo, setCustomTo] = useState(todayStr)
+
+  const { minTs, maxTs } = useMemo(() => getEntryDateRange(), [])
+  const todayMs = useMemo(() => { const d = new Date(); d.setHours(23,59,59,999); return d.getTime() }, [])
+
+  const [sliderFrom, setSliderFrom] = useState<number>(() => minTs)
+  const [sliderTo,   setSliderTo  ] = useState<number>(() => todayMs)
 
   const range = useMemo(() => {
-    if (period === 'custom') {
-      const from = customFrom ? new Date(customFrom).getTime() : 0
-      const to = customTo ? new Date(customTo + 'T23:59:59').getTime() : Number.MAX_SAFE_INTEGER
-      return { from, to }
-    }
+    if (period === 'custom') return { from: sliderFrom, to: sliderTo + 86399999 }
     return builtinRange(period as Exclude<Period, 'custom'>)
-  }, [period, customFrom, customTo])
+  }, [period, sliderFrom, sliderTo])
 
   const overview = useMemo(() => getStatsOverview(range), [range])
   const catStats = useMemo(() => getCategoryStats(range), [range])
   const tagStats = useMemo(() => getTagStats(range), [range])
 
-  const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt', custom: 'Frei' }
+  const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt', custom: 'Zeitstrahl' }
+
+  const handleSlider = (from: number, to: number) => {
+    setSliderFrom(from)
+    setSliderTo(to)
+    setPeriod('custom')
+  }
 
   return (
     <div style={s.container}>
@@ -152,27 +159,24 @@ export default function Stats() {
         {(['week','month','year','all','custom'] as Period[]).map(p => (
           <button key={p}
             style={{ ...s.filterBtn, background: period === p ? 'var(--accent)' : 'transparent', color: period === p ? '#0F1B2D' : 'var(--text2)' }}
-            onClick={() => setPeriod(p)}>
+            onClick={() => {
+              setPeriod(p)
+              if (p === 'custom') { setSliderFrom(minTs); setSliderTo(todayMs) }
+            }}>
             {periodLabel[p]}
           </button>
         ))}
       </div>
 
-      {period === 'custom' && (
-        <div style={s.customRange}>
-          <div style={s.dateField}>
-            <label style={s.dateLabel}>Von</label>
-            <input type="date" value={customFrom} max={customTo || todayStr()}
-              onChange={e => setCustomFrom(e.target.value)} style={s.dateInput} />
-          </div>
-          <div style={{ color: 'var(--text2)', alignSelf: 'flex-end', paddingBottom: 2 }}>–</div>
-          <div style={s.dateField}>
-            <label style={s.dateLabel}>Bis</label>
-            <input type="date" value={customTo} min={customFrom} max={todayStr()}
-              onChange={e => setCustomTo(e.target.value)} style={s.dateInput} />
-          </div>
-        </div>
-      )}
+      <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '10px 4px 14px', marginBottom: 16 }}>
+        <DateRangeSlider
+          minTs={minTs}
+          maxTs={Math.max(maxTs, todayMs)}
+          from={period === 'custom' ? sliderFrom : range.from === 0 ? minTs : range.from}
+          to={period === 'custom' ? sliderTo : Math.min(range.to, todayMs)}
+          onChange={handleSlider}
+        />
+      </div>
 
       <div style={s.statRow}>
         <div style={s.statCard}>

@@ -4,9 +4,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView from 'react-native-webview';
 import { useColors } from '../components/theme';
-import { EMOJI_PRESETS } from '../components/qualifiers';
+import { getEmojisForPreset, getIconForPreset, qualifierLabel } from '../components/qualifiers';
 import { getEntriesWithLocation, type LocationEntry } from '../db/entries';
-import { getCategories, type Category } from '../db/categories';
+import { getCategories, categoryLabel, type Category } from '../db/categories';
 import { getActiveQualifiers, type Qualifier } from '../db/qualifiers';
 import { useT } from '../i18n';
 
@@ -217,7 +217,7 @@ function FilterModal({
                         onPress={() => onToggleCategory(cat.id)}
                       >
                         <Text style={[styles.chipText, active && { color: '#fff', fontWeight: '600' }]}>
-                          {cat.name}
+                          {categoryLabel(cat, t)}
                         </Text>
                       </Pressable>
                     );
@@ -239,7 +239,6 @@ function FilterModal({
                     </Text>
                   </Pressable>
                   {qualifiers.map(q => {
-                    const preset = EMOJI_PRESETS[q.emoji_preset];
                     const active = pendingQualifierFilter?.qualifierId === q.id;
                     return (
                       <Pressable
@@ -248,7 +247,7 @@ function FilterModal({
                         onPress={() => onSelectQualifier(q.id)}
                       >
                         <Text style={[styles.chipText, active && { color: '#fff', fontWeight: '600' }]}>
-                          {preset?.icon} {q.name}
+                          {getIconForPreset(q.emoji_preset)} {qualifierLabel(q.name, q.emoji_preset, t)}
                         </Text>
                       </Pressable>
                     );
@@ -256,7 +255,7 @@ function FilterModal({
                 </View>
 
                 {pendingQualifierFilter && selectedQualifier && (() => {
-                  const preset = EMOJI_PRESETS[selectedQualifier.emoji_preset];
+                  const emojis = getEmojisForPreset(selectedQualifier.emoji_preset);
                   return (
                     <View style={{ gap: 4 }}>
                       <Text style={styles.rangeLabel}>{t.map.filterQualifierMin}</Text>
@@ -271,7 +270,7 @@ function FilterModal({
                               onPress={() => onSetMin(v)}
                             >
                               <Text style={[styles.emojiText, { opacity: inRange ? 1 : 0.3 }]}>
-                                {preset?.emojis[v - 1] ?? String(v)}
+                                {emojis[v - 1] ?? String(v)}
                               </Text>
                             </Pressable>
                           );
@@ -289,7 +288,7 @@ function FilterModal({
                               onPress={() => onSetMax(v)}
                             >
                               <Text style={[styles.emojiText, { opacity: inRange ? 1 : 0.3 }]}>
-                                {preset?.emojis[v - 1] ?? String(v)}
+                                {emojis[v - 1] ?? String(v)}
                               </Text>
                             </Pressable>
                           );

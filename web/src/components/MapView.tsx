@@ -1,8 +1,10 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import L from 'leaflet'
+import 'leaflet.markercluster'
 import type { Entry } from '../types'
-import { getEntriesWithLocation, getCategories, getQualifiers, type LocationFilter } from '../db/database'
+import { getEntriesWithLocation, getCategories, getQualifiers, getEntryDateRange, type LocationFilter } from '../db/database'
 import type { Category, Qualifier } from '../types'
+import DateRangeSlider from './DateRangeSlider'
 
 const EMOJI_PRESETS: Record<string, { icon: string; emojis: string[] }> = {
   mood:   { icon: '🌤️', emojis: ['😢','😕','😐','🙂','😄'] },
@@ -13,9 +15,9 @@ const EMOJI_PRESETS: Record<string, { icon: string; emojis: string[] }> = {
   stress: { icon: '🧘', emojis: ['🤯','😤','😬','😌','🧘'] },
 }
 
-type Period = 'week' | 'month' | 'year' | 'all'
+type Period = 'week' | 'month' | 'year' | 'all' | 'custom'
 
-function periodRange(p: Period) {
+function periodRange(p: Exclude<Period, 'custom'>) {
   const now = Date.now()
   const day = 86400_000
   if (p === 'week')  return { from: now - 7 * day, to: now }
@@ -24,13 +26,18 @@ function periodRange(p: Period) {
   return { from: 0, to: Number.MAX_SAFE_INTEGER }
 }
 
-const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt' }
+const periodLabel: Record<Period, string> = { week: '7 Tage', month: '30 Tage', year: '365 Tage', all: 'Gesamt', custom: 'Zeitstrahl' }
 
 interface QualifierFilter { qualifierId: number; minValue: number; maxValue: number }
 
 export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => void }) {
   const [period, setPeriod] = useState<Period>('all')
   const [showFilterPanel, setShowFilterPanel] = useState(false)
+
+  const { minTs, maxTs } = useMemo(() => getEntryDateRange(), [])
+  const todayMs = useMemo(() => { const d = new Date(); d.setHours(23,59,59,999); return d.getTime() }, [])
+  const [sliderFrom, setSliderFrom] = useState<number>(() => minTs)
+  const [sliderTo,   setSliderTo  ] = useState<number>(() => Date.now())
 
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [qualifierFilter, setQualifierFilter] = useState<QualifierFilter | null>(null)
@@ -41,17 +48,28 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
   const [categories, setCategories] = useState<Category[]>([])
   const [qualifiers, setQualifiers] = useState<Qualifier[]>([])
 
+  const activeRange = useMemo(() => {
+    if (period === 'custom') return { from: sliderFrom, to: sliderTo + 86399999 }
+    return periodRange(period as Exclude<Period, 'custom'>)
+  }, [period, sliderFrom, sliderTo])
+
   const filter: LocationFilter = useMemo(() => ({
-    ...periodRange(period),
+    ...activeRange,
     categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     qualifierFilter: qualifierFilter ?? undefined,
-  }), [period, selectedCategoryIds, qualifierFilter])
+  }), [activeRange, selectedCategoryIds, qualifierFilter])
+
+  const handleSlider = (from: number, to: number) => {
+    setSliderFrom(from)
+    setSliderTo(to)
+    setPeriod('custom')
+  }
 
   const entries = useMemo(() => getEntriesWithLocation(filter), [filter])
 
   const mapDiv = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.CircleMarker[]>([])
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null)
 
   useEffect(() => {
     setCategories(getCategories())
@@ -65,14 +83,32 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map)
-    return () => { map.remove(); mapRef.current = null }
+
+    const cluster = L.markerClusterGroup({
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      maxClusterRadius: 40,
+      iconCreateFunction: (c) => {
+        const count = c.getChildCount()
+        return L.divIcon({
+          html: `<div style="background:#C9A84C;color:#0F1B2D;border:2px solid #0F1B2D;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${count}</div>`,
+          className: '',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        })
+      },
+    })
+    clusterRef.current = cluster
+    map.addLayer(cluster)
+
+    return () => { map.remove(); mapRef.current = null; clusterRef.current = null }
   }, [])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
-    markersRef.current.forEach(m => m.remove())
-    markersRef.current = []
+    const cluster = clusterRef.current
+    if (!map || !cluster) return
+    cluster.clearLayers()
     const bounds: [number, number][] = []
 
     entries.forEach((entry: Entry) => {
@@ -84,10 +120,14 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
       const preview = entry.text.length > 100 ? entry.text.slice(0, 100) + '…' : entry.text
       const loc = entry.location_name ? `<br><small style="color:#8A9BB0">📍 ${entry.location_name}</small>` : ''
 
-      const marker = L.circleMarker([lat, lon], {
-        radius: 9, fillColor: '#C9A84C', color: '#0F1B2D', weight: 2, fillOpacity: 0.9
+      const icon = L.divIcon({
+        html: `<div style="background:#C9A84C;border:2px solid #0F1B2D;border-radius:50%;width:18px;height:18px;box-shadow:0 2px 4px rgba(0,0,0,0.4)"></div>`,
+        className: '',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
       })
-        .addTo(map)
+
+      const marker = L.marker([lat, lon], { icon })
         .bindPopup(
           `<div style="max-width:220px;font-family:inherit">` +
           `<div style="font-size:12px;color:#8A9BB0;margin-bottom:4px">${date}${loc}</div>` +
@@ -96,7 +136,7 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
           `</div>`,
           { maxWidth: 240 }
         )
-      markersRef.current.push(marker)
+      cluster.addLayer(marker)
     })
 
     if (bounds.length > 1) {
@@ -161,12 +201,16 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', position: 'relative' }}>
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', flexWrap: 'wrap', background: 'var(--bg)', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-        {(['week','month','year','all'] as Period[]).map(p => (
+      <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {(['week','month','year','all','custom'] as Period[]).map(p => (
           <button key={p}
             style={{ border: '1px solid var(--accent)', borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                      background: period === p ? 'var(--accent)' : 'transparent', color: period === p ? '#0F1B2D' : 'var(--text2)' }}
-            onClick={() => setPeriod(p)}>
+            onClick={() => {
+              setPeriod(p)
+              if (p === 'custom') { setSliderFrom(minTs); setSliderTo(Date.now()) }
+            }}>
             {periodLabel[p]}
           </button>
         ))}
@@ -191,12 +235,20 @@ export default function MapView({ onOpenEntry }: { onOpenEntry: (id: number) => 
         <span style={{ color: 'var(--text2)', fontSize: 13, marginLeft: 4 }}>
           {entries.length} Standort{entries.length !== 1 ? 'e' : ''}
         </span>
+        </div>
+        <DateRangeSlider
+          minTs={minTs}
+          maxTs={Math.max(maxTs, todayMs)}
+          from={period === 'custom' ? sliderFrom : Math.max(activeRange.from === 0 ? minTs : activeRange.from, minTs)}
+          to={period === 'custom' ? sliderTo : Math.min(activeRange.to, todayMs)}
+          onChange={handleSlider}
+        />
       </div>
 
       {/* Filter-Panel */}
       {showFilterPanel && (
         <div style={{
-          position: 'absolute', top: 52, left: 0, right: 0, zIndex: 1000,
+          position: 'absolute', top: 112, left: 0, right: 0, zIndex: 1000,
           background: 'var(--surface)', borderBottom: '1px solid var(--border)',
           padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16,
           boxShadow: '0 4px 20px rgba(0,0,0,0.3)',

@@ -1,7 +1,7 @@
 import { getDb } from './schema';
 
 export interface DayCount { day: string; count: number; }
-export interface NameCount { name: string; count: number; color?: string | null; }
+export interface NameCount { name: string; count: number; color?: string | null; key?: string | null; }
 
 export type PeriodGroupBy = 'hour' | 'day' | 'week' | 'month';
 
@@ -102,7 +102,7 @@ export async function getStats(from: number, to: number, groupBy: PeriodGroupBy)
   );
 
   const perCategory = await db.getAllAsync<NameCount>(
-    `SELECT c.name, c.color, COUNT(*) as count FROM categories c
+    `SELECT c.name, c.color, c.key, COUNT(*) as count FROM categories c
      JOIN entry_categories ec ON c.id = ec.category_id
      JOIN entries e ON e.id = ec.entry_id
      WHERE e.timestamp >= ? AND e.timestamp <= ?
@@ -194,18 +194,18 @@ export async function getAvgTextLength(from: number, to: number): Promise<number
 }
 
 export interface QualifierByCat {
-  category: { id: number; name: string; color: string | null };
+  category: { id: number; name: string; color: string | null; key?: string | null };
   qualifierAvgs: { qualifier_id: number; name: string; emoji_preset: string; avg: number }[];
 }
 
 export async function getQualifierByCategory(from: number, to: number): Promise<QualifierByCat[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<{
-    category_id: number; category_name: string; category_color: string | null;
+    category_id: number; category_name: string; category_color: string | null; category_key: string | null;
     qualifier_id: number; qualifier_name: string; emoji_preset: string;
     avg_value: number;
   }>(`
-    SELECT c.id as category_id, c.name as category_name, c.color as category_color,
+    SELECT c.id as category_id, c.name as category_name, c.color as category_color, c.key as category_key,
            q.id as qualifier_id, q.name as qualifier_name, q.emoji_preset,
            AVG(eq.value) as avg_value
     FROM categories c
@@ -221,7 +221,7 @@ export async function getQualifierByCategory(from: number, to: number): Promise<
   for (const row of rows) {
     if (!map.has(row.category_id)) {
       map.set(row.category_id, {
-        category: { id: row.category_id, name: row.category_name, color: row.category_color },
+        category: { id: row.category_id, name: row.category_name, color: row.category_color, key: row.category_key },
         qualifierAvgs: [],
       });
     }

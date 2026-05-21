@@ -17,6 +17,24 @@ const EMOJI_PRESETS: Record<string, { label: string; icon: string; emojis: strin
   stress: { label: 'Stress',   icon: '🧘',  emojis: ['🤯', '😤', '😬', '😌', '🧘'] },
 }
 
+function getEmojisForPreset(emojiPreset: string): string[] {
+  if (EMOJI_PRESETS[emojiPreset]) return EMOJI_PRESETS[emojiPreset].emojis
+  try {
+    const arr = JSON.parse(emojiPreset)
+    if (Array.isArray(arr) && arr.length === 5) return arr
+  } catch {}
+  return ['❓', '❓', '❓', '❓', '❓']
+}
+
+function getIconForPreset(emojiPreset: string): string {
+  if (EMOJI_PRESETS[emojiPreset]) return EMOJI_PRESETS[emojiPreset].icon
+  try {
+    const arr = JSON.parse(emojiPreset)
+    if (Array.isArray(arr) && arr.length === 5) return arr[2]
+  } catch {}
+  return '⭐'
+}
+
 const COLOR_PALETTE = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9F45','#06D6A0','#EF476F','#118AB2','#FFB703','#A8DADC','#E9C46A']
 
 interface Props {
@@ -166,7 +184,7 @@ function CategoriesTab({ categories, qualifiers, catQualMap, commit, s }: {
                           const next = e.target.checked ? [...current, q.id] : current.filter(id => id !== q.id)
                           commit(() => setCategoryQualifiers(c.id, next))
                         }} />
-                        {EMOJI_PRESETS[q.emoji_preset]?.icon ?? '⭐'} {q.name}
+                        {getIconForPreset(q.emoji_preset)} {q.name}
                       </label>
                     )
                   })}
@@ -239,21 +257,31 @@ function TagsTab({ tags, commit, s }: { tags: Tag[], commit: (fn: () => void) =>
 function QualifiersTab({ qualifiers, commit, s }: { qualifiers: Qualifier[], commit: (fn: () => void) => void, s: Record<string, React.CSSProperties> }) {
   const [newName, setNewName] = useState('')
   const [newPreset, setNewPreset] = useState('mood')
+  const [newCustom, setNewCustom] = useState(['', '', '', '', ''])
   const [editId, setEditId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editPreset, setEditPreset] = useState('mood')
+  const [editCustom, setEditCustom] = useState(['', '', '', '', ''])
 
   function add() {
     if (!newName.trim()) return
-    commit(() => createQualifier(newName, newPreset))
+    const preset = newPreset === 'custom' ? JSON.stringify(newCustom.map(e => e || '❓')) : newPreset
+    commit(() => createQualifier(newName, preset))
     setNewName('')
+    setNewCustom(['', '', '', '', ''])
   }
 
-  function startEdit(q: Qualifier) { setEditId(q.id); setEditName(q.name); setEditPreset(q.emoji_preset) }
+  function startEdit(q: Qualifier) {
+    setEditId(q.id); setEditName(q.name)
+    const isCustom = !EMOJI_PRESETS[q.emoji_preset]
+    setEditPreset(isCustom ? 'custom' : q.emoji_preset)
+    setEditCustom(isCustom ? getEmojisForPreset(q.emoji_preset) : ['', '', '', '', ''])
+  }
 
   function saveEdit() {
     if (!editName.trim() || editId == null) return
-    commit(() => updateQualifier(editId, editName, editPreset))
+    const preset = editPreset === 'custom' ? JSON.stringify(editCustom.map(e => e || '❓')) : editPreset
+    commit(() => updateQualifier(editId, editName, preset))
     setEditId(null)
   }
 
@@ -268,24 +296,32 @@ function QualifiersTab({ qualifiers, commit, s }: { qualifiers: Qualifier[], com
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={s.addRow}>
           <input style={s.input} placeholder="Name…" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} />
-          <PresetPicker value={newPreset} onChange={setNewPreset} s={s} />
           <button style={s.btn} onClick={add}>+</button>
         </div>
+        <PresetPicker value={newPreset} customEmojis={newCustom}
+          onChange={key => { setNewPreset(key); if (key !== 'custom') setNewCustom(['', '', '', '', '']) }}
+          onCustomChange={(i, v) => { const n = [...newCustom]; n[i] = v; setNewCustom(n) }}
+          s={s} />
       </div>
       {qualifiers.map(q => (
-        <div key={q.id} style={s.row}>
+        <div key={q.id}>
           {editId === q.id ? (
-            <>
-              <input style={s.input} value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEdit()} autoFocus />
-              <PresetPicker value={editPreset} onChange={setEditPreset} s={s} />
-              <button style={s.btnSmall} onClick={saveEdit}>✓</button>
-              <button style={s.iconBtn} onClick={() => setEditId(null)}>✕</button>
-            </>
+            <div style={{ ...s.row, flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={s.input} value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEdit()} autoFocus />
+                <button style={s.btnSmall} onClick={saveEdit}>✓</button>
+                <button style={s.iconBtn} onClick={() => setEditId(null)}>✕</button>
+              </div>
+              <PresetPicker value={editPreset} customEmojis={editCustom}
+                onChange={key => { setEditPreset(key); if (key !== 'custom') setEditCustom(['', '', '', '', '']) }}
+                onCustomChange={(i, v) => { const n = [...editCustom]; n[i] = v; setEditCustom(n) }}
+                s={s} />
+            </div>
           ) : (
-            <>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{EMOJI_PRESETS[q.emoji_preset]?.icon ?? '⭐'}</span>
+            <div style={s.row}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{getIconForPreset(q.emoji_preset)}</span>
               <span style={s.nameText}>{q.name}</span>
-              <span style={{ fontSize: 12, color: 'var(--text2)' }}>{EMOJI_PRESETS[q.emoji_preset]?.emojis.join('')}</span>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>{getEmojisForPreset(q.emoji_preset).join('')}</span>
               <button
                 style={{ ...s.iconBtn, color: q.active ? '#34C759' : 'var(--text2)' }}
                 title={q.active ? 'Aktiv — deaktivieren' : 'Inaktiv — aktivieren'}
@@ -293,7 +329,7 @@ function QualifiersTab({ qualifiers, commit, s }: { qualifiers: Qualifier[], com
               >{q.active ? '●' : '○'}</button>
               <button style={s.iconBtn} onClick={() => startEdit(q)}>✏️</button>
               <button style={s.iconBtn} onClick={() => del(q)}>🗑️</button>
-            </>
+            </div>
           )}
         </div>
       ))}
@@ -315,12 +351,43 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
   )
 }
 
-function PresetPicker({ value, onChange, s }: { value: string; onChange: (p: string) => void; s: Record<string, React.CSSProperties> }) {
+function PresetPicker({ value, customEmojis, onChange, onCustomChange, s }: {
+  value: string
+  customEmojis: string[]
+  onChange: (p: string) => void
+  onCustomChange: (i: number, v: string) => void
+  s: Record<string, React.CSSProperties>
+}) {
   return (
-    <select style={s.select} value={value} onChange={e => onChange(e.target.value)}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {Object.entries(EMOJI_PRESETS).map(([key, p]) => (
-        <option key={key} value={key}>{p.icon} {p.label}</option>
+        <button key={key} onClick={() => onChange(key)} style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+          borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+          background: value === key ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+          border: value === key ? '1px solid var(--accent)' : '1px solid transparent',
+        }}>
+          <span style={{ width: 52, fontSize: 12, color: 'var(--text2)' }}>{p.label}</span>
+          {p.emojis.map((e, i) => <span key={i} style={{ fontSize: 18 }}>{e}</span>)}
+        </button>
       ))}
-    </select>
+      <button onClick={() => onChange('custom')} style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+        borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+        background: value === 'custom' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+        border: value === 'custom' ? '1px solid var(--accent)' : '1px solid transparent',
+      }}>
+        <span style={{ width: 52, fontSize: 12, color: 'var(--text2)' }}>Eigene</span>
+        {value === 'custom'
+          ? [0, 1, 2, 3, 4].map(i => (
+              <input key={i} value={customEmojis[i] ?? ''} maxLength={2}
+                onChange={e => onCustomChange(i, e.target.value)}
+                onClick={e => e.stopPropagation()}
+                style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 18, background: 'var(--bg)', color: 'var(--text)' }} />
+            ))
+          : <span style={{ fontSize: 12, color: 'var(--text2)' }}>✏️ Eigene Emojis</span>
+        }
+      </button>
+    </div>
   )
 }

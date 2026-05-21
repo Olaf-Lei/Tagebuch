@@ -2,9 +2,11 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Entry } from '../db/entries';
-import { EMOJI_PRESETS, emojiForLevel } from './qualifiers';
+import { getEmojisForPreset, emojiForLevel } from './qualifiers';
+import { categoryLabel } from '../db/categories';
 import type { Qualifier } from '../db/qualifiers';
 import { useColors } from './theme';
+import { useT } from '../i18n';
 
 interface Props {
   entry: Entry;
@@ -52,6 +54,7 @@ function HighlightedText({
 export function EntryCard({ entry, highlight, qualifiers = [], selected, selectionMode, onLongPress, onSelect }: Props) {
   const router = useRouter();
   const c = useColors();
+  const t = useT();
   const styles = useMemo(() => StyleSheet.create({
     card: { backgroundColor: c.surface, borderRadius: 12, padding: 14, marginBottom: 10, gap: 6 },
     cardSelected: { borderWidth: 2, borderColor: c.accent },
@@ -86,8 +89,7 @@ export function EntryCard({ entry, highlight, qualifiers = [], selected, selecti
             qualifiers.map((q) => {
               const val = entry.qualifierValues[q.id];
               if (!val) return null;
-              const preset = EMOJI_PRESETS[q.emoji_preset];
-              const emoji = preset ? emojiForLevel(preset.emojis, val) : null;
+              const emoji = emojiForLevel(getEmojisForPreset(q.emoji_preset), val);
               return emoji ? <Text key={q.id} style={styles.qualifierEmoji}>{emoji}</Text> : null;
             })
           }
@@ -115,7 +117,7 @@ export function EntryCard({ entry, highlight, qualifiers = [], selected, selecti
             const col = cat.color ?? c.accent;
             return (
               <View key={cat.name} style={[styles.categoryBadge, { backgroundColor: col + '33' }]}>
-                <Text style={{ fontSize: 12, color: col }}>{cat.name}</Text>
+                <Text style={{ fontSize: 12, color: col }}>{categoryLabel(cat, t)}</Text>
               </View>
             );
           })}

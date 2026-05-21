@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColors } from '../components/theme';
 import { useLayout } from '../hooks/useLayout';
 import { getStats, getQualifierTrend, getPreviousPeriodCount, getQualifierStats, getHourDistribution, getWeekdayDistribution, getAvgTextLength, getQualifierByCategory, type Stats, type QualifierTrendSeries, type QualifierDistribution, type QualifierByCat, type PeriodGroupBy } from '../db/stats';
-import { EMOJI_PRESETS, qualifierLabel } from '../components/qualifiers';
+import { getEmojisForPreset, getIconForPreset, qualifierLabel } from '../components/qualifiers';
 import { categoryLabel } from '../db/categories';
 import { useT } from '../i18n';
 
@@ -184,13 +184,12 @@ function TrendChart({ series, c, noDataLabel }: {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 6 }}>
         {series.map((s, si) => {
           if (!s.points.some(p => p.avg != null)) return null;
-          const preset = EMOJI_PRESETS[s.qualifier.emoji_preset];
           const color = QUALIFIER_COLORS[si % QUALIFIER_COLORS.length];
           return (
             <View key={s.qualifier.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <View style={{ width: 14, height: 3, backgroundColor: color, borderRadius: 1.5 }} />
               <Text style={{ fontSize: 11, color: c.muted }}>
-                {preset?.icon} {qualifierLabel(s.qualifier.name, s.qualifier.emoji_preset, t)}
+                {getIconForPreset(s.qualifier.emoji_preset)} {qualifierLabel(s.qualifier.name, s.qualifier.emoji_preset, t)}
               </Text>
             </View>
           );
@@ -346,20 +345,19 @@ function DistributionChart({ distributions, c }: {
     <View style={{ gap: 20 }}>
       {distributions.map((qd, qi) => {
         if (qd.dist.every(v => v === 0)) return null;
-        const preset = EMOJI_PRESETS[qd.qualifier.emoji_preset];
         const color = QUALIFIER_COLORS[qi % QUALIFIER_COLORS.length];
         const maxCount = Math.max(...qd.dist, 1);
         return (
           <View key={qd.qualifier.id} style={{ gap: 8 }}>
             <Text style={{ fontSize: 12, color: c.muted, fontWeight: '600' }}>
-              {preset?.icon ?? ''}{' '}{qualifierLabel(qd.qualifier.name, qd.qualifier.emoji_preset, t)}
+              {getIconForPreset(qd.qualifier.emoji_preset)}{' '}{qualifierLabel(qd.qualifier.name, qd.qualifier.emoji_preset, t)}
               {qd.avg != null
                 ? <Text style={{ color, fontWeight: '700' }}> · Ø {qd.avg.toFixed(1)}</Text>
                 : null}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {qd.dist.map((count, i) => {
-                const emoji = preset?.emojis[i] ?? String(i + 1);
+                const emoji = getEmojisForPreset(qd.qualifier.emoji_preset)[i] ?? String(i + 1);
                 const barH = count > 0 ? Math.max((count / maxCount) * BAR_MAX_H, 6) : 0;
                 return (
                   <View key={i} style={{ flex: 1, alignItems: 'center' }}>
@@ -409,10 +407,9 @@ function QualifierCatTable({ data, c }: {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingBottom: 6, borderBottomWidth: 1, borderColor: c.border }}>
         <View style={{ flex: 2 }} />
         {qualifiers.map(q => {
-          const preset = EMOJI_PRESETS[q.emoji_preset];
           return (
             <View key={q.qualifier_id} style={{ flex: 1, alignItems: 'center', gap: 1 }}>
-              <Text style={{ fontSize: 14 }}>{preset?.icon}</Text>
+              <Text style={{ fontSize: 14 }}>{getIconForPreset(q.emoji_preset)}</Text>
               <Text style={{ fontSize: 8, color: c.muted, textAlign: 'center' }} numberOfLines={1}>{qualifierLabel(q.name, q.emoji_preset, t)}</Text>
             </View>
           );
@@ -431,8 +428,7 @@ function QualifierCatTable({ data, c }: {
             </View>
             {qualifiers.map(q => {
               const avg = avgMap.get(q.qualifier_id);
-              const preset = EMOJI_PRESETS[q.emoji_preset];
-              const emoji = avg != null ? preset?.emojis[Math.min(4, Math.max(0, Math.round(avg) - 1))] : null;
+              const emoji = avg != null ? getEmojisForPreset(q.emoji_preset)[Math.min(4, Math.max(0, Math.round(avg) - 1))] : null;
               return (
                 <View key={q.qualifier_id} style={{ flex: 1, alignItems: 'center', gap: 1 }}>
                   {emoji != null ? (
@@ -670,9 +666,8 @@ export default function StatsScreen() {
             <View style={[isWide && { flexBasis: '100%' }]}>
               <View style={styles.qualAvgRow}>
                 {qualifierAvgs.map(({ qualifier, avg, colorIdx }) => {
-                  const preset = EMOJI_PRESETS[qualifier.emoji_preset];
                   const level = Math.min(5, Math.max(1, Math.round(avg)));
-                  const emoji = preset?.emojis[level - 1] ?? '–';
+                  const emoji = getEmojisForPreset(qualifier.emoji_preset)[level - 1] ?? '–';
                   const color = QUALIFIER_COLORS[colorIdx % QUALIFIER_COLORS.length];
                   return (
                     <View key={qualifier.id} style={styles.qualAvgItem}>
