@@ -20,6 +20,7 @@ interface Props {
   onDelete: (id: number) => Promise<void>
   onLogout: () => void
   onOpenSyncSettings: () => void
+  onOpenManage: () => void
   saving: boolean
   isDark: boolean
   onToggleTheme: () => void
@@ -56,7 +57,7 @@ function fmtTime(d: Date | null): string {
   return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function EntryList({ categories, tags, qualifiers, onSave, onDelete, onLogout, onOpenSyncSettings, saving, isDark, onToggleTheme, ncConnected, ncLastSync, ncSyncing, ncError, driveConnected, driveLastSync, driveSyncing, driveError, onSyncNC, onSyncDrive, onSyncAll, pushing, pushError, onPushLocal }: Props) {
+export default function EntryList({ categories, tags, qualifiers, onSave, onDelete, onLogout, onOpenSyncSettings, onOpenManage, saving, isDark, onToggleTheme, ncConnected, ncLastSync, ncSyncing, ncError, driveConnected, driveLastSync, driveSyncing, driveError, onSyncNC, onSyncDrive, onSyncAll, pushing, pushError, onPushLocal }: Props) {
   const [tab, setTab] = useState<Tab>('entries')
   const [search, setSearch] = useState('')
   const [filterCats, setFilterCats] = useState<number[]>([])
@@ -147,6 +148,10 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
             <>
               <div style={s.menuOverlay} onClick={() => setMenuOpen(false)} />
               <div style={s.menu}>
+                <button style={s.menuItem} onClick={() => { onOpenManage(); setMenuOpen(false) }}>
+                  📋 Verwalten
+                </button>
+                <div style={s.menuDivider} />
                 <button style={s.menuItem} onClick={() => { onOpenSyncSettings(); setMenuOpen(false) }}>
                   ⚙️ Sync-Einstellungen
                 </button>

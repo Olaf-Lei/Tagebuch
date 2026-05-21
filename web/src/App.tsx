@@ -7,6 +7,7 @@ import { decryptDb, encryptDb } from './crypto'
 import AuthScreen, { loadSavedConfig, clearConfig } from './components/AuthScreen'
 import EntryList from './components/EntryList'
 import SyncSettings from './components/SyncSettings'
+import ManageModal from './components/ManageModal'
 
 type Phase = 'auth' | 'loading' | 'ready'
 
@@ -30,6 +31,7 @@ export default function App() {
   const [pushing, setPushing] = useState(false)
   const [pushError, setPushError] = useState('')
   const [showSyncSettings, setShowSyncSettings] = useState(false)
+  const [showManage, setShowManage] = useState(false)
   const [isDark, setIsDark] = useState<boolean>(() =>
     localStorage.getItem('tagebuch_theme') !== 'light'
   )
@@ -269,6 +271,7 @@ export default function App() {
         onDelete={handleDelete}
         onLogout={logout}
         onOpenSyncSettings={() => setShowSyncSettings(true)}
+        onOpenManage={() => setShowManage(true)}
         saving={saving}
         isDark={isDark}
         onToggleTheme={() => setIsDark(d => !d)}
@@ -287,6 +290,12 @@ export default function App() {
         pushError={pushError}
         onPushLocal={pushLocalToRemote}
       />
+      {showManage && (
+        <ManageModal
+          onClose={() => setShowManage(false)}
+          onChanged={async () => { refreshMeta(); await _uploadDb().catch(() => {}) }}
+        />
+      )}
       {showSyncSettings && (
         <SyncSettings
           webdavConfig={config}

@@ -13,6 +13,13 @@ export async function initSql() {
 export function loadDatabase(buffer: ArrayBuffer) {
   if (db) db.close()
   db = new SQL!.Database(new Uint8Array(buffer))
+  _ensureTombstoneTables(db)
+}
+
+function _ensureTombstoneTables(d: Database) {
+  d.run(`CREATE TABLE IF NOT EXISTS deleted_category_names (name TEXT PRIMARY KEY, deleted_at INTEGER NOT NULL)`)
+  d.run(`CREATE TABLE IF NOT EXISTS deleted_tag_names (name TEXT PRIMARY KEY, deleted_at INTEGER NOT NULL)`)
+  d.run(`CREATE TABLE IF NOT EXISTS deleted_category_qualifiers (category_name TEXT NOT NULL, qualifier_name TEXT NOT NULL, deleted_at INTEGER NOT NULL, PRIMARY KEY (category_name, qualifier_name))`)
 }
 
 export function exportDatabase(): Uint8Array {
@@ -536,6 +543,125 @@ export function getEntryDateRange(): { minTs: number; maxTs: number } {
   const r = stmt.getAsObject() as Record<string, unknown>
   stmt.free()
   return { minTs: (r.mn as number) ?? Date.now(), maxTs: (r.mx as number) ?? Date.now() }
+}
+
+export function getAllQualifiers(): Qualifier[] {
+  const d = getDb()
+  const stmt = d.prepare(`SELECT * FROM qualifiers WHERE deleted = 0 ORDER BY position`)
+  const rows: Qualifier[] = []
+  while (stmt.step()) {
+    const r = stmt.getAsObject() as Record<string, unknown>
+    rows.push({ id: r.id as number, name: r.name as string, emoji_preset: r.emoji_preset as string, position: r.position as number, active: r.active as number })
+  }
+  stmt.free()
+  return rows
+}
+
+export function createCategory(name: string, color?: string): void {
+  getDb().run(`INSERT OR IGNORE INTO categories (name, color) VALUES (?, ?)`, [name.trim(), color ?? null])
+}
+
+export function updateCategory(id: number, name: string, color?: string): void {
+  getDb().run(`UPDATE categories SET name = ?, color = ? WHERE id = ?`, [name.trim(), color ?? null, id])
+}
+
+export function deleteCategory(id: number): void {
+  const d = getDb()
+  const stmt = d.prepare(`SELECT name FROM categories WHERE id = ?`)
+  stmt.bind([id])
+  if (stmt.step()) {
+    const name = (stmt.getAsObject() as { name: string }).name
+    d.run(`INSERT OR IGNORE INTO deleted_category_names (name, deleted_at) VALUES (?, ?)`, [name, now()])
+  }
+  stmt.free()
+  d.run(`DELETE FROM categories WHERE id = ?`, [id])
+}
+
+export function createTag(name: string): void {
+  getDb().run(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name.trim()])
+}
+
+export function updateTag(id: number, name: string): void {
+  getDb().run(`UPDATE tags SET name = ? WHERE id = ?`, [name.trim(), id])
+}
+
+export function deleteTag(id: number): void {
+  const d = getDb()
+  const stmt = d.prepare(`SELECT name FROM tags WHERE id = ?`)
+  stmt.bind([id])
+  if (stmt.step()) {
+    const name = (stmt.getAsObject() as { name: string }).name
+    d.run(`INSERT OR IGNORE INTO deleted_tag_names (name, deleted_at) VALUES (?, ?)`, [name, now()])
+  }
+  stmt.free()
+  d.run(`DELETE FROM tags WHERE id = ?`, [id])
+}
+
+export function createQualifier(name: string, emojiPreset: string): void {
+  const d = getDb()
+  const res = d.exec(`SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM qualifiers WHERE deleted = 0`)
+  const pos = res[0] ? (res[0].values[0][0] as number) : 0
+  d.run(`INSERT INTO qualifiers (name, emoji_preset, position, active, deleted, updated_at) VALUES (?, ?, ?, 1, 0, ?)`, [name.trim(), emojiPreset, pos, now()])
+}
+
+export function updateQualifier(id: number, name: string, emojiPreset: string): void {
+  getDb().run(`UPDATE qualifiers SET name = ?, emoji_preset = ?, updated_at = ? WHERE id = ?`, [name.trim(), emojiPreset, now(), id])
+}
+
+export function setQualifierActive(id: number, active: boolean): void {
+  getDb().run(`UPDATE qualifiers SET active = ?, updated_at = ? WHERE id = ?`, [active ? 1 : 0, now(), id])
+}
+
+export function deleteQualifier(id: number): void {
+  getDb().run(`UPDATE qualifiers SET deleted = 1, active = 0, updated_at = ? WHERE id = ?`, [now(), id])
+}
+
+export function getCategoryQualifierMap(): Record<number, number[]> {
+  const d = getDb()
+  try {
+    const stmt = d.prepare(`SELECT category_id, qualifier_id FROM category_qualifiers`)
+    const result: Record<number, number[]> = {}
+    while (stmt.step()) {
+      const r = stmt.getAsObject() as { category_id: number; qualifier_id: number }
+      if (!result[r.category_id]) result[r.category_id] = []
+      result[r.category_id].push(r.qualifier_id)
+    }
+    stmt.free()
+    return result
+  } catch { return {} }
+}
+
+export function setCategoryQualifiers(categoryId: number, qualifierIds: number[]): void {
+  const d = getDb()
+  const catStmt = d.prepare(`SELECT name FROM categories WHERE id = ?`)
+  catStmt.bind([categoryId])
+  let catName: string | null = null
+  if (catStmt.step()) catName = (catStmt.getAsObject() as { name: string }).name
+  catStmt.free()
+
+  if (catName) {
+    const curStmt = d.prepare(`SELECT cq.qualifier_id, q.name AS qname FROM category_qualifiers cq JOIN qualifiers q ON q.id = cq.qualifier_id WHERE cq.category_id = ?`)
+    curStmt.bind([categoryId])
+    const current: { qualifier_id: number; qname: string }[] = []
+    while (curStmt.step()) current.push(curStmt.getAsObject() as { qualifier_id: number; qname: string })
+    curStmt.free()
+
+    const newSet = new Set(qualifierIds)
+    const ts = now()
+    for (const link of current) {
+      if (!newSet.has(link.qualifier_id))
+        d.run(`INSERT OR REPLACE INTO deleted_category_qualifiers (category_name, qualifier_name, deleted_at) VALUES (?, ?, ?)`, [catName, link.qname, ts])
+    }
+  }
+
+  d.run(`DELETE FROM category_qualifiers WHERE category_id = ?`, [categoryId])
+  for (const qid of qualifierIds)
+    d.run(`INSERT OR IGNORE INTO category_qualifiers (category_id, qualifier_id) VALUES (?, ?)`, [categoryId, qid])
+
+  if (qualifierIds.length > 0 && catName) {
+    const ph = qualifierIds.map(() => '?').join(',')
+    d.run(`DELETE FROM deleted_category_qualifiers WHERE category_name = ? AND qualifier_name IN (SELECT name FROM qualifiers WHERE id IN (${ph}))`, [catName, ...qualifierIds])
+  }
 }
 
 export function getTagStats(p: StatsPeriod): NameCount[] {
