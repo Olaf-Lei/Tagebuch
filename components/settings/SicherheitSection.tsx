@@ -83,7 +83,7 @@ export function SicherheitSection({ encEnabled, onEncEnabledChange }: Props) {
   };
 
   const handleSavePassword = async () => {
-    if (pwNew.length < 4) { setPwError(t.settings.pwErrorMinLength); return; }
+    if (pwNew.length < 6) { setPwError(t.settings.pwErrorMinLength); return; }
     if (pwNew !== pwConfirm) { setPwError(t.settings.pwErrorMismatch); return; }
     if (pwModal === 'change') {
       const ok = await checkFallbackPassword(pwCurrent);

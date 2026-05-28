@@ -55,6 +55,7 @@ export async function loadConfig(): Promise<Partial<WebDavConfig>> {
 }
 
 export async function saveConfig(config: WebDavConfig): Promise<void> {
+  if (!config.url.trim().startsWith('https://')) throw new Error('Nextcloud-URL muss mit https:// beginnen');
   await Promise.all([
     SecureStore.setItemAsync(STORE_URL, config.url.trim()),
     SecureStore.setItemAsync(STORE_USER, config.username.trim()),

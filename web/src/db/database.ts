@@ -207,7 +207,8 @@ export function createEntry(
     d.run(`INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)`, [id, tid])
   }
   for (const [qid, val] of Object.entries(qualifierValues)) {
-    d.run(`INSERT OR REPLACE INTO entry_qualifiers (entry_id, qualifier_id, value) VALUES (?, ?, ?)`, [id, Number(qid), val])
+    const v = Math.max(1, Math.min(5, Number(val)))
+    d.run(`INSERT OR REPLACE INTO entry_qualifiers (entry_id, qualifier_id, value) VALUES (?, ?, ?)`, [id, Number(qid), v])
   }
   return id
 }
@@ -237,7 +238,8 @@ export function updateEntry(
     d.run(`INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)`, [id, tid])
   }
   for (const [qid, val] of Object.entries(qualifierValues)) {
-    d.run(`INSERT OR REPLACE INTO entry_qualifiers (entry_id, qualifier_id, value) VALUES (?, ?, ?)`, [id, Number(qid), val])
+    const v = Math.max(1, Math.min(5, Number(val)))
+    d.run(`INSERT OR REPLACE INTO entry_qualifiers (entry_id, qualifier_id, value) VALUES (?, ?, ?)`, [id, Number(qid), v])
   }
 }
 
@@ -399,13 +401,6 @@ export function getStatsOverview(p: StatsPeriod) {
   s1.step()
   const total = ((s1.getAsObject() as Record<string, unknown>).n as number) ?? 0
   s1.free()
-
-  // Debug: zeige min/max timestamps in Browser-Konsole (F12)
-  const sd = d.prepare('SELECT MIN(timestamp) as mn, MAX(timestamp) as mx FROM entries')
-  sd.step()
-  const dbg = sd.getAsObject() as Record<string, unknown>
-  sd.free()
-  console.log('[Tagebuch] Timestamps in DB — min:', dbg.mn, 'max:', dbg.mx, '| Filter from:', p.from, 'to:', p.to)
 
   const s2 = d.prepare('SELECT COUNT(*) as n FROM entries WHERE timestamp >= ? AND timestamp <= ?')
   s2.bind([p.from, p.to])

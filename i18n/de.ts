@@ -219,7 +219,7 @@ export const de = {
     pwNewPlaceholder: 'Neues Passwort (min. 4 Zeichen)',
     pwConfirmPlaceholder: 'Passwort wiederholen',
     pwSaved: 'Passwort gespeichert',
-    pwErrorMinLength: 'Mindestens 4 Zeichen',
+    pwErrorMinLength: 'Mindestens 6 Zeichen',
     pwErrorMismatch: 'Passwörter stimmen nicht überein',
     pwErrorWrong: 'Aktuelles Passwort falsch',
 

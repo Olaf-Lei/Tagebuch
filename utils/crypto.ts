@@ -50,12 +50,22 @@ export async function importEncKey(hexKey: string): Promise<void> {
 }
 
 // Decrypts an encrypted file and writes the result to targetPath.
+// Supports legacy OpenSSL format (starts with 'U2FsdGVk') and new TGBv2 format.
 export async function decryptToPath(encPath: string, targetPath: string): Promise<void> {
   const key = await getOrCreateKey();
+  const keyWA = CryptoJS.enc.Hex.parse(key);
   const encUri = encPath.startsWith('file://') ? encPath : `file://${encPath}`;
   const outUri = targetPath.startsWith('file://') ? targetPath : `file://${targetPath}`;
-  const encrypted = await readAsStringAsync(encUri, { encoding: EncodingType.UTF8 });
-  const decrypted = CryptoJS.AES.decrypt(encrypted, key);
+  const text = await readAsStringAsync(encUri, { encoding: EncodingType.UTF8 });
+  let decrypted: CryptoJS.lib.WordArray;
+  if (text.startsWith('TGBv2:')) {
+    const raw = CryptoJS.enc.Base64.parse(text.slice(6));
+    const iv = CryptoJS.lib.WordArray.create(raw.words.slice(0, 4), 16);
+    const ciphertext = CryptoJS.lib.WordArray.create(raw.words.slice(4), raw.sigBytes - 16);
+    decrypted = CryptoJS.AES.decrypt({ ciphertext } as CryptoJS.lib.CipherParams, keyWA, { iv });
+  } else {
+    decrypted = CryptoJS.AES.decrypt(text, key);
+  }
   const base64 = decrypted.toString(CryptoJS.enc.Base64);
   await writeAsStringAsync(outUri, base64, { encoding: EncodingType.Base64 });
 }
@@ -63,11 +73,15 @@ export async function decryptToPath(encPath: string, targetPath: string): Promis
 // Returns path to encrypted temp file. Caller must delete after upload.
 export async function encryptDbToTemp(dbPath: string): Promise<string> {
   const key = await getOrCreateKey();
+  const keyWA = CryptoJS.enc.Hex.parse(key);
   const uri = dbPath.startsWith('file://') ? dbPath : `file://${dbPath}`;
   const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
   const wordArray = CryptoJS.enc.Base64.parse(base64);
-  const encrypted = CryptoJS.AES.encrypt(wordArray, key).toString();
+  const iv = CryptoJS.lib.WordArray.random(16);
+  const encrypted = CryptoJS.AES.encrypt(wordArray, keyWA, { iv });
+  const combined = (iv.clone() as CryptoJS.lib.WordArray).concat(encrypted.ciphertext);
+  const output = 'TGBv2:' + combined.toString(CryptoJS.enc.Base64);
   const tempPath = cacheDirectory + 'tagebuch_upload.enc';
-  await writeAsStringAsync(tempPath!, encrypted, { encoding: EncodingType.UTF8 });
+  await writeAsStringAsync(tempPath!, output, { encoding: EncodingType.UTF8 });
   return tempPath!;
 }

@@ -13,6 +13,7 @@ import { useT } from '../i18n';
 const STORE_KEY      = 'biometric_enabled';
 const BG_TS_KEY      = 'biometric_bg_ts';
 const FAIL_COUNT_KEY = 'lock_fail_count';
+const LOCK_DELAY_MS  = 15_000;
 const FAIL_UNTIL_KEY = 'lock_fail_until';
 
 const DELAYS_S = [0, 5, 15, 30, 60, 300]; // wait after n-th failure (0-indexed)
@@ -296,7 +297,6 @@ export function BiometricProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const LOCK_DELAY_MS = 15_000;
 
   useEffect(() => {
     if (!enabled) return;

@@ -1,5 +1,13 @@
 <?php
-header('Access-Control-Allow-Origin: *');
+$allowed_origins = ['https://olovenet.de', 'https://www.olovenet.de'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($origin !== '') {
+    if (!in_array($origin, $allowed_origins, true)) {
+        http_response_code(403);
+        exit;
+    }
+    header('Access-Control-Allow-Origin: ' . $origin);
+}
 header('Access-Control-Allow-Methods: GET, PUT, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Webdav-Target, X-Webdav-User, X-Webdav-Pass');
 
@@ -10,18 +18,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $action = $_GET['action'] ?? '';
 
+function ipSubnet(string $addr): string {
+    if (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        $bin = inet_pton($addr);
+        $masked = substr($bin, 0, 6) . str_repeat("\x00", 10);
+        return md5(inet_ntop($masked));
+    }
+    $parts = explode('.', $addr);
+    return md5(($parts[0] ?? '0') . '.' . ($parts[1] ?? '0') . '.' . ($parts[2] ?? '0') . '.0');
+}
+
 if ($action === 'store_code') {
     header('Content-Type: application/json');
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $rawInput = file_get_contents('php://input');
+    if (strlen($rawInput) > 4096) { http_response_code(413); echo json_encode(['error' => 'Payload zu groß']); exit; }
+    $payload = json_decode($rawInput, true);
     if (!$payload) { http_response_code(400); echo json_encode(['error' => 'Ungültiger Body']); exit; }
     $tmp = sys_get_temp_dir();
+
+    // Rate-Limit: max 5 store_code-Requests pro IP in 5 Minuten
+    $ip = ipSubnet($_SERVER['REMOTE_ADDR'] ?? '');
+    $rlFile = $tmp . '/tgb_rlstore_' . $ip . '.json';
+    $now = time();
+    $rl = file_exists($rlFile) ? (json_decode(file_get_contents($rlFile), true) ?? []) : [];
+    $rl['ts'] = array_filter($rl['ts'] ?? [], fn($t) => $t > $now - 300);
+    if (count($rl['ts']) >= 5) {
+        http_response_code(429);
+        echo json_encode(['error' => 'Zu viele Anfragen. Bitte warten.']);
+        exit;
+    }
+    $rl['ts'][] = $now;
+    file_put_contents($rlFile, json_encode($rl));
+
     foreach (glob($tmp . '/tgb_relay_*.json') ?: [] as $f) {
-        if (filemtime($f) < time() - 300) @unlink($f);
+        if (filemtime($f) < $now - 300) @unlink($f);
     }
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $code = '';
     for ($i = 0; $i < 6; $i++) $code .= $chars[random_int(0, strlen($chars) - 1)];
-    file_put_contents($tmp . '/tgb_relay_' . $code . '.json', json_encode(['ts' => time(), 'p' => $payload]));
+    file_put_contents($tmp . '/tgb_relay_' . $code . '.json', json_encode(['ts' => $now, 'p' => $payload]));
     echo json_encode(['code' => $code]);
     exit;
 }
@@ -34,7 +69,7 @@ if ($action === 'fetch_code') {
     // Brute-force protection: progressive lockout per IP
     // Delays after n-th wrong attempt: 3→30s, 4→60s, 5→5min, 6→30min, 7+→1h
     $delays = [0, 0, 0, 30, 60, 300, 1800, 3600];
-    $ip = md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $ip = ipSubnet($_SERVER['REMOTE_ADDR'] ?? '');
     $rlFile = sys_get_temp_dir() . '/tgb_rl_' . $ip . '.json';
     $rl = file_exists($rlFile) ? (json_decode(file_get_contents($rlFile), true) ?? []) : [];
     $now = time();
@@ -120,7 +155,7 @@ $pass   = $_SERVER['HTTP_X_WEBDAV_PASS'] ?? '';
 $ch = curl_init($target);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
 if ($user !== '') {

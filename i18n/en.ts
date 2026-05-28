@@ -221,7 +221,7 @@ export const en: Strings = {
     pwNewPlaceholder: 'New password (min. 4 chars)',
     pwConfirmPlaceholder: 'Repeat password',
     pwSaved: 'Password saved',
-    pwErrorMinLength: 'At least 4 characters',
+    pwErrorMinLength: 'At least 6 characters',
     pwErrorMismatch: 'Passwords do not match',
     pwErrorWrong: 'Current password incorrect',
 
