@@ -1,5 +1,5 @@
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig'
-const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email'
+const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email'
 
 const LS = {
   ACCESS_TOKEN:  'gdrive_access_token',
@@ -110,8 +110,8 @@ export async function listDriveFolders(parentId: string = 'root'): Promise<{ id:
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=100`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
-  if (!res.ok) return []
   const data = await res.json()
+  if (!res.ok) throw new Error(`Google Drive API ${res.status}: ${data.error?.message ?? res.statusText}`)
   return (data.files ?? []) as { id: string; name: string }[]
 }
 

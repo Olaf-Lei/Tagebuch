@@ -149,11 +149,11 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
               <div style={s.menuOverlay} onClick={() => setMenuOpen(false)} />
               <div style={s.menu}>
                 <button style={s.menuItem} onClick={() => { onOpenManage(); setMenuOpen(false) }}>
-                  📋 Verwalten
+                  ⚙️ Einstellungen
                 </button>
                 <div style={s.menuDivider} />
                 <button style={s.menuItem} onClick={() => { onOpenSyncSettings(); setMenuOpen(false) }}>
-                  ⚙️ Sync-Einstellungen
+                  🔄 Sync-Einstellungen
                 </button>
                 <div style={s.menuDivider} />
                 <button style={s.menuItem} onClick={() => setExportOpen(o => !o)}>
@@ -169,7 +169,7 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
                 )}
                 <div style={s.menuDivider} />
                 <button style={s.menuItem} onClick={() => { setRelayOpen(true); setRelayInput(''); setRelayError(''); setMenuOpen(false) }}>
-                  📱 Einmalcode eingeben
+                  📱 App-Connect
                 </button>
                 <div style={s.menuDivider} />
                 <button style={{ ...s.menuItem, color: 'var(--error)' }} onClick={() => { onLogout(); setMenuOpen(false) }}>

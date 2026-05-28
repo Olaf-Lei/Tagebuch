@@ -86,7 +86,7 @@ export default function RootLayout() {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
-      _syncAllIfConfigured(); // App-Start: NC zuerst, dann GDrive
+      setTimeout(() => _syncAllIfConfigured(), 3000); // App-Start: Netz-DNS abwarten
     });
 
     const sub = AppState.addEventListener('change', async (nextState) => {

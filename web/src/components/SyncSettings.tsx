@@ -21,27 +21,38 @@ export default function SyncSettings({ webdavConfig, driveConnected, driveEmail,
   const [browserStack, setBrowserStack] = useState<{ id: string; name: string }[]>([])
   const [browserFolders, setBrowserFolders] = useState<{ id: string; name: string }[]>([])
   const [browserLoading, setBrowserLoading] = useState(false)
+  const [browserError, setBrowserError] = useState<string | null>(null)
   const [selectedFolderName, setSelectedFolderName] = useState<string>('')
   const [selectedFolderId, setFolderIdState] = useState<string>(getSelectedFolderId() ?? '')
 
+  async function _loadFolders(parentId: string) {
+    setBrowserLoading(true)
+    setBrowserError(null)
+    try {
+      const f = await listDriveFolders(parentId)
+      setBrowserFolders(f)
+    } catch (e: unknown) {
+      setBrowserError(e instanceof Error ? e.message : 'Fehler beim Laden')
+    } finally {
+      setBrowserLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!driveConnected || tab !== 'gdrive') return
-    setBrowserLoading(true)
-    listDriveFolders('root').then(f => { setBrowserFolders(f); setBrowserLoading(false) }).catch(() => setBrowserLoading(false))
+    _loadFolders('root')
   }, [driveConnected, tab])
 
   function browserNavigate(folder: { id: string; name: string }) {
     setBrowserStack(s => [...s, folder])
-    setBrowserLoading(true)
-    listDriveFolders(folder.id).then(f => { setBrowserFolders(f); setBrowserLoading(false) }).catch(() => setBrowserLoading(false))
+    _loadFolders(folder.id)
   }
 
   function browserUp() {
     const newStack = browserStack.slice(0, -1)
     const parentId = newStack.length > 0 ? newStack[newStack.length - 1].id : 'root'
     setBrowserStack(newStack)
-    setBrowserLoading(true)
-    listDriveFolders(parentId).then(f => { setBrowserFolders(f); setBrowserLoading(false) }).catch(() => setBrowserLoading(false))
+    _loadFolders(parentId)
   }
 
   function handleSelectFolder(id: string, name: string) {
@@ -171,7 +182,10 @@ export default function SyncSettings({ webdavConfig, driveConnected, driveEmail,
                     </div>
                     <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                       {browserLoading && <div style={{ padding: '10px 14px', color: 'var(--text2)', fontSize: 13 }}>Lade…</div>}
-                      {!browserLoading && browserFolders.length === 0 && (
+                      {!browserLoading && browserError && (
+                        <div style={{ padding: '10px 14px', color: 'var(--error)', fontSize: 13 }}>{browserError}</div>
+                      )}
+                      {!browserLoading && !browserError && browserFolders.length === 0 && (
                         <div style={{ padding: '10px 14px', color: 'var(--text2)', fontSize: 13 }}>Keine Unterordner</div>
                       )}
                       {!browserLoading && browserFolders.map(f => (
