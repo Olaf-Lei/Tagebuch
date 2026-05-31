@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.9.11 — 2026-05-31
+- Startup-Sync: bis zu 3 Versuche mit steigendem Delay (0 / +10s / +25s) statt eines einzigen Versuchs nach 3s
+- NC und GD werden sequenziell mit Retry gestartet — kein Lock-Konflikt, kein stiller Fehlschlag beim Netzwerkstart
+
+## v2.9.10 — 2026-05-31
+- WebDAV-Upload atomar: erst PUT auf `tagebuch.db.enc.tmp`, dann WebDAV MOVE → unterbricht ein Absturz den Upload, bleibt die produktive Datei unberührt
+- WAL-Checkpoint verifiziert (NC + GD): `PRAGMA wal_checkpoint(FULL)` mit `log === checkpointed`-Prüfung; bei Misserfolg ein Retry, sonst Upload-Abbruch mit Fehlermeldung im Sync-Log
+- Lokale Dateigröße wird vor jedem Upload ins Sync-Log geschrieben
+
+## v2.9.9 — 2026-05-31
+- Korrupte lokale DB blockiert nicht mehr den App-Start: `initDb()` fängt Fehler ab, löscht die DB und initialisiert neu (Daten via Sync wiederherstellbar)
+
 ## v2.8.15 — 2026-05-08
 - Vollständig dynamische Mehrsprachigkeit: Default-Kategorien, Qualifier-Presets und Export-Button werden zur Laufzeit übersetzt
 - `categories.key`-Spalte (Migration + Backfill) für Seed-Kategorien (diary/health/nutrition/sports/wellbeing)

@@ -207,13 +207,28 @@ async function _uploadWebdav(
     await appendLog('error', `Lokale DB beschädigt, Upload abgebrochen: ${details}`);
     throw new Error(`local_corrupt: ${details}`);
   }
-  // WAL in Hauptdatei flushen — sonst enthält die .db beim Upload nur 1 leere Page
-  await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
+
+  // WAL vollständig in Hauptdatei schreiben; Ergebnis prüfen
+  const cp = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
+    `PRAGMA wal_checkpoint(FULL)`,
+  );
+  if (cp && cp.log !== cp.checkpointed) {
+    await appendLog('warn', `WAL-Checkpoint unvollständig (${cp.checkpointed}/${cp.log}), retry…`);
+    const cp2 = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
+      `PRAGMA wal_checkpoint(FULL)`,
+    );
+    if (cp2 && cp2.log !== cp2.checkpointed) {
+      const msg = `WAL-Checkpoint fehlgeschlagen (${cp2.checkpointed}/${cp2.log}) — Upload abgebrochen`;
+      await appendLog('error', msg);
+      throw new Error(msg);
+    }
+  }
 
   const encrypted = await isEncryptionEnabled();
   const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
-  const uploadUrl = buildUrl(remoteFilename);
-  await appendLog('info', `Upload: ${uploadUrl}, Verschlüsselung: ${encrypted ? 'ja' : 'nein'}`);
+  const remoteTmpFilename = encrypted ? 'tagebuch.db.enc.tmp' : 'tagebuch.db.tmp';
+  const tmpUrl = buildUrl(remoteTmpFilename);
+  const finalUrl = buildUrl(remoteFilename);
 
   let uploadPath = dbPath;
   let tempUpPath: string | null = null;
@@ -228,9 +243,13 @@ async function _uploadWebdav(
     }
   }
 
+  const localInfo = await getInfoAsync(uploadPath);
+  const localSize = localInfo.exists ? localInfo.size : 0;
+  await appendLog('info', `Upload → ${remoteTmpFilename}, ${localSize} bytes, enc: ${encrypted ? 'ja' : 'nein'}`);
+
   let result: { status: number };
   try {
-    result = await uploadAsync(uploadUrl, uploadPath, {
+    result = await uploadAsync(tmpUrl, uploadPath, {
       httpMethod: 'PUT',
       uploadType: FileSystemUploadType.BINARY_CONTENT,
       headers: {
@@ -238,7 +257,6 @@ async function _uploadWebdav(
         'Content-Type': 'application/octet-stream',
       },
     });
-    await appendLog('info', `HTTP-Status: ${result.status}`);
   } catch (e: any) {
     if (tempUpPath) await deleteAsync(`file://${tempUpPath}`, { idempotent: true }).catch(() => {});
     const msg = `Netzwerkfehler: ${e?.message ?? String(e)}`;
@@ -258,6 +276,25 @@ async function _uploadWebdav(
     await appendLog('error', msg);
     throw new Error(msg);
   }
+
+  // Atomares Umbenennen: .tmp → finale Datei; unterbricht ein Absturz den Upload,
+  // bleibt nur die wertlose .tmp — die produktive Datei bleibt unberührt
+  const moveResp = await fetch(tmpUrl, {
+    method: 'MOVE',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      Destination: finalUrl,
+      Overwrite: 'T',
+    },
+  });
+  if (!moveResp.ok) {
+    await fetch(tmpUrl, { method: 'DELETE', headers: { Authorization: `Basic ${credentials}` } }).catch(() => {});
+    const msg = `WebDAV MOVE fehlgeschlagen: HTTP ${moveResp.status}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
+  }
+
+  await appendLog('info', `Upload OK (${result.status}), MOVE OK (${moveResp.status})`);
 
   const now = new Date().toLocaleString('de-DE', {
     day: '2-digit',

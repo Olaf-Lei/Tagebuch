@@ -12,7 +12,8 @@ import { LanguageProvider, type Language } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import '../sync/backgroundSync'; // registers TaskManager task at module level
 import { darkColors, lightColors } from '../components/theme';
-import { initDb } from '../db/schema';
+import { initDb, closeDb } from '../db/schema';
+import { deleteDatabaseAsync } from 'expo-sqlite';
 import { ensureReminderScheduled } from '../utils/notifications';
 import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
 import { syncIfConfigured as gdriveSyncIfConfigured, syncNow as gdriveSyncNow, isConnected as gdriveIsConnected, getLastSyncMs as gdriveGetLastSyncMs } from '../sync/googledrive';
@@ -60,6 +61,13 @@ async function _syncAllIfConfigured() {
   }
 }
 
+async function _syncWithRetry(fn: () => Promise<void>): Promise<void> {
+  for (const delay of [0, 10_000, 25_000]) {
+    if (delay > 0) await new Promise<void>(r => setTimeout(r, delay));
+    try { await fn(); return; } catch {}
+  }
+}
+
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -74,7 +82,12 @@ export default function RootLayout() {
       useNativeDriver: true,
     }).start();
 
-    initDb().then(async () => {
+    const tryInit = () => initDb().catch(async () => {
+      await closeDb();
+      await deleteDatabaseAsync('tagebuch.db');
+      return initDb();
+    });
+    tryInit().then(async () => {
       const wizardDone = await SecureStore.getItemAsync(WIZARD_DONE_KEY);
       if (!wizardDone) {
         const saved = await SecureStore.getItemAsync('app_language');
@@ -86,7 +99,16 @@ export default function RootLayout() {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
-      setTimeout(() => _syncAllIfConfigured(), 3000); // App-Start: Netz-DNS abwarten
+      setTimeout(async () => {
+        const config = await loadConfig();
+        if (config.url && config.username && config.password) {
+          await _syncWithRetry(() => syncNow());
+        }
+        const connected = await gdriveIsConnected();
+        if (connected) {
+          await _syncWithRetry(() => gdriveSyncNow());
+        }
+      }, 3_000);
     });
 
     const sub = AppState.addEventListener('change', async (nextState) => {

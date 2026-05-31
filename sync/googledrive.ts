@@ -376,7 +376,20 @@ async function _uploadGDrive(
     await appendLog('error', `Lokale DB beschädigt, Upload abgebrochen: ${details}`);
     throw new Error(`local_corrupt: ${details}`);
   }
-  await db.execAsync(`PRAGMA wal_checkpoint(TRUNCATE)`);
+  const cp = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
+    `PRAGMA wal_checkpoint(FULL)`,
+  );
+  if (cp && cp.log !== cp.checkpointed) {
+    await appendLog('warn', `WAL-Checkpoint unvollständig (${cp.checkpointed}/${cp.log}), retry…`);
+    const cp2 = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
+      `PRAGMA wal_checkpoint(FULL)`,
+    );
+    if (cp2 && cp2.log !== cp2.checkpointed) {
+      const msg = `WAL-Checkpoint fehlgeschlagen (${cp2.checkpointed}/${cp2.log}) — Upload abgebrochen`;
+      await appendLog('error', msg);
+      throw new Error(msg);
+    }
+  }
 
   const encrypted = await isEncryptionEnabled();
   const uploadFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
