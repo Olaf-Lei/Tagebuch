@@ -127,7 +127,7 @@ export const en: Strings = {
     gdriveRestore: 'Restore from Google Drive',
     gdriveLastSync: 'Last (Drive): ',
     gdriveSetupHint: 'Setup',
-    gdriveSetupHintText: 'Google Cloud Console → APIs & Services → Enable Drive API → Credentials → Create OAuth 2.0 Client ID → Type: Android → Package name: com.tagebuch.app → enter SHA-1 of your keystore. No client secret required.',
+    gdriveSetupHintText: 'Google Cloud Console → APIs & Services → Enable Drive API → Credentials → Create OAuth 2.0 Client ID → Type: Android → Package name: com.simpletagebuch.app → enter SHA-1 of your keystore. No client secret required.',
     gdriveConnectError: 'Connection failed',
     gdriveRestoreConfirmTitle: 'Restore from Google Drive?',
     gdriveRestoreConfirmMsg: 'All local data will be replaced by the backup.',
@@ -248,7 +248,7 @@ export const en: Strings = {
     recoveryReplaceBtn: 'Replace',
     recoveryGenerateBtn: 'Generate',
     keyResetTitle: 'Reset key?',
-    keyResetMsg: 'Existing backups on Nextcloud can no longer be decrypted.',
+    keyResetMsg: 'Existing backups on Nextcloud and Google Drive can no longer be decrypted.',
     keyResetBtn: 'Reset',
     exportFailTitle: 'Export failed',
     btnExportDb: 'Database',
@@ -279,10 +279,10 @@ export const en: Strings = {
     inhalteBody: 'Categories\nCategories group your entries. An entry can have multiple categories. The colour symbol opens a colour picker. Use 📊 to assign qualifiers to a category — they will appear first when creating an entry.\n\nQualifiers\nQualifiers are emoji scales from 1–5 (mood, wellbeing, sleep, energy, etc.). Category-linked qualifiers are shown automatically when the category is selected. Long-press to reorder.\n\nTags\nTags are free-form keywords. Type them directly in the entry — they are created automatically and suggested via autocomplete next time.',
 
     syncTitle: 'Sync & Backup',
-    syncBody: 'Nextcloud (WebDAV)\nEnter URL, username, password and path (e.g. /remote.php/dav/files/USER/Diary). Then tap Sync.\n\nGoogle Drive\nTap "Connect Google Drive" and sign in with your Google account. Select a folder — the app stores the database there.\n\nBoth backends at once\nNextcloud and Google Drive can both be active simultaneously. During dual sync, Nextcloud is synced first, then Google Drive.\n\nEncryption before upload\nIf enabled under Security, the database is encrypted with AES-256 before uploading. Nextcloud/Google Drive only see an unreadable blob — the key stays on your device.\n\nAuto-sync\nChoose an interval (5 min to 1 hour) or disable auto-sync. The primary trigger is returning to the foreground.',
+    syncBody: 'Nextcloud (WebDAV)\nEnter URL, username, password and path (e.g. /remote.php/dav/files/USER/Diary). Then tap Sync.\n\nGoogle Drive\nTap "Connect Google Drive" and sign in with your Google account. Select a folder — the app stores the database there.\n\nBoth backends at once\nNextcloud and Google Drive can both be active simultaneously. During dual sync, Nextcloud is synced first, then Google Drive.\n\nEncryption before upload\nIf enabled under Security, the database is encrypted with AES-256-GCM before uploading. Nextcloud/Google Drive only see an unreadable blob — the key stays on your device.\n\nAuto-sync\nChoose an interval (15 minutes to 24 hours) or disable auto-sync. The primary trigger is returning to the foreground.\n\nBackup versions\nA daily snapshot is created automatically on each upload. Under "Older Versions" you can browse and restore past versions. Retention is configurable under "Backup Retention" (3–30 days).',
 
     sicherheitTitle: 'Security',
-    sicherheitBody: 'Biometric lock\nWhen enabled, the app locks on start and after 15 seconds in the background. Unlock with fingerprint, face recognition or password. System dialogs (e.g. GPS permission) do not trigger the lock.\n\nPassword\nUsed as a fallback to biometrics or as the sole method. The hash (SHA-256) is stored in the device\'s secure storage — the plaintext password never leaves the app. Use the 📷 button to reset the password via biometrics.\n\nEncryption\nThe database is encrypted with AES-256 before upload. Find the key under "Export key" — copy it to every device you want to sync. Without this key, backups cannot be restored.',
+    sicherheitBody: 'Biometric lock\nWhen enabled, the app locks on start and after 15 seconds in the background. Unlock with fingerprint, face recognition or password. System dialogs (e.g. GPS permission) do not trigger the lock.\n\nPassword\nUsed as a fallback to biometrics or as the sole method. The password is hashed using PBKDF2 (100,000 iterations) and stored in the device\'s encrypted secure storage — the plaintext never leaves the app. Use the 📷 button to reset the password via biometrics.\n\nEncryption\nThe database is encrypted with AES-256-GCM before upload. Find the key under "Export key" — copy it to every device you want to sync. Without this key, backups cannot be restored.\n\nScreenshots\nThe app blocks screenshots and screen recordings (Android FLAG_SECURE) to prevent diary entries from appearing in the gallery or app switcher preview.',
 
     erinnerungenTitle: 'Reminders',
     erinnerungenBody: 'Enable a daily reminder so you don\'t forget to write. Set the time — the notification appears every day at the chosen time.\n\nThe app needs notification permission. If you declined it on first launch, you can grant it later in the Android system settings.',
