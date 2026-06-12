@@ -180,6 +180,7 @@ export async function mergeRemoteDb(
         JOIN remote.categories rc ON rc.id = rec.category_id
         JOIN entries le ON le.created_at = re.created_at
         JOIN categories lc ON lc.name = rc.name
+        WHERE re.updated_at >= le.updated_at
       `);
       await db.execAsync(`
         INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
@@ -189,6 +190,7 @@ export async function mergeRemoteDb(
         JOIN remote.tags rt ON rt.id = ret.tag_id
         JOIN entries le ON le.created_at = re.created_at
         JOIN tags lt ON lt.name = rt.name
+        WHERE re.updated_at >= le.updated_at
       `);
       if (hasRemoteQualifiers) {
         await db.execAsync(`
@@ -199,6 +201,7 @@ export async function mergeRemoteDb(
           JOIN remote.entries re ON re.id = req.entry_id
           JOIN entries le ON le.created_at = re.created_at
           JOIN qualifiers lq ON lq.name = rq.name
+          WHERE re.updated_at >= le.updated_at
         `);
       }
       if (hasRemoteCatQualifiers) {

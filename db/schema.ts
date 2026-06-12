@@ -208,4 +208,7 @@ export async function initDb(): Promise<void> {
       PRIMARY KEY (category_name, qualifier_name)
     )
   `);
+
+  // Migration: UNIQUE-Index auf entries.created_at (Sync-Schlüssel)
+  try { await db.execAsync('CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_created_at ON entries (created_at)'); } catch {}
 }
