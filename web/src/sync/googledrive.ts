@@ -1,4 +1,6 @@
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig'
+import { ConflictError } from './errors'
+
 const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email'
 
 const LS = {
@@ -9,6 +11,8 @@ const LS = {
   FILE_ID_ENC:   'gdrive_file_id_enc',
   EMAIL:         'gdrive_email',
   FOLDER_ID:     'gdrive_folder_id',
+  REV_DB:        'gdrive_rev_db',
+  REV_ENC:       'gdrive_rev_enc',
 }
 
 function _b64url(bytes: Uint8Array): string {
@@ -137,10 +141,21 @@ async function _downloadById(fileId: string, token: string): Promise<ArrayBuffer
   return res.arrayBuffer()
 }
 
+async function _getHeadRevisionId(fileId: string, token: string): Promise<string | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=headRevisionId`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  return (data.headRevisionId as string) ?? null
+}
+
 async function _upload(
   content: Uint8Array | string,
   filename: string,
   fileIdKey: string,
+  revKey: string,
   token: string,
 ): Promise<void> {
   const raw = typeof content === 'string' ? new TextEncoder().encode(content) : content
@@ -148,11 +163,17 @@ async function _upload(
   const existingId = localStorage.getItem(fileIdKey)
 
   if (existingId) {
+    const storedRev = localStorage.getItem(revKey)
+    if (storedRev) {
+      const currentRev = await _getHeadRevisionId(existingId, token)
+      if (currentRev !== null && currentRev !== storedRev) throw new ConflictError()
+    }
+
     const res = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,
       { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' }, body: buf }
     )
-    if (res.status === 404) { localStorage.removeItem(fileIdKey); return _upload(content, filename, fileIdKey, token) }
+    if (res.status === 404) { localStorage.removeItem(fileIdKey); return _upload(content, filename, fileIdKey, revKey, token) }
     if (!res.ok) throw new Error(`Drive-Upload fehlgeschlagen: ${res.status}`)
     return
   }
@@ -182,19 +203,31 @@ export async function downloadLatest(): Promise<{ data: ArrayBuffer | string; is
   let fileId = localStorage.getItem(LS.FILE_ID_ENC) ?? await _findFile('tagebuch.db.enc', token)
   if (fileId) {
     localStorage.setItem(LS.FILE_ID_ENC, fileId)
-    return { data: new TextDecoder().decode(await _downloadById(fileId, token)), isEnc: true }
+    const [buf, rev] = await Promise.all([_downloadById(fileId, token), _getHeadRevisionId(fileId, token)])
+    if (rev) localStorage.setItem(LS.REV_ENC, rev)
+    else localStorage.removeItem(LS.REV_ENC)
+    return { data: new TextDecoder().decode(buf), isEnc: true }
   }
   fileId = localStorage.getItem(LS.FILE_ID_DB) ?? await _findFile('tagebuch.db', token)
   if (fileId) {
     localStorage.setItem(LS.FILE_ID_DB, fileId)
-    return { data: await _downloadById(fileId, token), isEnc: false }
+    const [buf, rev] = await Promise.all([_downloadById(fileId, token), _getHeadRevisionId(fileId, token)])
+    if (rev) localStorage.setItem(LS.REV_DB, rev)
+    else localStorage.removeItem(LS.REV_DB)
+    return { data: buf, isEnc: false }
   }
   throw new Error('Keine Tagebuch-Datenbank in Google Drive gefunden. Bitte zuerst mit der Android-App synchronisieren.')
 }
 
 export async function uploadLatest(content: Uint8Array | string, isEnc: boolean): Promise<void> {
   const token = await _getToken()
-  await _upload(content, isEnc ? 'tagebuch.db.enc' : 'tagebuch.db', isEnc ? LS.FILE_ID_ENC : LS.FILE_ID_DB, token)
+  await _upload(
+    content,
+    isEnc ? 'tagebuch.db.enc' : 'tagebuch.db',
+    isEnc ? LS.FILE_ID_ENC : LS.FILE_ID_DB,
+    isEnc ? LS.REV_ENC : LS.REV_DB,
+    token,
+  )
 }
 
 export function signOut(): void {

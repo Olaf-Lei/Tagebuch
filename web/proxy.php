@@ -10,6 +10,7 @@ if ($origin !== '') {
 }
 header('Access-Control-Allow-Methods: GET, PUT, MOVE, COPY, DELETE, PROPFIND, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Webdav-Target, X-Webdav-User, X-Webdav-Pass, Destination, Overwrite, Depth');
+header('Access-Control-Expose-Headers: ETag');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -233,13 +234,16 @@ if (preg_match('/^(0|1|infinity)$/i', $depth)) $fwdHeaders[] = 'Depth: ' . $dept
 if (in_array($method, ['PUT', 'PROPFIND'], true)) {
     $data = file_get_contents('php://input');
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    if ($method === 'PUT') $fwdHeaders[] = 'Content-Type: application/octet-stream';
+    if ($method === 'PUT')      $fwdHeaders[] = 'Content-Type: application/octet-stream';
+    if ($method === 'PROPFIND') $fwdHeaders[] = 'Content-Type: application/xml; charset=UTF-8';
 }
 
 if ($fwdHeaders) curl_setopt($ch, CURLOPT_HTTPHEADER, $fwdHeaders);
+curl_setopt($ch, CURLOPT_HEADER, true);
 
-$response = curl_exec($ch);
+$raw      = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$hdrSize  = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
 
@@ -249,6 +253,13 @@ if ($curlErr) {
     exit;
 }
 
+$respHeaders = substr($raw, 0, $hdrSize);
+$body        = substr($raw, $hdrSize);
+
+if (preg_match('/^ETag:\s*(.+)$/im', $respHeaders, $m)) {
+    header('ETag: ' . trim($m[1]));
+}
+
 http_response_code($httpCode);
 header('Content-Type: application/octet-stream');
-echo $response;
+echo $body;
