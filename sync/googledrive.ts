@@ -7,6 +7,7 @@ import {
 } from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
+import * as ExpoC from 'expo-crypto';
 import { getDbPath, getDb } from '../db/schema';
 import { isEncryptionEnabled, encryptDbToTemp, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
@@ -39,6 +40,19 @@ function _encodeForm(params: Record<string, string>): string {
   return Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
+}
+
+function _b64url(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function _pkceVerifierAndChallenge(): Promise<{ verifier: string; challenge: string }> {
+  const verifier = _b64url(await ExpoC.getRandomBytesAsync(32) as Uint8Array);
+  const b64 = await ExpoC.digestStringAsync(
+    ExpoC.CryptoDigestAlgorithm.SHA256, verifier, { encoding: ExpoC.CryptoEncoding.BASE64 });
+  const challenge = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { verifier, challenge };
 }
 
 export async function isConnected(): Promise<boolean> {
@@ -237,16 +251,20 @@ async function _downloadFile(accessToken: string, fileId: string, destPath: stri
 }
 
 export async function authenticate(): Promise<void> {
-  const authUrl =
-    'https://accounts.google.com/o/oauth2/v2/auth?' +
-    `client_id=${encodeURIComponent(CLIENT_ID)}&` +
-    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `response_type=code&` +
-    `scope=${encodeURIComponent(SCOPE)}&` +
-    `access_type=offline&` +
-    `prompt=consent`;
+  const { verifier, challenge } = await _pkceVerifierAndChallenge();
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: SCOPE,
+    access_type: 'offline',
+    prompt: 'consent',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+  });
 
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, REDIRECT_URI);
+  const result = await WebBrowser.openAuthSessionAsync(
+    `https://accounts.google.com/o/oauth2/v2/auth?${params}`, REDIRECT_URI);
   if (result.type !== 'success') throw new Error('Authentifizierung abgebrochen.');
 
   const codeMatch = result.url.match(/[?&]code=([^&]+)/);
@@ -261,6 +279,7 @@ export async function authenticate(): Promise<void> {
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       grant_type: 'authorization_code',
+      code_verifier: verifier,
     }),
   });
   if (!tokenResponse.ok) {
