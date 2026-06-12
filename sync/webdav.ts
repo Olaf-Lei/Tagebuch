@@ -2,17 +2,25 @@ import {
   getInfoAsync,
   uploadAsync,
   downloadAsync,
-  copyAsync,
   deleteAsync,
   cacheDirectory,
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
-import { getDbPath, closeDb, initDb, getDb } from '../db/schema';
-import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } from '../utils/crypto';
+import { getDbPath, getDb } from '../db/schema';
+import { isEncryptionEnabled, encryptDbToTemp, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 import { acquireSyncLock, releaseSyncLock, setSyncError } from './syncState';
+import { applyRestore } from './restoreHelper';
+import {
+  todayStr,
+  cutoffStr,
+  getRetentionDays,
+  getWebdavBackups,
+  saveWebdavBackups,
+  type BackupEntry,
+} from './backupRotation';
 
 function buildWebDavUrl(base: string, dir: string, username: string, filename: string): string {
   const p = `${dir}/${filename}`;
@@ -296,6 +304,10 @@ async function _uploadWebdav(
 
   await appendLog('info', `Upload OK (${result.status}), MOVE OK (${moveResp.status})`);
 
+  await _rotateWebdavBackups(buildUrl, credentials, encrypted).catch(async (e) => {
+    await appendLog('warn', `Backup-Rotation fehlgeschlagen: ${e?.message ?? String(e)}`);
+  });
+
   const now = new Date().toLocaleString('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -305,6 +317,100 @@ async function _uploadWebdav(
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
   await SecureStore.setItemAsync(STORE_LAST_SYNC_MS, String(Date.now()));
+}
+
+async function _rotateWebdavBackups(
+  buildUrl: (f: string) => string,
+  credentials: string,
+  encrypted: boolean,
+): Promise<void> {
+  const today = todayStr();
+  const retention = await getRetentionDays();
+  const backups = await getWebdavBackups();
+
+  if (!backups.find((b) => b.date === today)) {
+    const mainFile = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
+    const backupFile = encrypted ? `tagebuch_${today}.db.enc` : `tagebuch_${today}.db`;
+    const copyResp = await fetch(buildUrl(mainFile), {
+      method: 'COPY',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        Destination: buildUrl(backupFile),
+        Overwrite: 'T',
+      },
+    });
+    if (copyResp.ok) {
+      backups.unshift({ date: today, enc: encrypted });
+      await appendLog('info', `Backup angelegt: ${backupFile}`);
+    }
+  }
+
+  const cutoff = cutoffStr(retention);
+  const toDelete = backups.filter((b) => b.date < cutoff);
+  const toKeep = backups.filter((b) => b.date >= cutoff);
+
+  for (const b of toDelete) {
+    const filename = b.enc ? `tagebuch_${b.date}.db.enc` : `tagebuch_${b.date}.db`;
+    await fetch(buildUrl(filename), {
+      method: 'DELETE',
+      headers: { Authorization: `Basic ${credentials}` },
+    }).catch(() => {});
+  }
+  if (toDelete.length > 0) await appendLog('info', `${toDelete.length} altes Backup(s) gelöscht`);
+
+  await saveWebdavBackups(toKeep);
+}
+
+export async function listWebdavBackups(): Promise<BackupEntry[]> {
+  return getWebdavBackups();
+}
+
+export async function restoreFromVersionWebdav(entry: BackupEntry): Promise<void> {
+  await appendLog('info', `Restore Version ${entry.date} gestartet`);
+  const config = await loadConfig();
+  if (!config.url || !config.username || !config.password) throw new Error('Nextcloud nicht konfiguriert.');
+
+  if (entry.enc) {
+    const key = await exportEncKey();
+    if (!key) {
+      throw new Error(
+        'Backup ist verschlüsselt, aber kein Schlüssel vorhanden.\n\n' +
+          'Einstellungen → Sicherheit → Schlüssel exportieren (Gerät 1) → Schlüssel importieren (dieses Gerät).',
+      );
+    }
+  }
+
+  const credentials = btoa(`${config.username}:${config.password}`);
+  const base = config.url.replace(/\/$/, '');
+  const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
+  const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
+  const filename = entry.enc ? `tagebuch_${entry.date}.db.enc` : `tagebuch_${entry.date}.db`;
+
+  const tempPath = `${cacheDirectory ?? ''}tagebuch_version_restore.tmp`;
+  await appendLog('info', `Lade Backup ${filename}…`);
+  let dl: { status: number };
+  try {
+    dl = await downloadAsync(buildUrl(filename), tempPath, { headers: { Authorization: `Basic ${credentials}` } });
+  } catch (e: any) {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+    throw new Error(`Netzwerkfehler: ${e?.message ?? String(e)}`);
+  }
+  if (dl.status !== 200) {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+    throw new Error(dl.status === 401 ? 'Authentifizierung fehlgeschlagen.' : `HTTP ${dl.status}`);
+  }
+
+  try {
+    await applyRestore(tempPath, entry.enc);
+  } catch (e: any) {
+    const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
+  } finally {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+  }
+
+  await appendLog('info', `Restore Version ${entry.date} erfolgreich`);
 }
 
 export async function pushNow(): Promise<void> {
@@ -416,19 +522,9 @@ export async function restoreNow(): Promise<void> {
     }
   }
 
-  const rawDbPath = await getDbPath();
-  await closeDb();
-  await appendLog('info', 'DB geschlossen, ersetze Datei…');
-
+  await appendLog('info', 'Ersetze Datei…');
   try {
-    if (isEncFile) {
-      await decryptToPath(tempPath, rawDbPath);
-    } else {
-      await deleteAsync(`file://${rawDbPath}`, { idempotent: true });
-      await copyAsync({ from: tempPath, to: `file://${rawDbPath}` });
-    }
-    await deleteAsync(`file://${rawDbPath}-wal`, { idempotent: true }).catch(() => {});
-    await deleteAsync(`file://${rawDbPath}-shm`, { idempotent: true }).catch(() => {});
+    await applyRestore(tempPath, isEncFile);
   } catch (e: any) {
     const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
     await appendLog('error', msg);
@@ -437,6 +533,5 @@ export async function restoreNow(): Promise<void> {
     await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
   }
 
-  await initDb();
   await appendLog('info', 'Restore erfolgreich');
 }

@@ -261,6 +261,15 @@ export const de = {
     deleteCategoryMsg: 'Die Kategorie wird aus allen Einträgen entfernt.',
     deleteTagTitle: (name: string) => `„#${name}" löschen?`,
     deleteTagMsg: 'Der Tag wird aus allen Einträgen entfernt.',
+
+    subBackupRetention: 'Backup-Aufbewahrung',
+    backupRetentionDays: (n: number) => `${n} Tage`,
+    backupVersionsBtn: 'Ältere Versionen',
+    backupVersionsNCTitle: 'Backup-Versionen (Nextcloud)',
+    backupVersionsGDTitle: 'Backup-Versionen (Google Drive)',
+    backupVersionsEmpty: 'Keine älteren Backup-Versionen vorhanden.\n\nVersionen werden automatisch beim nächsten Sync angelegt.',
+    backupVersionsRestoreConfirmTitle: (date: string) => `Backup vom ${date} laden?`,
+    backupVersionsRestoreConfirmMsg: 'Die lokale Datenbank wird durch dieses Backup ersetzt.',
   },
 
   sectionHelp: {

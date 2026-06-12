@@ -6,10 +6,17 @@ import {
 import { useRouter } from 'expo-router';
 import { useColors } from '../theme';
 import { useT } from '../../i18n';
-import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, pushNow, type WebDavConfig } from '../../sync/webdav';
+import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, pushNow, listWebdavBackups, restoreFromVersionWebdav, type WebDavConfig } from '../../sync/webdav';
 import * as gdrive from '../../sync/googledrive';
 import { getSyncLog, clearSyncLog, type SyncLogEntry } from '../../sync/syncLog';
 import { getAutoSyncInterval, setAutoSyncInterval } from '../../sync/backgroundSync';
+import {
+  getRetentionDays,
+  setRetentionDays,
+  DEFAULT_RETENTION,
+  type BackupEntry,
+  type DriveBackupEntry,
+} from '../../sync/backupRotation';
 
 interface Props {
   encEnabled: boolean;
@@ -48,6 +55,14 @@ export function SyncSection({ encEnabled }: Props) {
   const [gdriveNewFolderMode, setGDriveNewFolderMode] = useState(false);
   const [gdriveNewFolderName, setGDriveNewFolderName] = useState('');
   const [gdriveNewFolderCreating, setGDriveNewFolderCreating] = useState(false);
+
+  const [retentionDays, setRetentionDaysState] = useState(DEFAULT_RETENTION);
+  const [ncVersions, setNcVersions] = useState<BackupEntry[]>([]);
+  const [ncVersionModal, setNcVersionModal] = useState(false);
+  const [ncVersionRestoring, setNcVersionRestoring] = useState(false);
+  const [gdVersions, setGdVersions] = useState<DriveBackupEntry[]>([]);
+  const [gdVersionModal, setGdVersionModal] = useState(false);
+  const [gdVersionRestoring, setGdVersionRestoring] = useState(false);
 
   const styles = useMemo(() => StyleSheet.create({
     subLabel: { fontSize: 11, fontWeight: '600', color: c.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 6 },
@@ -113,6 +128,7 @@ export function SyncSection({ encEnabled }: Props) {
     gdrive.getConnectedEmail().then(setGDriveEmail);
     gdrive.getLastSync().then(setGDriveLastSync);
     gdrive.getDriveFolder().then(setGDriveFolder);
+    getRetentionDays().then(setRetentionDaysState);
   }, []);
 
   const refreshLog = async () => {
@@ -179,6 +195,74 @@ export function SyncSection({ encEnabled }: Props) {
         },
       },
     ]);
+  };
+
+  const handleShowNcVersions = async () => {
+    const versions = await listWebdavBackups();
+    setNcVersions(versions.sort((a, b) => b.date.localeCompare(a.date)));
+    setNcVersionModal(true);
+  };
+
+  const handleNcVersionRestore = (entry: BackupEntry) => {
+    Alert.alert(
+      t.settings.backupVersionsRestoreConfirmTitle(entry.date),
+      t.settings.backupVersionsRestoreConfirmMsg,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+            setNcVersionModal(false);
+            setNcVersionRestoring(true);
+            try {
+              await restoreFromVersionWebdav(entry);
+              await refreshLog();
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
+              ]);
+            } catch (e: any) {
+              await refreshLog();
+              Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+            } finally {
+              setNcVersionRestoring(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleShowGdVersions = async () => {
+    const versions = await gdrive.listDriveBackups();
+    setGdVersions(versions.sort((a, b) => b.date.localeCompare(a.date)));
+    setGdVersionModal(true);
+  };
+
+  const handleGdVersionRestore = (entry: DriveBackupEntry) => {
+    Alert.alert(
+      t.settings.backupVersionsRestoreConfirmTitle(entry.date),
+      t.settings.backupVersionsRestoreConfirmMsg,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+            setGdVersionModal(false);
+            setGdVersionRestoring(true);
+            try {
+              await gdrive.restoreFromVersionDrive(entry);
+              await refreshLog();
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
+              ]);
+            } catch (e: any) {
+              await refreshLog();
+              Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+            } finally {
+              setGdVersionRestoring(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleGDrivePush = () => {
@@ -380,6 +464,9 @@ export function SyncSection({ encEnabled }: Props) {
               <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
                 {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
               </Pressable>
+              <Pressable style={styles.saveButton} onPress={handleShowGdVersions} disabled={gdriveSyncing || gdriveRestoring || gdVersionRestoring}>
+                {gdVersionRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
+              </Pressable>
               <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger }]} onPress={handleGDrivePush} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
                 {gdrivePushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
               </Pressable>
@@ -427,6 +514,9 @@ export function SyncSection({ encEnabled }: Props) {
           <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring || pushing}>
             {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
           </Pressable>
+          <Pressable style={styles.saveButton} onPress={handleShowNcVersions} disabled={syncing || restoring || ncVersionRestoring}>
+            {ncVersionRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
+          </Pressable>
           <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger }]} onPress={handlePush} disabled={syncing || restoring || pushing}>
             {pushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
           </Pressable>
@@ -444,6 +534,22 @@ export function SyncSection({ encEnabled }: Props) {
             onPress={async () => { await setAutoSyncInterval(value); setAutoSyncIntervalState(value); }}
           >
             <Text style={[styles.intervalChipText, autoSyncInterval === value && styles.intervalChipTextActive]}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Backup-Aufbewahrung */}
+      <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subBackupRetention}</Text>
+      <View style={styles.intervalRow}>
+        {[3, 7, 14, 30].map((days) => (
+          <Pressable
+            key={days}
+            style={[styles.intervalChip, retentionDays === days && styles.intervalChipActive]}
+            onPress={async () => { await setRetentionDays(days); setRetentionDaysState(days); }}
+          >
+            <Text style={[styles.intervalChipText, retentionDays === days && styles.intervalChipTextActive]}>
+              {t.settings.backupRetentionDays(days)}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -480,6 +586,68 @@ export function SyncSection({ encEnabled }: Props) {
         </>
       )}
 
+      {/* Nextcloud Backup-Versionen Modal */}
+      <Modal visible={ncVersionModal} transparent animationType="fade" onRequestClose={() => setNcVersionModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: '70%' }]}>
+            <Text style={styles.modalTitle}>{t.settings.backupVersionsNCTitle}</Text>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+              {ncVersions.length === 0 ? (
+                <Text style={[styles.mutedText, { lineHeight: 20 }]}>{t.settings.backupVersionsEmpty}</Text>
+              ) : (
+                <FlatList
+                  data={ncVersions}
+                  keyExtractor={(item) => item.date}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                      onPress={() => handleNcVersionRestore(item)}
+                    >
+                      <Text style={styles.catName}>{item.date}{item.enc ? ' 🔒' : ''}</Text>
+                      <Text style={styles.accentText}>{t.settings.restoreBtn}</Text>
+                    </Pressable>
+                  )}
+                />
+              )}
+            </View>
+            <Pressable style={[styles.modalCancel, { flexGrow: 0, flexShrink: 0 }]} onPress={() => setNcVersionModal(false)}>
+              <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Google Drive Backup-Versionen Modal */}
+      <Modal visible={gdVersionModal} transparent animationType="fade" onRequestClose={() => setGdVersionModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: '70%' }]}>
+            <Text style={styles.modalTitle}>{t.settings.backupVersionsGDTitle}</Text>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+              {gdVersions.length === 0 ? (
+                <Text style={[styles.mutedText, { lineHeight: 20 }]}>{t.settings.backupVersionsEmpty}</Text>
+              ) : (
+                <FlatList
+                  data={gdVersions}
+                  keyExtractor={(item) => item.date}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                      onPress={() => handleGdVersionRestore(item)}
+                    >
+                      <Text style={styles.catName}>{item.date}{item.enc ? ' 🔒' : ''}</Text>
+                      <Text style={styles.accentText}>{t.settings.restoreBtn}</Text>
+                    </Pressable>
+                  )}
+                />
+              )}
+            </View>
+            <Pressable style={[styles.modalCancel, { flexGrow: 0, flexShrink: 0 }]} onPress={() => setGdVersionModal(false)}>
+              <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Google Drive Ordner-Modal */}
       <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -491,7 +659,7 @@ export function SyncSection({ encEnabled }: Props) {
                 <Text key={f.id} style={[styles.mutedText, { fontSize: 12 }]}> › {f.name}</Text>
               ))}
             </View>
-            <View style={{ maxHeight: 220, minHeight: 60 }}>
+            <View style={{ flex: 1, minHeight: 60, overflow: 'hidden' }}>
               {gdriveFolderLoading ? (
                 <View style={{ alignItems: 'center', padding: 16 }}>
                   <ActivityIndicator color={c.accent} />

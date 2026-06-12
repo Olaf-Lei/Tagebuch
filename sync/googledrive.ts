@@ -2,18 +2,26 @@ import {
   downloadAsync,
   uploadAsync,
   deleteAsync,
-  copyAsync,
   cacheDirectory,
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
-import { getDbPath, closeDb, initDb, getDb } from '../db/schema';
-import { isEncryptionEnabled, encryptDbToTemp, decryptToPath, exportEncKey } from '../utils/crypto';
+import { getDbPath, getDb } from '../db/schema';
+import { isEncryptionEnabled, encryptDbToTemp, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig';
 import { acquireSyncLock, releaseSyncLock, setSyncError } from './syncState';
+import { applyRestore } from './restoreHelper';
+import {
+  todayStr,
+  cutoffStr,
+  getRetentionDays,
+  getDriveBackups,
+  saveDriveBackups,
+  type DriveBackupEntry,
+} from './backupRotation';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email';
 
 const STORE_ACCESS_TOKEN = 'gdrive_access_token';
@@ -419,12 +427,99 @@ async function _uploadGDrive(
     if (tempUpPath) await deleteAsync(`file://${tempUpPath}`, { idempotent: true }).catch(() => {});
   }
 
+  await _rotateDriveBackups(accessToken, encrypted, folderId).catch(async (e) => {
+    await appendLog('warn', `Backup-Rotation fehlgeschlagen: ${e?.message ?? String(e)}`);
+  });
+
   const now = new Date().toLocaleString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
   await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
   await SecureStore.setItemAsync(STORE_LAST_SYNC_MS, String(Date.now()));
+}
+
+async function _rotateDriveBackups(
+  accessToken: string,
+  encrypted: boolean,
+  folderId: string | undefined,
+): Promise<void> {
+  const today = todayStr();
+  const retention = await getRetentionDays();
+  const backups = await getDriveBackups();
+
+  if (!backups.find((b) => b.date === today)) {
+    const mainFileId = await SecureStore.getItemAsync(encrypted ? STORE_FILE_ID_ENC : STORE_FILE_ID_DB);
+    if (mainFileId) {
+      const backupName = encrypted ? `tagebuch_${today}.db.enc` : `tagebuch_${today}.db`;
+      const meta: Record<string, unknown> = { name: backupName };
+      if (folderId) meta.parents = [folderId];
+      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${mainFileId}/copy`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(meta),
+      });
+      if (resp.ok) {
+        const body = await resp.json();
+        backups.unshift({ date: today, fileId: body.id as string, enc: encrypted });
+        await appendLog('info', `Backup angelegt: ${backupName}`);
+      }
+    }
+  }
+
+  const cutoff = cutoffStr(retention);
+  const toDelete = backups.filter((b) => b.date < cutoff);
+  const toKeep = backups.filter((b) => b.date >= cutoff);
+
+  for (const b of toDelete) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${b.fileId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }).catch(() => {});
+  }
+  if (toDelete.length > 0) await appendLog('info', `${toDelete.length} altes Backup(s) gelöscht`);
+
+  await saveDriveBackups(toKeep);
+}
+
+export async function listDriveBackups(): Promise<DriveBackupEntry[]> {
+  return getDriveBackups();
+}
+
+export async function restoreFromVersionDrive(entry: DriveBackupEntry): Promise<void> {
+  await appendLog('info', `Google Drive Restore Version ${entry.date} gestartet`);
+
+  if (entry.enc) {
+    const key = await exportEncKey();
+    if (!key) {
+      throw new Error(
+        'Backup ist verschlüsselt, aber kein Schlüssel vorhanden.\n\n' +
+          'Einstellungen → Sicherheit → Schlüssel exportieren (Gerät 1) → Schlüssel importieren (dieses Gerät).',
+      );
+    }
+  }
+
+  const accessToken = await _getValidAccessToken();
+  const tempPath = `${cacheDirectory ?? ''}tagebuch_gdrive_version_restore.tmp`;
+  await appendLog('info', `Lade Backup vom ${entry.date}…`);
+  try {
+    await _downloadFile(accessToken, entry.fileId, tempPath);
+  } catch (e: any) {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+    throw e;
+  }
+
+  try {
+    await applyRestore(tempPath, entry.enc);
+  } catch (e: any) {
+    const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
+    await appendLog('error', msg);
+    throw new Error(msg);
+  } finally {
+    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+  }
+
+  await appendLog('info', `Google Drive Restore Version ${entry.date} erfolgreich`);
 }
 
 export async function pushNow(): Promise<void> {
@@ -484,19 +579,9 @@ export async function restoreNow(): Promise<void> {
     }
   }
 
-  const rawDbPath = await getDbPath();
-  await closeDb();
-  await appendLog('info', 'DB geschlossen, ersetze Datei…');
-
+  await appendLog('info', 'Ersetze Datei…');
   try {
-    if (isEncFile) {
-      await decryptToPath(tempPath, rawDbPath);
-    } else {
-      await deleteAsync(`file://${rawDbPath}`, { idempotent: true });
-      await copyAsync({ from: tempPath, to: `file://${rawDbPath}` });
-    }
-    await deleteAsync(`file://${rawDbPath}-wal`, { idempotent: true }).catch(() => {});
-    await deleteAsync(`file://${rawDbPath}-shm`, { idempotent: true }).catch(() => {});
+    await applyRestore(tempPath, isEncFile);
   } catch (e: any) {
     const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
     await appendLog('error', msg);
@@ -505,6 +590,5 @@ export async function restoreNow(): Promise<void> {
     await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
   }
 
-  await initDb();
   await appendLog('info', 'Google Drive Restore erfolgreich');
 }

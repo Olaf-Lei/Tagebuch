@@ -263,6 +263,15 @@ export const en: Strings = {
     deleteCategoryMsg: 'The category will be removed from all entries.',
     deleteTagTitle: (name: string) => `Delete "#${name}"?`,
     deleteTagMsg: 'The tag will be removed from all entries.',
+
+    subBackupRetention: 'Backup Retention',
+    backupRetentionDays: (n: number) => `${n} days`,
+    backupVersionsBtn: 'Older Versions',
+    backupVersionsNCTitle: 'Backup Versions (Nextcloud)',
+    backupVersionsGDTitle: 'Backup Versions (Google Drive)',
+    backupVersionsEmpty: 'No older backup versions available.\n\nVersions will be created automatically on the next sync.',
+    backupVersionsRestoreConfirmTitle: (date: string) => `Restore backup from ${date}?`,
+    backupVersionsRestoreConfirmMsg: 'The local database will be replaced by this backup.',
   },
 
   sectionHelp: {
