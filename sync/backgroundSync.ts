@@ -10,7 +10,8 @@ const STORE_INTERVAL = 'bg_sync_interval'; // minutes, 0 = disabled
 // Must be defined at module level
 TaskManager.defineTask(SYNC_TASK, async () => {
   try {
-    await Promise.allSettled([syncNow(), gdriveSyncNow()]);
+    await syncNow();
+    await gdriveSyncNow();
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;
