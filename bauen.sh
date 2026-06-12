@@ -51,16 +51,22 @@ else
 fi
 
 # Changelogs + Release Notes kopieren (DE + EN)
+mkdir -p "${RELEASE_DIR}/changelog" "${RELEASE_DIR}/release_notes"
 for LANG in de en; do
-  for SUFFIX in "${LANG}" "release_notes_${LANG}"; do
-    FILE="changelogs/v${VERSION}_${SUFFIX}.md"
-    if [ -f "$FILE" ]; then
-      cp "$FILE" "${RELEASE_DIR}/v${VERSION}_${SUFFIX}.md"
-      echo "Kopiert: ${RELEASE_DIR}/v${VERSION}_${SUFFIX}.md"
-    else
-      echo "⚠️  Nicht gefunden: $FILE"
-    fi
-  done
+  CL="changelogs/changelog/tagebuch_${VERSION}_${LANG}.md"
+  RN="changelogs/release_notes/tagebuch_${VERSION}_${LANG}.md"
+  if [ -f "$CL" ]; then
+    cp "$CL" "${RELEASE_DIR}/changelog/tagebuch_${VERSION}_${LANG}.md"
+    echo "Changelog:     ${RELEASE_DIR}/changelog/tagebuch_${VERSION}_${LANG}.md"
+  else
+    echo "⚠️  Nicht gefunden: $CL"
+  fi
+  if [ -f "$RN" ]; then
+    cp "$RN" "${RELEASE_DIR}/release_notes/tagebuch_${VERSION}_${LANG}.md"
+    echo "Release Notes: ${RELEASE_DIR}/release_notes/tagebuch_${VERSION}_${LANG}.md"
+  else
+    echo "⚠️  Nicht gefunden: $RN"
+  fi
 done
 
 if [ "$TEST_MODE" = "1" ]; then
