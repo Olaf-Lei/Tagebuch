@@ -8,8 +8,8 @@ if ($origin !== '') {
     }
     header('Access-Control-Allow-Origin: ' . $origin);
 }
-header('Access-Control-Allow-Methods: GET, PUT, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-Webdav-Target, X-Webdav-User, X-Webdav-Pass');
+header('Access-Control-Allow-Methods: GET, PUT, MOVE, COPY, DELETE, PROPFIND, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Webdav-Target, X-Webdav-User, X-Webdav-Pass, Destination, Overwrite, Depth');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -141,6 +141,8 @@ if ($action === 'google_token' || $action === 'google_refresh') {
     exit;
 }
 
+require_once __DIR__ . '/proxy.config.php';
+
 $target = $_SERVER['HTTP_X_WEBDAV_TARGET'] ?? '';
 if (!$target || !preg_match('#^https://#', $target)) {
     http_response_code(400);
@@ -148,9 +150,47 @@ if (!$target || !preg_match('#^https://#', $target)) {
     exit;
 }
 
+// Method whitelist
 $method = $_SERVER['REQUEST_METHOD'];
-$user   = $_SERVER['HTTP_X_WEBDAV_USER'] ?? '';
-$pass   = $_SERVER['HTTP_X_WEBDAV_PASS'] ?? '';
+$allowedMethods = ['GET', 'PUT', 'MOVE', 'COPY', 'DELETE', 'PROPFIND'];
+if (!in_array($method, $allowedMethods, true)) {
+    http_response_code(405);
+    echo 'Method not allowed';
+    exit;
+}
+
+// Host allowlist
+$host = parse_url($target, PHP_URL_HOST) ?: '';
+if (!$host || (count($allowedWebdavHosts) > 0 && !in_array($host, $allowedWebdavHosts, true))) {
+    http_response_code(403);
+    echo 'Host nicht erlaubt';
+    exit;
+}
+
+// SSRF: private/reservierte IPs blocken
+$resolved = gethostbyname($host);
+if (!filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+    http_response_code(403);
+    echo 'Ziel nicht erlaubt';
+    exit;
+}
+
+// Rate-Limit: max 120 WebDAV-Requests pro IP-Subnetz in 60 Sekunden
+$ip    = ipSubnet($_SERVER['REMOTE_ADDR'] ?? '');
+$rlWd  = sys_get_temp_dir() . '/tgb_rlwebdav_' . $ip . '.json';
+$now   = time();
+$rlW   = file_exists($rlWd) ? (json_decode(file_get_contents($rlWd), true) ?? []) : [];
+$rlW['ts'] = array_filter($rlW['ts'] ?? [], fn($t) => $t > $now - 60);
+if (count($rlW['ts']) >= 120) {
+    http_response_code(429);
+    echo 'Zu viele Anfragen';
+    exit;
+}
+$rlW['ts'][] = $now;
+file_put_contents($rlWd, json_encode($rlW));
+
+$user = $_SERVER['HTTP_X_WEBDAV_USER'] ?? '';
+$pass = $_SERVER['HTTP_X_WEBDAV_PASS'] ?? '';
 
 $ch = curl_init($target);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
@@ -163,11 +203,21 @@ if ($user !== '') {
     curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 }
 
-if ($method === 'PUT') {
+$fwdHeaders = [];
+$dest = $_SERVER['HTTP_DESTINATION'] ?? '';
+if ($dest !== '') $fwdHeaders[] = 'Destination: ' . $dest;
+$overwrite = $_SERVER['HTTP_OVERWRITE'] ?? '';
+if ($overwrite !== '') $fwdHeaders[] = 'Overwrite: ' . $overwrite;
+$depth = $_SERVER['HTTP_DEPTH'] ?? '';
+if ($depth !== '') $fwdHeaders[] = 'Depth: ' . $depth;
+
+if (in_array($method, ['PUT', 'PROPFIND'], true)) {
     $data = file_get_contents('php://input');
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/octet-stream']);
+    if ($method === 'PUT') $fwdHeaders[] = 'Content-Type: application/octet-stream';
 }
+
+if ($fwdHeaders) curl_setopt($ch, CURLOPT_HTTPHEADER, $fwdHeaders);
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
