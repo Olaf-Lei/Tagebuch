@@ -1,6 +1,6 @@
 {
   "name": "tagebuch",
-  "version": "2.10.3",
+  "version": "2.10.4",
   "license": "GPL-3.0-only",
   "author": "Olaf <olaf@olovenet.de>",
   "main": "expo-router/entry",
@@ -24,6 +24,7 @@
     "expo-background-fetch": "^55.0.15",
     "expo-constants": "^55.0.15",
     "expo-crypto": "~55.0.14",
+    "expo-document-picker": "~55.0.13",
     "expo-file-system": "^55.0.17",
     "expo-linking": "^55.0.14",
     "expo-local-authentication": "~55.0.13",
