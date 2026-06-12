@@ -3,6 +3,7 @@ import type { WebDAVConfig, Category, Tag, Qualifier } from './types'
 import { initSql, loadDatabase, exportDatabase, getCategories, getTags, getQualifiers, createEntry, updateEntry, deleteEntry } from './db/database'
 import { downloadAuto, uploadEncrypted, uploadPlain } from './sync/webdav'
 import { startAuth, completeAuth, isConnected as driveIsConnected, getConnectedEmail, downloadLatest as driveDownload, uploadLatest as driveUpload, signOut as driveSignOut } from './sync/googledrive'
+import { credGet } from './sync/credStorage'
 import { decryptDb, encryptDb } from './crypto'
 import AuthScreen, { loadSavedConfig, clearConfig } from './components/AuthScreen'
 import EntryList from './components/EntryList'
@@ -58,7 +59,7 @@ export default function App() {
       const hasDrive = driveIsConnected()
       if (!savedWebdav && !hasDrive) return
       setPhase('loading')
-      const ek = savedWebdav?.encKey ?? localStorage.getItem('gdrive_enc_key') ?? undefined
+      const ek = savedWebdav?.encKey ?? credGet('gdrive_enc_key') ?? undefined
       if (savedWebdav) {
         try { await _loadFrom(savedWebdav, ek); setConfig(savedWebdav); return }
         catch (e) { if (!hasDrive) { setErrorMsg(String(e)); setPhase('auth'); return } }

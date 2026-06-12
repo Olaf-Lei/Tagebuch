@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { BrowserQRCodeReader } from '@zxing/browser'
 import { DecodeHintType } from '@zxing/library'
 import type { WebDAVConfig } from '../types'
+import { credGet, credSet, credRemove, isRememberMe, setRememberMe } from '../sync/credStorage'
 
 interface Props {
   onConnect: (config: WebDAVConfig) => void
@@ -12,10 +13,11 @@ interface Props {
 }
 
 const STORAGE_KEY = 'tagebuch_webdav_config'
+const KEY_GDRIVE_ENC = 'gdrive_enc_key'
 
 export function loadSavedConfig(): WebDAVConfig | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = credGet(STORAGE_KEY)
     if (!raw) return null
     const cfg = JSON.parse(raw)
     if (!cfg.dir && cfg.path) cfg.dir = cfg.path
@@ -25,7 +27,7 @@ export function loadSavedConfig(): WebDAVConfig | null {
 }
 
 export function clearConfig() {
-  localStorage.removeItem(STORAGE_KEY)
+  credRemove(STORAGE_KEY)
 }
 
 interface QRPayload {
@@ -63,7 +65,13 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
   const [password, setPassword] = useState(saved?.password ?? '')
   const [dir, setDir] = useState(saved?.dir ?? '/Tagebuch')
   const [encKey, setEncKey] = useState(saved?.encKey ?? '')
-  const [driveEncKey, setDriveEncKey] = useState(localStorage.getItem('gdrive_enc_key') ?? '')
+  const [driveEncKey, setDriveEncKey] = useState(credGet(KEY_GDRIVE_ENC) ?? '')
+  const [rememberMe, setRememberMeState] = useState(isRememberMe())
+
+  function applyRememberMe(val: boolean) {
+    setRememberMeState(val)
+    setRememberMe(val)
+  }
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<{ stop: () => void } | null>(null)
@@ -109,14 +117,14 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
               setScanning(false)
               setCameras([])
               setCameraIdx(0)
-              if (payload.encKey) localStorage.setItem('gdrive_enc_key', payload.encKey)
+              if (payload.encKey) credSet(KEY_GDRIVE_ENC, payload.encKey)
               if (payload.nc) {
                 const config: WebDAVConfig = {
                   url: payload.nc.url, username: payload.nc.user,
                   davUser: '', password: payload.nc.pass, dir: payload.nc.path,
                   encKey: payload.encKey?.trim().toLowerCase() || undefined,
                 }
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+                credSet(STORAGE_KEY, JSON.stringify(config))
                 onConnect(config)
                 return
               }
@@ -172,14 +180,14 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`)
       const payload = json as { v: number; nc?: { url: string; user: string; pass: string; path: string }; encKey?: string }
       if (payload.v !== 1) throw new Error('Ungültiges Format.')
-      if (payload.encKey) localStorage.setItem('gdrive_enc_key', payload.encKey)
+      if (payload.encKey) credSet(KEY_GDRIVE_ENC, payload.encKey)
       if (payload.nc) {
         const config: WebDAVConfig = {
           url: payload.nc.url, username: payload.nc.user,
           davUser: '', password: payload.nc.pass, dir: payload.nc.path,
           encKey: payload.encKey?.trim().toLowerCase() || undefined,
         }
-        localStorage.setItem('tagebuch_webdav_config', JSON.stringify(config))
+        credSet(STORAGE_KEY, JSON.stringify(config))
         onConnect(config)
         return
       }
@@ -215,13 +223,13 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
       dir: dir.trim() || '/Tagebuch',
       encKey: encKey.trim().toLowerCase() || undefined,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+    credSet(STORAGE_KEY, JSON.stringify(config))
     onConnect(config)
   }
 
   function handleDriveConnect() {
     const key = driveEncKey.trim().toLowerCase() || undefined
-    if (key) localStorage.setItem('gdrive_enc_key', key)
+    if (key) credSet(KEY_GDRIVE_ENC, key)
     onConnectDrive(key)
   }
 
@@ -276,6 +284,10 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
               </button>
             </div>
             {relayError && <p style={s.error}>{relayError}</p>}
+            <label style={s.rememberLabel}>
+              <input type="checkbox" checked={rememberMe} onChange={e => applyRememberMe(e.target.checked)} />
+              Angemeldet bleiben
+            </label>
             <button style={s.linkBtn} onClick={() => setView('manual')}>Manueller Login →</button>
           </>
         ) : (
@@ -331,6 +343,10 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
                 <input style={s.input} type="text" value={encKey} onChange={e => setEncKey(e.target.value)}
                   placeholder="64-stelliger Hex-String" autoComplete="off" />
                 {!driveEmail && error && <p style={s.error}>{error}</p>}
+                <label style={{ ...s.rememberLabel, marginTop: 10 }}>
+                  <input type="checkbox" checked={rememberMe} onChange={e => applyRememberMe(e.target.checked)} />
+                  Angemeldet bleiben
+                </label>
                 <button type="submit" style={s.button}>Verbinden</button>
                 {saved?.davUser && <button type="button" style={s.linkBtn} onClick={() => setShowFull(false)}>Zurück</button>}
               </form>
@@ -372,4 +388,5 @@ const s: Record<string, React.CSSProperties> = {
   switchBtn: { background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 20, color: '#fff', padding: '6px 16px', fontSize: 13, cursor: 'pointer' },
   scanErr: { color: '#ff6b6b', fontSize: 13, marginTop: 8 },
   scanClose: { marginTop: 24, background: 'none', border: '1px solid #555', borderRadius: 8, color: '#fff', padding: '10px 28px', fontSize: 15, cursor: 'pointer' },
+  rememberLabel: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text2)', fontSize: 13, cursor: 'pointer', userSelect: 'none' as const, marginTop: 4 },
 }

@@ -1,5 +1,6 @@
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig'
 import { ConflictError } from './errors'
+import { credGet, credSet, credRemove } from './credStorage'
 
 const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email'
 
@@ -53,9 +54,9 @@ export async function completeAuth(code: string): Promise<void> {
   })
   const tokens = await res.json()
   if (!res.ok || tokens.error) throw new Error(tokens.error_description ?? tokens.error ?? `HTTP ${res.status}`)
-  localStorage.setItem(LS.ACCESS_TOKEN, tokens.access_token)
-  if (tokens.refresh_token) localStorage.setItem(LS.REFRESH_TOKEN, tokens.refresh_token)
-  localStorage.setItem(LS.TOKEN_EXPIRY, String(Date.now() + tokens.expires_in * 1000))
+  credSet(LS.ACCESS_TOKEN, tokens.access_token)
+  if (tokens.refresh_token) credSet(LS.REFRESH_TOKEN, tokens.refresh_token)
+  credSet(LS.TOKEN_EXPIRY, String(Date.now() + tokens.expires_in * 1000))
   localStorage.removeItem('gdrive_pkce_verifier')
   try {
     const ui = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
@@ -66,7 +67,7 @@ export async function completeAuth(code: string): Promise<void> {
 }
 
 export function isConnected(): boolean {
-  return !!localStorage.getItem(LS.REFRESH_TOKEN)
+  return !!credGet(LS.REFRESH_TOKEN)
 }
 
 export function getConnectedEmail(): string | null {
@@ -74,7 +75,7 @@ export function getConnectedEmail(): string | null {
 }
 
 async function _refreshToken(): Promise<string> {
-  const refreshToken = localStorage.getItem(LS.REFRESH_TOKEN)
+  const refreshToken = credGet(LS.REFRESH_TOKEN)
   if (!refreshToken) throw new Error('Nicht mit Google Drive verbunden.')
   const res = await fetch('./proxy.php?action=google_refresh', {
     method: 'POST',
@@ -83,14 +84,14 @@ async function _refreshToken(): Promise<string> {
   })
   const tokens = await res.json()
   if (!res.ok || tokens.error) throw new Error(tokens.error_description ?? tokens.error ?? 'Token-Refresh fehlgeschlagen')
-  localStorage.setItem(LS.ACCESS_TOKEN, tokens.access_token)
-  localStorage.setItem(LS.TOKEN_EXPIRY, String(Date.now() + tokens.expires_in * 1000))
+  credSet(LS.ACCESS_TOKEN, tokens.access_token)
+  credSet(LS.TOKEN_EXPIRY, String(Date.now() + tokens.expires_in * 1000))
   return tokens.access_token
 }
 
 async function _getToken(): Promise<string> {
-  const token = localStorage.getItem(LS.ACCESS_TOKEN) ?? ''
-  const expiry = Number(localStorage.getItem(LS.TOKEN_EXPIRY) ?? '0')
+  const token = credGet(LS.ACCESS_TOKEN) ?? ''
+  const expiry = Number(credGet(LS.TOKEN_EXPIRY) ?? '0')
   if (token && Date.now() < expiry - 60_000) return token
   return _refreshToken()
 }
@@ -231,6 +232,10 @@ export async function uploadLatest(content: Uint8Array | string, isEnc: boolean)
 }
 
 export function signOut(): void {
-  Object.values(LS).forEach(k => localStorage.removeItem(k))
-  localStorage.removeItem('gdrive_enc_key')
+  const sensitiveKeys = [LS.ACCESS_TOKEN, LS.REFRESH_TOKEN, LS.TOKEN_EXPIRY]
+  sensitiveKeys.forEach(k => credRemove(k))
+  Object.values(LS)
+    .filter(k => !sensitiveKeys.includes(k))
+    .forEach(k => localStorage.removeItem(k))
+  credRemove('gdrive_enc_key')
 }
