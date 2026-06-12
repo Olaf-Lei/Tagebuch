@@ -75,7 +75,7 @@ export default function App() {
     const { data, isEnc: enc } = await downloadAuto(cfg)
     if (enc) {
       if (!ek) throw new Error('Datei ist verschlüsselt — bitte AES-Key eintragen.')
-      loadDatabase(decryptDb(data as string, ek))
+      loadDatabase(await decryptDb(data as string, ek))
     } else {
       loadDatabase(data as ArrayBuffer)
     }
@@ -91,13 +91,12 @@ export default function App() {
     const { data, isEnc: enc } = await driveDownload()
     if (enc) {
       if (!ek) throw new Error('Datei ist verschlüsselt — bitte AES-Key eingeben.')
-      loadDatabase(decryptDb(data as string, ek))
+      loadDatabase(await decryptDb(data as string, ek))
     } else {
       loadDatabase(data as ArrayBuffer)
     }
     setIsEnc(enc)
     setEncKey(ek)
-    if (ek) localStorage.setItem('gdrive_enc_key', ek)
     refreshMeta()
     setDriveLastSync(new Date())
     setPhase('ready')
@@ -128,18 +127,15 @@ export default function App() {
   // Upload to ALL configured backends in parallel
   async function _uploadDb() {
     const data = exportDatabase()
+    const encData = isEnc && encKey ? await encryptDb(data, encKey) : null
     const jobs: Promise<void>[] = []
 
     if (config) {
-      jobs.push(isEnc && encKey
-        ? uploadEncrypted(config, encryptDb(data, encKey))
-        : uploadPlain(config, data))
+      jobs.push(encData != null ? uploadEncrypted(config, encData) : uploadPlain(config, data))
     }
 
     if (driveIsConnected()) {
-      jobs.push(isEnc && encKey
-        ? driveUpload(encryptDb(data, encKey), true)
-        : driveUpload(data, false))
+      jobs.push(encData != null ? driveUpload(encData, true) : driveUpload(data, false))
     }
 
     const results = await Promise.allSettled(jobs)
@@ -154,7 +150,7 @@ export default function App() {
     setNcError(''); setNcSyncing(true)
     try {
       const { data, isEnc: enc } = await downloadAuto(config)
-      enc ? loadDatabase(decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
+      enc ? loadDatabase(await decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
       refreshMeta()
       setNcLastSync(new Date())
     } catch (e) {
@@ -169,7 +165,7 @@ export default function App() {
     setDriveError(''); setDriveSyncing(true)
     try {
       const { data, isEnc: enc } = await driveDownload()
-      enc ? loadDatabase(decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
+      enc ? loadDatabase(await decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
       refreshMeta()
       setDriveLastSync(new Date())
     } catch (e) {

@@ -1,6 +1,25 @@
 import CryptoJS from 'crypto-js'
 
-export function decryptDb(encryptedText: string, hexKey: string): ArrayBuffer {
+function _hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(new ArrayBuffer(hex.length / 2))
+  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16)
+  return bytes
+}
+
+async function _importAesKey(hexKey: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', _hexToBytes(hexKey), 'AES-GCM', false, ['encrypt', 'decrypt'])
+}
+
+export async function decryptDb(encryptedText: string, hexKey: string): Promise<ArrayBuffer> {
+  if (encryptedText.startsWith('TGBv3:')) {
+    const key = await _importAesKey(hexKey)
+    const raw = Uint8Array.from(atob(encryptedText.slice(6)), c => c.charCodeAt(0))
+    const iv = raw.slice(0, 12)
+    const ciphertextAndTag = raw.slice(12)
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertextAndTag)
+  }
+
+  // Legacy decrypt via CryptoJS (TGBv2 + OpenSSL format)
   const keyWA = CryptoJS.enc.Hex.parse(hexKey)
   let decrypted: CryptoJS.lib.WordArray
   if (encryptedText.startsWith('TGBv2:')) {
@@ -18,17 +37,19 @@ export function decryptDb(encryptedText: string, hexKey: string): ArrayBuffer {
   return bytes.buffer
 }
 
-export function encryptDb(dbBytes: Uint8Array, hexKey: string): string {
-  // Large Uint8Array → btoa via chunk to avoid call stack overflow
+export async function encryptDb(dbBytes: Uint8Array, hexKey: string): Promise<string> {
+  const key = await _importAesKey(hexKey)
+  const iv = crypto.getRandomValues(new Uint8Array(new ArrayBuffer(12)))
+  const buf = dbBytes.buffer.slice(dbBytes.byteOffset, dbBytes.byteOffset + dbBytes.byteLength) as ArrayBuffer
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buf)
+  // TGBv3: Base64(IV[12] + ciphertext + tag[16])
+  const combined = new Uint8Array(12 + encrypted.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(encrypted), 12)
   let binary = ''
   const chunk = 8192
-  for (let i = 0; i < dbBytes.length; i += chunk) {
-    binary += String.fromCharCode(...dbBytes.subarray(i, i + chunk))
+  for (let i = 0; i < combined.length; i += chunk) {
+    binary += String.fromCharCode(...combined.subarray(i, i + chunk))
   }
-  const wordArray = CryptoJS.enc.Base64.parse(btoa(binary))
-  const keyWA = CryptoJS.enc.Hex.parse(hexKey)
-  const iv = CryptoJS.lib.WordArray.random(16)
-  const encrypted = CryptoJS.AES.encrypt(wordArray, keyWA, { iv })
-  const combined = (iv.clone() as CryptoJS.lib.WordArray).concat(encrypted.ciphertext)
-  return 'TGBv2:' + combined.toString(CryptoJS.enc.Base64)
+  return 'TGBv3:' + btoa(binary)
 }

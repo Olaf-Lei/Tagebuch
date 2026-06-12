@@ -8,6 +8,7 @@ import {
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import * as ExpoC from 'expo-crypto';
+import { AESEncryptionKey, AESSealedData, aesEncryptAsync, aesDecryptAsync } from 'expo-crypto';
 
 const STORE_ENC_ENABLED = 'enc_enabled';
 const STORE_ENC_KEY = 'enc_key';
@@ -49,38 +50,52 @@ export async function importEncKey(hexKey: string): Promise<void> {
   await SecureStore.setItemAsync(STORE_ENC_ENABLED, 'true');
 }
 
-// Decrypts an encrypted file and writes the result to targetPath.
-// Supports legacy OpenSSL format (starts with 'U2FsdGVk') and new TGBv2 format.
+async function _importAesKey(hexKey: string): Promise<AESEncryptionKey> {
+  return AESEncryptionKey.import(hexKey, 'hex');
+}
+
+// Decrypts an encrypted file. Supports TGBv3 (AES-GCM), TGBv2 (AES-CBC), Legacy (OpenSSL).
 export async function decryptToPath(encPath: string, targetPath: string): Promise<void> {
-  const key = await getOrCreateKey();
-  const keyWA = CryptoJS.enc.Hex.parse(key);
+  const hexKey = await getOrCreateKey();
   const encUri = encPath.startsWith('file://') ? encPath : `file://${encPath}`;
   const outUri = targetPath.startsWith('file://') ? targetPath : `file://${targetPath}`;
   const text = await readAsStringAsync(encUri, { encoding: EncodingType.UTF8 });
-  let decrypted: CryptoJS.lib.WordArray;
-  if (text.startsWith('TGBv2:')) {
+
+  let plainBase64: string;
+
+  if (text.startsWith('TGBv3:')) {
+    const key = await _importAesKey(hexKey);
+    // Format: IV[12] + ciphertext + tag[16] — all base64'd
+    const sealedData = AESSealedData.fromCombined(text.slice(6), { ivLength: 12, tagLength: 16 });
+    const decrypted = await aesDecryptAsync(sealedData, key, { output: 'base64' });
+    plainBase64 = decrypted;
+  } else if (text.startsWith('TGBv2:')) {
+    const keyWA = CryptoJS.enc.Hex.parse(hexKey);
     const raw = CryptoJS.enc.Base64.parse(text.slice(6));
     const iv = CryptoJS.lib.WordArray.create(raw.words.slice(0, 4), 16);
     const ciphertext = CryptoJS.lib.WordArray.create(raw.words.slice(4), raw.sigBytes - 16);
-    decrypted = CryptoJS.AES.decrypt({ ciphertext } as CryptoJS.lib.CipherParams, keyWA, { iv });
+    const decrypted = CryptoJS.AES.decrypt({ ciphertext } as CryptoJS.lib.CipherParams, keyWA, { iv });
+    plainBase64 = decrypted.toString(CryptoJS.enc.Base64);
   } else {
-    decrypted = CryptoJS.AES.decrypt(text, key);
+    // Legacy OpenSSL format
+    const decrypted = CryptoJS.AES.decrypt(text, hexKey);
+    plainBase64 = decrypted.toString(CryptoJS.enc.Base64);
   }
-  const base64 = decrypted.toString(CryptoJS.enc.Base64);
-  await writeAsStringAsync(outUri, base64, { encoding: EncodingType.Base64 });
+
+  await writeAsStringAsync(outUri, plainBase64, { encoding: EncodingType.Base64 });
 }
 
-// Returns path to encrypted temp file. Caller must delete after upload.
+// Encrypts the DB to a temp file using TGBv3 (AES-256-GCM). Caller must delete after upload.
 export async function encryptDbToTemp(dbPath: string): Promise<string> {
-  const key = await getOrCreateKey();
-  const keyWA = CryptoJS.enc.Hex.parse(key);
+  const hexKey = await getOrCreateKey();
+  const key = await _importAesKey(hexKey);
   const uri = dbPath.startsWith('file://') ? dbPath : `file://${dbPath}`;
-  const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
-  const wordArray = CryptoJS.enc.Base64.parse(base64);
-  const iv = CryptoJS.lib.WordArray.random(16);
-  const encrypted = CryptoJS.AES.encrypt(wordArray, keyWA, { iv });
-  const combined = (iv.clone() as CryptoJS.lib.WordArray).concat(encrypted.ciphertext);
-  const output = 'TGBv2:' + combined.toString(CryptoJS.enc.Base64);
+  const plainBase64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
+
+  // combined() gibt Base64(IV[12] + ciphertext + tag[16]) — genau das TGBv3-Format
+  const sealedData = await aesEncryptAsync(plainBase64, key, { nonce: { length: 12 }, tagLength: 16 });
+  const output = 'TGBv3:' + await sealedData.combined('base64');
+
   const tempPath = cacheDirectory + 'tagebuch_upload.enc';
   await writeAsStringAsync(tempPath!, output, { encoding: EncodingType.UTF8 });
   return tempPath!;
