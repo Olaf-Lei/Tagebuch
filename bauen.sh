@@ -50,15 +50,17 @@ else
   echo "Fertig: $DEST"
 fi
 
-# Changelogs kopieren (DE + EN)
+# Changelogs + Release Notes kopieren (DE + EN)
 for LANG in de en; do
-  CHANGELOG="changelogs/v${VERSION}_${LANG}.md"
-  if [ -f "$CHANGELOG" ]; then
-    cp "$CHANGELOG" "${RELEASE_DIR}/v${VERSION}_${LANG}.md"
-    echo "Changelog: ${RELEASE_DIR}/v${VERSION}_${LANG}.md"
-  else
-    echo "⚠️  Kein Changelog gefunden: $CHANGELOG"
-  fi
+  for SUFFIX in "${LANG}" "release_notes_${LANG}"; do
+    FILE="changelogs/v${VERSION}_${SUFFIX}.md"
+    if [ -f "$FILE" ]; then
+      cp "$FILE" "${RELEASE_DIR}/v${VERSION}_${SUFFIX}.md"
+      echo "Kopiert: ${RELEASE_DIR}/v${VERSION}_${SUFFIX}.md"
+    else
+      echo "⚠️  Nicht gefunden: $FILE"
+    fi
+  done
 done
 
 if [ "$TEST_MODE" = "1" ]; then
