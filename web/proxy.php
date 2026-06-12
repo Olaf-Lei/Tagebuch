@@ -141,8 +141,6 @@ if ($action === 'google_token' || $action === 'google_refresh') {
     exit;
 }
 
-require_once __DIR__ . '/proxy.config.php';
-
 $target = $_SERVER['HTTP_X_WEBDAV_TARGET'] ?? '';
 if (!$target || !preg_match('#^https://#', $target)) {
     http_response_code(400);
@@ -152,28 +150,27 @@ if (!$target || !preg_match('#^https://#', $target)) {
 
 // Method whitelist
 $method = $_SERVER['REQUEST_METHOD'];
-$allowedMethods = ['GET', 'PUT', 'MOVE', 'COPY', 'DELETE', 'PROPFIND'];
-if (!in_array($method, $allowedMethods, true)) {
+if (!in_array($method, ['GET', 'PUT', 'MOVE', 'COPY', 'DELETE', 'PROPFIND'], true)) {
     http_response_code(405);
     echo 'Method not allowed';
     exit;
 }
 
-// Host allowlist
+// SSRF: alle aufgelösten IPs prüfen, dann curl auf validierte IP pinnen
 $host = parse_url($target, PHP_URL_HOST) ?: '';
-if (!$host || (count($allowedWebdavHosts) > 0 && !in_array($host, $allowedWebdavHosts, true))) {
-    http_response_code(403);
-    echo 'Host nicht erlaubt';
-    exit;
-}
+if (!$host) { http_response_code(400); echo 'Ungültiger Ziel-Host'; exit; }
 
-// SSRF: private/reservierte IPs blocken
-$resolved = gethostbyname($host);
-if (!filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-    http_response_code(403);
-    echo 'Ziel nicht erlaubt';
-    exit;
+$dnsRecords = @dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
+$pinnedIp = '';
+foreach ($dnsRecords as $r) {
+    $ip = $r['ip'] ?? $r['ipv6'] ?? '';
+    if (!$ip) continue;
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        http_response_code(403); echo 'Ziel nicht erlaubt'; exit;
+    }
+    if (!$pinnedIp) $pinnedIp = $ip;
 }
+if (!$pinnedIp) { http_response_code(403); echo 'Ziel nicht auflösbar'; exit; }
 
 // Rate-Limit: max 120 WebDAV-Requests pro IP-Subnetz in 60 Sekunden
 $ip    = ipSubnet($_SERVER['REMOTE_ADDR'] ?? '');
@@ -192,11 +189,13 @@ file_put_contents($rlWd, json_encode($rlW));
 $user = $_SERVER['HTTP_X_WEBDAV_USER'] ?? '';
 $pass = $_SERVER['HTTP_X_WEBDAV_PASS'] ?? '';
 
+$port = (int)(parse_url($target, PHP_URL_PORT) ?? 443);
 $ch = curl_init($target);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+curl_setopt($ch, CURLOPT_RESOLVE, ["$host:$port:$pinnedIp"]);
 
 if ($user !== '') {
     curl_setopt($ch, CURLOPT_USERPWD, "$user:$pass");
@@ -204,12 +203,32 @@ if ($user !== '') {
 }
 
 $fwdHeaders = [];
+
+// Destination: SSRF-Prüfung + Header-Injection verhindern
 $dest = $_SERVER['HTTP_DESTINATION'] ?? '';
-if ($dest !== '') $fwdHeaders[] = 'Destination: ' . $dest;
+if ($dest !== '') {
+    if (strpbrk($dest, "\r\n") !== false) { http_response_code(400); echo 'Ungültiger Destination-Header'; exit; }
+    $destHost = parse_url($dest, PHP_URL_HOST) ?: '';
+    if (!$destHost) { http_response_code(400); echo 'Ungültiger Destination-Host'; exit; }
+    $destRecords = @dns_get_record($destHost, DNS_A | DNS_AAAA) ?: [];
+    $destOk = false;
+    foreach ($destRecords as $r) {
+        $ip2 = $r['ip'] ?? $r['ipv6'] ?? '';
+        if (!$ip2) continue;
+        if (!filter_var($ip2, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            http_response_code(403); echo 'Destination nicht erlaubt'; exit;
+        }
+        $destOk = true;
+    }
+    if (!$destOk) { http_response_code(403); echo 'Destination nicht auflösbar'; exit; }
+    $fwdHeaders[] = 'Destination: ' . $dest;
+}
+
+// Overwrite und Depth auf bekannte Werte beschränken
 $overwrite = $_SERVER['HTTP_OVERWRITE'] ?? '';
-if ($overwrite !== '') $fwdHeaders[] = 'Overwrite: ' . $overwrite;
+if (preg_match('/^[TF]$/', $overwrite)) $fwdHeaders[] = 'Overwrite: ' . $overwrite;
 $depth = $_SERVER['HTTP_DEPTH'] ?? '';
-if ($depth !== '') $fwdHeaders[] = 'Depth: ' . $depth;
+if (preg_match('/^(0|1|infinity)$/i', $depth)) $fwdHeaders[] = 'Depth: ' . $depth;
 
 if (in_array($method, ['PUT', 'PROPFIND'], true)) {
     $data = file_get_contents('php://input');
