@@ -72,7 +72,6 @@
       ],
       "expo-localization",
       "expo-web-browser",
-      "expo-screen-capture",
       [
         "expo-notifications",
         {
