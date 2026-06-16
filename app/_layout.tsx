@@ -19,6 +19,8 @@ import { ensureReminderScheduled } from '../utils/notifications';
 import { syncNow, syncIfConfigured, loadConfig, getLastSyncMs } from '../sync/webdav';
 import { syncIfConfigured as gdriveSyncIfConfigured, syncNow as gdriveSyncNow, isConnected as gdriveIsConnected, getLastSyncMs as gdriveGetLastSyncMs } from '../sync/googledrive';
 import { getAutoSyncInterval, ensureBackgroundSyncRegistered } from '../sync/backgroundSync';
+import { runDailyLocalBackup } from '../sync/localBackup';
+import { getRetentionDays } from '../sync/backupRotation';
 import { seedDemoData } from '../db/demoSeed';
 import { WIZARD_DONE_KEY } from '../components/SetupWizard';
 
@@ -101,6 +103,7 @@ export default function RootLayout() {
       setReady(true);
       ensureReminderScheduled();
       ensureBackgroundSyncRegistered().catch(() => {});
+      getRetentionDays().then(days => runDailyLocalBackup(days)).catch(() => {});
       setTimeout(async () => {
         const config = await loadConfig();
         if (config.url && config.username && config.password) {

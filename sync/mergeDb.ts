@@ -86,8 +86,8 @@ export async function mergeRemoteDb(
 
     await db.withTransactionAsync(async () => {
       await db.execAsync(`
-        INSERT OR IGNORE INTO categories (name, color)
-        SELECT name, color FROM remote.categories
+        INSERT OR IGNORE INTO categories (name, color, created_at)
+        SELECT name, color, created_at FROM remote.categories
         WHERE name NOT IN (SELECT name FROM deleted_category_names)
       `);
       await db.execAsync(`
@@ -97,8 +97,8 @@ export async function mergeRemoteDb(
           AND (categories.color IS NULL OR categories.color != (SELECT rc.color FROM remote.categories rc WHERE rc.name = categories.name))
       `);
       await db.execAsync(`
-        INSERT OR IGNORE INTO tags (name)
-        SELECT name FROM remote.tags
+        INSERT OR IGNORE INTO tags (name, created_at)
+        SELECT name, created_at FROM remote.tags
         WHERE name NOT IN (SELECT name FROM deleted_tag_names)
       `);
 
@@ -243,11 +243,23 @@ export async function mergeRemoteDb(
         await db.execAsync(`DELETE FROM entries WHERE created_at IN (SELECT created_at FROM deleted_entry_ids)`);
       }
       if (hasRemoteCatTombstones) {
-        await db.execAsync(`INSERT OR IGNORE INTO deleted_category_names (name, deleted_at) SELECT name, deleted_at FROM remote.deleted_category_names`);
+        await db.execAsync(`
+          INSERT OR IGNORE INTO deleted_category_names (name, deleted_at)
+          SELECT rdc.name, rdc.deleted_at FROM remote.deleted_category_names rdc
+          WHERE NOT EXISTS (
+            SELECT 1 FROM categories c WHERE c.name = rdc.name AND c.created_at > rdc.deleted_at
+          )
+        `);
         await db.execAsync(`DELETE FROM categories WHERE name IN (SELECT name FROM deleted_category_names)`);
       }
       if (hasRemoteTagTombstones) {
-        await db.execAsync(`INSERT OR IGNORE INTO deleted_tag_names (name, deleted_at) SELECT name, deleted_at FROM remote.deleted_tag_names`);
+        await db.execAsync(`
+          INSERT OR IGNORE INTO deleted_tag_names (name, deleted_at)
+          SELECT rdt.name, rdt.deleted_at FROM remote.deleted_tag_names rdt
+          WHERE NOT EXISTS (
+            SELECT 1 FROM tags t WHERE t.name = rdt.name AND t.created_at > rdt.deleted_at
+          )
+        `);
         await db.execAsync(`DELETE FROM tags WHERE name IN (SELECT name FROM deleted_tag_names)`);
       }
     });

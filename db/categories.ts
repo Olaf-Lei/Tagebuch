@@ -37,7 +37,7 @@ export async function createCategory(name: string): Promise<number> {
   await db.runAsync(`DELETE FROM deleted_category_names WHERE name = ?`, [trimmed]);
   const row = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM categories');
   const color = CATEGORY_COLORS[(row?.cnt ?? 0) % CATEGORY_COLORS.length];
-  const result = await db.runAsync(`INSERT INTO categories (name, color) VALUES (?, ?)`, [trimmed, color]);
+  const result = await db.runAsync(`INSERT INTO categories (name, color, created_at) VALUES (?, ?, ?)`, [trimmed, color, Date.now()]);
   return result.lastInsertRowId;
 }
 

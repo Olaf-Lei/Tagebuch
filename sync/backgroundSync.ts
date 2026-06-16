@@ -1,6 +1,7 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as SecureStore from 'expo-secure-store';
+import { setConfig } from '../db/config';
 import { syncNow } from './webdav';
 import { syncNow as gdriveSyncNow } from './googledrive';
 
@@ -38,6 +39,7 @@ export async function ensureBackgroundSyncRegistered(): Promise<void> {
 
 export async function setAutoSyncInterval(minutes: number): Promise<void> {
   await SecureStore.setItemAsync(STORE_INTERVAL, String(minutes));
+  setConfig('bg_sync_interval', String(minutes)).catch(() => {});
   const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK);
 
   if (minutes === 0) {

@@ -65,8 +65,9 @@ export async function decryptToPath(encPath: string, targetPath: string): Promis
 
   if (text.startsWith('TGBv3:')) {
     const key = await _importAesKey(hexKey);
-    // Format: IV[12] + ciphertext + tag[16] — all base64'd
-    const sealedData = AESSealedData.fromCombined(text.slice(6), { ivLength: 12, tagLength: 16 });
+    // Android native fromCombined requires ByteArray, not a base64 string
+    const combinedBytes = Uint8Array.from(atob(text.slice(6).trim()), (c: string) => c.charCodeAt(0));
+    const sealedData = AESSealedData.fromCombined(combinedBytes, { ivLength: 12, tagLength: 16 });
     const decrypted = await aesDecryptAsync(sealedData, key, { output: 'base64' });
     plainBase64 = decrypted;
   } else if (text.startsWith('TGBv2:')) {

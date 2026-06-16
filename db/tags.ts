@@ -14,7 +14,7 @@ export async function upsertTag(name: string): Promise<number> {
   const db = await getDb();
   const trimmed = name.trim().toLowerCase();
   await db.runAsync(`DELETE FROM deleted_tag_names WHERE name = ?`, [trimmed]);
-  await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [trimmed]);
+  await db.runAsync(`INSERT OR IGNORE INTO tags (name, created_at) VALUES (?, ?)`, [trimmed, Date.now()]);
   const row = await db.getFirstAsync<{ id: number }>(`SELECT id FROM tags WHERE name = ?`, [trimmed]);
   return row!.id;
 }

@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { setConfig } from '../db/config';
 
 const STORE_RETENTION = 'backup_retention_days';
 const STORE_WD_BACKUPS = 'webdav_backups';
@@ -26,6 +27,7 @@ export async function getRetentionDays(): Promise<number> {
 
 export async function setRetentionDays(days: number): Promise<void> {
   await SecureStore.setItemAsync(STORE_RETENTION, String(days));
+  setConfig('backup_retention_days', String(days)).catch(() => {});
 }
 
 export async function getWebdavBackups(): Promise<BackupEntry[]> {

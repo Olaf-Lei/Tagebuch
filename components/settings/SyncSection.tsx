@@ -3,6 +3,8 @@ import {
   ActivityIndicator, Alert, Clipboard, FlatList, KeyboardAvoidingView,
   Modal, Platform, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { copyAsync, deleteAsync, cacheDirectory } from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
 import { useColors } from '../theme';
 import { useT } from '../../i18n';
@@ -17,6 +19,8 @@ import {
   type BackupEntry,
   type DriveBackupEntry,
 } from '../../sync/backupRotation';
+import { listLocalBackups, localBackupPath } from '../../sync/localBackup';
+import { applyRestore } from '../../sync/restoreHelper';
 
 interface Props {
   encEnabled: boolean;
@@ -27,6 +31,7 @@ export function SyncSection({ encEnabled }: Props) {
   const t = useT();
   const router = useRouter();
 
+  const [openLocal, setOpenLocal] = useState(false);
   const [openGdrive, setOpenGdrive] = useState(false);
   const [openNextcloud, setOpenNextcloud] = useState(false);
 
@@ -63,6 +68,11 @@ export function SyncSection({ encEnabled }: Props) {
   const [gdVersions, setGdVersions] = useState<DriveBackupEntry[]>([]);
   const [gdVersionModal, setGdVersionModal] = useState(false);
   const [gdVersionRestoring, setGdVersionRestoring] = useState(false);
+
+  const [localVersions, setLocalVersions] = useState<string[]>([]);
+  const [localVersionModal, setLocalVersionModal] = useState(false);
+  const [localVersionRestoring, setLocalVersionRestoring] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const styles = useMemo(() => StyleSheet.create({
     subLabel: { fontSize: 11, fontWeight: '600', color: c.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 6 },
@@ -106,9 +116,10 @@ export function SyncSection({ encEnabled }: Props) {
     modalInput: { backgroundColor: c.bg, borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.text },
     modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
     modalBtn: { flex: 1, backgroundColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
-    modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    modalBtnText: { color: '#0F1B2D', fontSize: 15, fontWeight: '600' },
     modalCancel: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 13, alignItems: 'center' },
     modalCancelText: { color: c.muted, fontSize: 15 },
+    sectionBody: { gap: 8, marginTop: 4 },
   }), [c]);
 
   const SYNC_INTERVALS = [
@@ -263,6 +274,71 @@ export function SyncSection({ encEnabled }: Props) {
         },
       ],
     );
+  };
+
+  const handleShowLocalVersions = async () => {
+    const versions = await listLocalBackups();
+    setLocalVersions(versions);
+    setLocalVersionModal(true);
+  };
+
+  const handleLocalVersionRestore = (filename: string) => {
+    const date = filename.slice(9, 19);
+    Alert.alert(
+      t.settings.localBackupVersionsRestoreConfirmTitle(date),
+      t.settings.backupVersionsRestoreConfirmMsg,
+      [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+            setLocalVersionModal(false);
+            setLocalVersionRestoring(true);
+            try {
+              await applyRestore(`file://${localBackupPath(filename)}`, false);
+              await refreshLog();
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
+              ]);
+            } catch (e: any) {
+              await refreshLog();
+              Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+            } finally {
+              setLocalVersionRestoring(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleImportDb = () => {
+    Alert.alert(t.settings.importDbConfirmTitle, t.settings.importDbConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+          setImporting(true);
+          let tempPath: string | null = null;
+          try {
+            const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+            if (result.canceled) return;
+            const asset = result.assets[0];
+            const isEnc = asset.name.endsWith('.db.enc');
+            tempPath = `${cacheDirectory ?? ''}tagebuch_import.tmp`;
+            await copyAsync({ from: asset.uri, to: tempPath });
+            await applyRestore(tempPath, isEnc);
+            await refreshLog();
+            Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+              { text: t.common.ok, onPress: () => router.replace('/') },
+            ]);
+          } catch (e: any) {
+            Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+          } finally {
+            if (tempPath) await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+            setImporting(false);
+          }
+        },
+      },
+    ]);
   };
 
   const handleGDrivePush = () => {
@@ -432,15 +508,64 @@ export function SyncSection({ encEnabled }: Props) {
     Alert.alert(t.settings.savedAlert);
   };
 
+  const autoSyncChips = (
+    <View style={styles.intervalRow}>
+      {SYNC_INTERVALS.map(({ label, value }) => (
+        <Pressable
+          key={value}
+          style={[styles.intervalChip, autoSyncInterval === value && styles.intervalChipActive]}
+          onPress={async () => { await setAutoSyncInterval(value); setAutoSyncIntervalState(value); }}
+        >
+          <Text style={[styles.intervalChipText, autoSyncInterval === value && styles.intervalChipTextActive]}>{label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
   return (
     <>
-      {/* Google Drive */}
-      <Pressable style={styles.subSectionHeader} onPress={() => setOpenGdrive(v => !v)}>
+      {/* ── Lokal ── */}
+      <Pressable style={styles.subSectionHeader} onPress={() => setOpenLocal(v => !v)}>
+        <Text style={styles.subSectionHeaderText}>{t.settings.subLocalBackup}</Text>
+        <Text style={styles.subSectionChevron}>{openLocal ? '▾' : '▸'}</Text>
+      </Pressable>
+      {openLocal && (
+        <View style={styles.sectionBody}>
+          <Text style={styles.subLabel}>{t.settings.subBackupRetention}</Text>
+          <View style={styles.intervalRow}>
+            {[3, 7, 14, 30].map((days) => (
+              <Pressable
+                key={days}
+                style={[styles.intervalChip, retentionDays === days && styles.intervalChipActive]}
+                onPress={async () => { await setRetentionDays(days); setRetentionDaysState(days); }}
+              >
+                <Text style={[styles.intervalChipText, retentionDays === days && styles.intervalChipTextActive]}>
+                  {t.settings.backupRetentionDays(days)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subRestore}</Text>
+          <Pressable style={styles.saveButton} onPress={handleShowLocalVersions} disabled={localVersionRestoring || importing}>
+            {localVersionRestoring
+              ? <ActivityIndicator color={c.accent} />
+              : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
+          </Pressable>
+          <Pressable style={styles.saveButton} onPress={handleImportDb} disabled={localVersionRestoring || importing}>
+            {importing
+              ? <ActivityIndicator color={c.accent} />
+              : <Text style={styles.saveText}>{t.settings.importDbBtn}</Text>}
+          </Pressable>
+        </View>
+      )}
+
+      {/* ── Google Drive ── */}
+      <Pressable style={[styles.subSectionHeader, { marginTop: 4 }]} onPress={() => setOpenGdrive(v => !v)}>
         <Text style={styles.subSectionHeaderText}>{t.settings.subGDrive}</Text>
         <Text style={styles.subSectionChevron}>{openGdrive ? '▾' : '▸'}</Text>
       </Pressable>
       {openGdrive && (
-        <View style={{ gap: 8, marginTop: 4 }}>
+        <View style={styles.sectionBody}>
           {!encEnabled && <Text style={styles.warnText}>{t.settings.syncEncryptionHint}</Text>}
           {!gdriveConnected ? (
             <Pressable style={styles.syncButton} onPress={handleGDriveConnect} disabled={gdriveConnecting}>
@@ -458,17 +583,19 @@ export function SyncSection({ encEnabled }: Props) {
               <Pressable style={styles.saveButton} onPress={handleGDriveDisconnect}>
                 <Text style={styles.saveText}>{t.settings.gdriveDisconnect}</Text>
               </Pressable>
+              <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subBackup}</Text>
               <Pressable style={styles.syncButton} onPress={handleGDriveSync} disabled={gdriveSyncing || gdriveRestoring}>
                 {gdriveSyncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.gdriveSyncNow}</Text>}
               </Pressable>
+              <Pressable style={[styles.saveButton, { borderColor: c.danger }]} onPress={handleGDrivePush} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
+                {gdrivePushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
+              </Pressable>
+              <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subRestore}</Text>
               <Pressable style={styles.saveButton} onPress={handleGDriveRestore} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
                 {gdriveRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.gdriveRestore}</Text>}
               </Pressable>
               <Pressable style={styles.saveButton} onPress={handleShowGdVersions} disabled={gdriveSyncing || gdriveRestoring || gdVersionRestoring}>
                 {gdVersionRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
-              </Pressable>
-              <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger }]} onPress={handleGDrivePush} disabled={gdriveSyncing || gdriveRestoring || gdrivePushing}>
-                {gdrivePushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
               </Pressable>
               {gdriveLastSync && <Text style={styles.lastSync}>{t.settings.gdriveLastSync}{gdriveLastSync}</Text>}
             </>
@@ -477,11 +604,13 @@ export function SyncSection({ encEnabled }: Props) {
             <Text style={styles.subLabel}>{t.settings.gdriveSetupHint} {gdriveHintExpanded ? '▾' : '▸'}</Text>
           </Pressable>
           {gdriveHintExpanded && <Text style={styles.warnText}>{t.settings.gdriveSetupHintText}</Text>}
+          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subAutoSync}</Text>
+          {autoSyncChips}
         </View>
       )}
 
-      {/* Nextcloud / WebDAV */}
-      <View style={styles.subSectionHeaderRow}>
+      {/* ── Nextcloud ── */}
+      <View style={[styles.subSectionHeaderRow, { marginTop: 4 }]}>
         <Pressable style={styles.subSectionHeader} onPress={() => setOpenNextcloud(v => !v)}>
           <Text style={styles.subSectionHeaderText}>{t.settings.subNextcloud}</Text>
           <Text style={styles.subSectionChevron}>{openNextcloud ? '▾' : '▸'}</Text>
@@ -495,7 +624,7 @@ export function SyncSection({ encEnabled }: Props) {
         </Pressable>
       </View>
       {openNextcloud && (
-        <View style={{ gap: 8, marginTop: 4 }}>
+        <View style={styles.sectionBody}>
           {!encEnabled && <Text style={styles.warnText}>{t.settings.syncEncryptionHint}</Text>}
           <Text style={styles.fieldLabel}>{t.settings.fieldUrl}</Text>
           <TextInput style={styles.field} value={config.url ?? ''} onChangeText={(v) => setConfig((p) => ({ ...p, url: v }))} placeholder="https://…" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="url" />
@@ -508,53 +637,27 @@ export function SyncSection({ encEnabled }: Props) {
           <Pressable style={styles.saveButton} onPress={saveNextcloud}>
             <Text style={styles.saveText}>{t.settings.btnSaveCredentials}</Text>
           </Pressable>
-          <Pressable style={[styles.syncButton, { marginTop: 2 }]} onPress={handleSync} disabled={syncing || restoring}>
+          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subBackup}</Text>
+          <Pressable style={styles.syncButton} onPress={handleSync} disabled={syncing || restoring}>
             {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t.settings.btnSyncNow}</Text>}
           </Pressable>
+          <Pressable style={[styles.saveButton, { borderColor: c.danger }]} onPress={handlePush} disabled={syncing || restoring || pushing}>
+            {pushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
+          </Pressable>
+          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subRestore}</Text>
           <Pressable style={styles.saveButton} onPress={handleRestore} disabled={syncing || restoring || pushing}>
             {restoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.btnRestore}</Text>}
           </Pressable>
           <Pressable style={styles.saveButton} onPress={handleShowNcVersions} disabled={syncing || restoring || ncVersionRestoring}>
             {ncVersionRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
           </Pressable>
-          <Pressable style={[styles.saveButton, { marginTop: 2, borderColor: c.danger }]} onPress={handlePush} disabled={syncing || restoring || pushing}>
-            {pushing ? <ActivityIndicator color={c.danger} /> : <Text style={[styles.saveText, { color: c.danger }]}>⬆ {t.settings.pushLocalTitle}</Text>}
-          </Pressable>
           {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
+          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subAutoSync}</Text>
+          {autoSyncChips}
         </View>
       )}
 
-      {/* Auto-Sync */}
-      <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subAutoSync}</Text>
-      <View style={styles.intervalRow}>
-        {SYNC_INTERVALS.map(({ label, value }) => (
-          <Pressable
-            key={value}
-            style={[styles.intervalChip, autoSyncInterval === value && styles.intervalChipActive]}
-            onPress={async () => { await setAutoSyncInterval(value); setAutoSyncIntervalState(value); }}
-          >
-            <Text style={[styles.intervalChipText, autoSyncInterval === value && styles.intervalChipTextActive]}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Backup-Aufbewahrung */}
-      <Text style={[styles.subLabel, { marginTop: 14 }]}>{t.settings.subBackupRetention}</Text>
-      <View style={styles.intervalRow}>
-        {[3, 7, 14, 30].map((days) => (
-          <Pressable
-            key={days}
-            style={[styles.intervalChip, retentionDays === days && styles.intervalChipActive]}
-            onPress={async () => { await setRetentionDays(days); setRetentionDaysState(days); }}
-          >
-            <Text style={[styles.intervalChipText, retentionDays === days && styles.intervalChipTextActive]}>
-              {t.settings.backupRetentionDays(days)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Sync-Log */}
+      {/* ── Sync-Log ── */}
       <Pressable style={{ marginTop: 10 }} onPress={() => setLogExpanded((v) => !v)}>
         <Text style={styles.subLabel}>{t.settings.subSyncLog} {logExpanded ? '▾' : '▸'}</Text>
       </Pressable>
@@ -648,6 +751,37 @@ export function SyncSection({ encEnabled }: Props) {
         </View>
       </Modal>
 
+      {/* Lokale Backup-Versionen Modal */}
+      <Modal visible={localVersionModal} transparent animationType="fade" onRequestClose={() => setLocalVersionModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: '70%' }]}>
+            <Text style={styles.modalTitle}>{t.settings.localBackupVersionsTitle}</Text>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+              {localVersions.length === 0 ? (
+                <Text style={[styles.mutedText, { lineHeight: 20 }]}>{t.settings.localBackupVersionsEmpty}</Text>
+              ) : (
+                <FlatList
+                  data={localVersions}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border, opacity: pressed ? 0.6 : 1 }]}
+                      onPress={() => handleLocalVersionRestore(item)}
+                    >
+                      <Text style={styles.catName}>{item.slice(9, 19)}</Text>
+                      <Text style={styles.accentText}>{t.settings.restoreBtn}</Text>
+                    </Pressable>
+                  )}
+                />
+              )}
+            </View>
+            <Pressable style={[styles.modalCancel, { flexGrow: 0, flexShrink: 0 }]} onPress={() => setLocalVersionModal(false)}>
+              <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Google Drive Ordner-Modal */}
       <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -699,7 +833,7 @@ export function SyncSection({ encEnabled }: Props) {
                   onPress={handleGDriveFolderCreate}
                   disabled={gdriveNewFolderCreating || !gdriveNewFolderName.trim()}
                 >
-                  {gdriveNewFolderCreating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalBtnText}>{t.settings.gdriveFolderNewCreate}</Text>}
+                  {gdriveNewFolderCreating ? <ActivityIndicator color="#0F1B2D" size="small" /> : <Text style={styles.modalBtnText}>{t.settings.gdriveFolderNewCreate}</Text>}
                 </Pressable>
                 <Pressable onPress={() => { setGDriveNewFolderMode(false); setGDriveNewFolderName(''); }}>
                   <Text style={[styles.modalCancelText, { paddingHorizontal: 4 }]}>✕</Text>

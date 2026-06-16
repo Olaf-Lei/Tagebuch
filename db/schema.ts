@@ -29,12 +29,14 @@ export async function initDb(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE
+      name TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS tags (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE
+      name TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS entries (
@@ -92,6 +94,11 @@ export async function initDb(): Promise<void> {
       category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
       qualifier_id INTEGER REFERENCES qualifiers(id) ON DELETE CASCADE,
       PRIMARY KEY (category_id, qualifier_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     );
   `);
 
@@ -189,6 +196,8 @@ export async function initDb(): Promise<void> {
 
   // Migration: add color to categories
   try { await db.execAsync('ALTER TABLE categories ADD COLUMN color TEXT;'); } catch {}
+  try { await db.execAsync('ALTER TABLE categories ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;'); } catch {}
+  try { await db.execAsync('ALTER TABLE tags ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;'); } catch {}
   // Assign palette colors to existing colorless categories
   const _palette = ['#C9A84C','#4C9DC9','#4CC984','#C94C6A','#9D4CC9','#C9844C','#4CC9C9','#C9504C','#84C94C','#C94C9D'];
   const _colorless = await db.getAllAsync<{ id: number }>('SELECT id FROM categories WHERE color IS NULL ORDER BY id');

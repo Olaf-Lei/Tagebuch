@@ -8,6 +8,7 @@ import {
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import { getDbPath, getDb } from '../db/schema';
+import { setConfig } from '../db/config';
 import { isEncryptionEnabled, encryptDbToTemp, exportEncKey } from '../utils/crypto';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
@@ -70,6 +71,12 @@ export async function saveConfig(config: WebDavConfig): Promise<void> {
     SecureStore.setItemAsync(STORE_PASS, config.password),
     SecureStore.setItemAsync(STORE_PATH, config.path.trim()),
   ]);
+  await Promise.all([
+    setConfig('webdav_url', config.url.trim()),
+    setConfig('webdav_user', config.username.trim()),
+    setConfig('webdav_pass', config.password),
+    setConfig('webdav_path', config.path.trim()),
+  ]).catch(() => {});
 }
 
 export async function getLastSync(): Promise<string | null> {

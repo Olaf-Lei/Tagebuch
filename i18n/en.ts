@@ -264,6 +264,8 @@ export const en: Strings = {
     deleteTagTitle: (name: string) => `Delete "#${name}"?`,
     deleteTagMsg: 'The tag will be removed from all entries.',
 
+    subBackup: 'Backup',
+    subRestore: 'Restore',
     subBackupRetention: 'Backup Retention',
     backupRetentionDays: (n: number) => `${n} days`,
     backupVersionsBtn: 'Older Versions',
@@ -272,6 +274,14 @@ export const en: Strings = {
     backupVersionsEmpty: 'No older backup versions available.\n\nVersions will be created automatically on the next sync.',
     backupVersionsRestoreConfirmTitle: (date: string) => `Restore backup from ${date}?`,
     backupVersionsRestoreConfirmMsg: 'The local database will be replaced by this backup.',
+
+    subLocalBackup: 'Local Backup',
+    localBackupVersionsTitle: 'Local Backup Versions',
+    localBackupVersionsEmpty: 'No local backup available.\n\nA backup will be created on the next app start.',
+    localBackupVersionsRestoreConfirmTitle: (date: string) => `Restore local backup from ${date}?`,
+    importDbBtn: 'Import DB File',
+    importDbConfirmTitle: 'Import database file?',
+    importDbConfirmMsg: 'The current database will be replaced by the selected file. For encrypted files (.db.enc) the enc key must already be imported.',
   },
 
   sectionHelp: {

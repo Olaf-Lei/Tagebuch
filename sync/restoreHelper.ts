@@ -1,5 +1,7 @@
 import { deleteAsync, copyAsync } from 'expo-file-system/legacy';
+import * as SecureStore from 'expo-secure-store';
 import { getDb, getDbPath, closeDb, initDb } from '../db/schema';
+import { getAllConfig } from '../db/config';
 import { decryptToPath } from '../utils/crypto';
 
 export async function applyRestore(tempPath: string, isEnc: boolean): Promise<void> {
@@ -51,6 +53,10 @@ export async function applyRestore(tempPath: string, isEnc: boolean): Promise<vo
     await deleteAsync(`file://${rawDbPath}-wal`, { idempotent: true }).catch(() => {});
     await deleteAsync(`file://${rawDbPath}-shm`, { idempotent: true }).catch(() => {});
     await initDb();
+    const cfg = await getAllConfig();
+    await Promise.all(
+      Object.entries(cfg).map(([k, v]) => SecureStore.setItemAsync(k, v!)),
+    ).catch(() => {});
   } catch (e) {
     // Rollback: gesicherte DB wiederherstellen
     await deleteAsync(`file://${rawDbPath}`, { idempotent: true }).catch(() => {});
