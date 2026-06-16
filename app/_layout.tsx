@@ -1,6 +1,5 @@
 import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
-import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -28,7 +27,6 @@ function AppShell() {
   const { mode } = useTheme();
   const t = useT();
   const c = mode === 'dark' ? darkColors : lightColors;
-  usePreventScreenCapture();
 
   return (
     <>
