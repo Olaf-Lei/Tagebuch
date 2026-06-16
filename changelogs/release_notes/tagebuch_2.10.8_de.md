@@ -1,0 +1,1 @@
+Neu: Tägliches lokales Backup — ältere Versionen können in den Einstellungen wiederhergestellt oder externe Datenbankdateien importiert werden. WebDAV-Zugangsdaten bleiben jetzt auch nach einem Datenbank-Restore erhalten. Bugfixes: Screenshot-Sperre (FLAG_SECURE) und TGBv3-Entschlüsselung auf Android.

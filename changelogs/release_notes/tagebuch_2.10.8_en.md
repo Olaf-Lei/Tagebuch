@@ -1,0 +1,1 @@
+New: Daily local backup — restore older versions or import external database files from Settings. WebDAV credentials now survive a database restore. Bug fixes: screenshot blocking (FLAG_SECURE) and TGBv3 decryption on Android.
