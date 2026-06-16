@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tagebuch",
     "slug": "tagebuch",
-    "version": "2.10.7",
+    "version": "2.10.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -19,7 +19,7 @@
       },
       "package": "com.simpletagebuch.app",
       "allowBackup": false,
-      "versionCode": 123,
+      "versionCode": 124,
       "targetSdkVersion": 35,
       "minSdkVersion": 24,
       "privacyPolicyUrl": "https://gist.github.com/Olaf-Lei/ab539abc2d8d4db4305b9ee2de4af95d",
@@ -72,6 +72,7 @@
       ],
       "expo-localization",
       "expo-web-browser",
+      "expo-screen-capture",
       [
         "expo-notifications",
         {
