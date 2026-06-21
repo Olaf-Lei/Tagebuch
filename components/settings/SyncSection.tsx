@@ -3,9 +3,8 @@ import {
   ActivityIndicator, Alert, Clipboard, FlatList, KeyboardAvoidingView,
   Modal, Platform, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
-import { copyAsync, deleteAsync, cacheDirectory } from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../theme';
 import { useT } from '../../i18n';
 import { loadConfig, saveConfig, getLastSync, syncNow, restoreNow, pushNow, listWebdavBackups, restoreFromVersionWebdav, type WebDavConfig } from '../../sync/webdav';
@@ -30,6 +29,7 @@ export function SyncSection({ encEnabled }: Props) {
   const c = useColors();
   const t = useT();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [openLocal, setOpenLocal] = useState(false);
   const [openGdrive, setOpenGdrive] = useState(false);
@@ -72,7 +72,6 @@ export function SyncSection({ encEnabled }: Props) {
   const [localVersions, setLocalVersions] = useState<string[]>([]);
   const [localVersionModal, setLocalVersionModal] = useState(false);
   const [localVersionRestoring, setLocalVersionRestoring] = useState(false);
-  const [importing, setImporting] = useState(false);
 
   const styles = useMemo(() => StyleSheet.create({
     subLabel: { fontSize: 11, fontWeight: '600', color: c.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 6 },
@@ -311,36 +310,6 @@ export function SyncSection({ encEnabled }: Props) {
     );
   };
 
-  const handleImportDb = () => {
-    Alert.alert(t.settings.importDbConfirmTitle, t.settings.importDbConfirmMsg, [
-      { text: t.common.cancel, style: 'cancel' },
-      {
-        text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
-          setImporting(true);
-          let tempPath: string | null = null;
-          try {
-            const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
-            if (result.canceled) return;
-            const asset = result.assets[0];
-            const isEnc = asset.name.endsWith('.db.enc');
-            tempPath = `${cacheDirectory ?? ''}tagebuch_import.tmp`;
-            await copyAsync({ from: asset.uri, to: tempPath });
-            await applyRestore(tempPath, isEnc);
-            await refreshLog();
-            Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
-              { text: t.common.ok, onPress: () => router.replace('/') },
-            ]);
-          } catch (e: any) {
-            Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
-          } finally {
-            if (tempPath) await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
-            setImporting(false);
-          }
-        },
-      },
-    ]);
-  };
-
   const handleGDrivePush = () => {
     Alert.alert(t.settings.pushLocalTitle, t.settings.pushLocalGDriveMsg, [
       { text: t.common.cancel, style: 'cancel' },
@@ -546,15 +515,10 @@ export function SyncSection({ encEnabled }: Props) {
             ))}
           </View>
           <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subRestore}</Text>
-          <Pressable style={styles.saveButton} onPress={handleShowLocalVersions} disabled={localVersionRestoring || importing}>
+          <Pressable style={styles.saveButton} onPress={handleShowLocalVersions} disabled={localVersionRestoring}>
             {localVersionRestoring
               ? <ActivityIndicator color={c.accent} />
               : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
-          </Pressable>
-          <Pressable style={styles.saveButton} onPress={handleImportDb} disabled={localVersionRestoring || importing}>
-            {importing
-              ? <ActivityIndicator color={c.accent} />
-              : <Text style={styles.saveText}>{t.settings.importDbBtn}</Text>}
           </Pressable>
         </View>
       )}
@@ -604,8 +568,6 @@ export function SyncSection({ encEnabled }: Props) {
             <Text style={styles.subLabel}>{t.settings.gdriveSetupHint} {gdriveHintExpanded ? '▾' : '▸'}</Text>
           </Pressable>
           {gdriveHintExpanded && <Text style={styles.warnText}>{t.settings.gdriveSetupHintText}</Text>}
-          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subAutoSync}</Text>
-          {autoSyncChips}
         </View>
       )}
 
@@ -652,10 +614,12 @@ export function SyncSection({ encEnabled }: Props) {
             {ncVersionRestoring ? <ActivityIndicator color={c.accent} /> : <Text style={styles.saveText}>{t.settings.backupVersionsBtn}</Text>}
           </Pressable>
           {lastSync && <Text style={styles.lastSync}>{t.settings.lastSync}{lastSync}</Text>}
-          <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subAutoSync}</Text>
-          {autoSyncChips}
         </View>
       )}
+
+      {/* Auto-Sync gilt für alle Ziele */}
+      <Text style={[styles.subLabel, { marginTop: 8 }]}>{t.settings.subAutoSync}</Text>
+      {autoSyncChips}
 
       {/* ── Sync-Log ── */}
       <Pressable style={{ marginTop: 10 }} onPress={() => setLogExpanded((v) => !v)}>
@@ -783,9 +747,9 @@ export function SyncSection({ encEnabled }: Props) {
       </Modal>
 
       {/* Google Drive Ordner-Modal */}
-      <Modal visible={gdriveFolderModal} transparent animationType="fade" onRequestClose={() => setGDriveFolderModal(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={[styles.modalBox, { maxHeight: '82%' }]}>
+      <Modal visible={gdriveFolderModal} transparent animationType="slide" onRequestClose={() => setGDriveFolderModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', paddingTop: 56 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalBox, { flex: 1, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, maxHeight: undefined, paddingBottom: Math.max(insets.bottom, 16) }]}>
             <Text style={styles.modalTitle}>{t.settings.gdriveFolderPickTitle}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
               <Text style={[styles.mutedText, { fontSize: 12 }]}>📁 {t.settings.gdriveFolderRoot}</Text>
@@ -846,13 +810,13 @@ export function SyncSection({ encEnabled }: Props) {
             )}
             <View style={{ gap: 8, flexShrink: 0 }}>
               <Pressable
-                style={styles.modalBtn}
+                style={[styles.modalBtn, { padding: 18 }]}
                 onPress={() => {
                   const cur = gdriveNavStack[gdriveNavStack.length - 1] ?? null;
                   handleGDriveFolderSelect(cur?.id ?? null, cur?.name ?? t.settings.gdriveFolderRoot);
                 }}
               >
-                <Text style={styles.modalBtnText}>{t.settings.gdriveFolderSelectThis}</Text>
+                <Text style={[styles.modalBtnText, { fontSize: 16 }]}>{t.settings.gdriveFolderSelectThis}</Text>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {gdriveNavStack.length > 0 && (
