@@ -177,6 +177,20 @@ export default function App() {
     }
   }
 
+  // Wirft bei Fehler — nur für internen Retry-Gebrauch
+  async function _syncForRetry() {
+    if (config) {
+      const { data, isEnc: enc } = await downloadAuto(config)
+      enc ? loadDatabase(await decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
+      refreshMeta()
+    }
+    if (driveIsConnected()) {
+      const { data, isEnc: enc } = await driveDownload()
+      enc ? loadDatabase(await decryptDb(data as string, encKey!)) : loadDatabase(data as ArrayBuffer)
+      refreshMeta()
+    }
+  }
+
   async function syncAll() {
     if (config) await syncNC()
     if (driveIsConnected()) await syncDriveOnly()
@@ -211,8 +225,8 @@ export default function App() {
       try {
         await _uploadDb()
       } catch (e) {
-        if (!(e instanceof ConflictError)) throw e
-        await syncAll()
+        if (!(e instanceof ConflictError) && !(e instanceof Error && e.name === 'ConflictError')) throw e
+        await _syncForRetry()
         applyChange()
         await _uploadDb()
       }
@@ -232,8 +246,8 @@ export default function App() {
       try {
         await _uploadDb()
       } catch (e) {
-        if (!(e instanceof ConflictError)) throw e
-        await syncAll()
+        if (!(e instanceof ConflictError) && !(e instanceof Error && e.name === 'ConflictError')) throw e
+        await _syncForRetry()
         deleteEntry(id)
         await _uploadDb()
       }
