@@ -1,0 +1,1 @@
+Google Drive neu: sichereres OAuth, reduzierter Scope (nur App-eigene Dateien), verbesserter Ordner-Picker. Web-Client: Speichern funktioniert jetzt zuverlässig, Sync-Zeitstempel bleibt nach Reload erhalten.
