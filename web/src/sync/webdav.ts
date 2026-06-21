@@ -4,6 +4,11 @@ import { ConflictError } from './errors'
 const LS_ETAG_ENC = 'nc_etag_enc'
 const LS_ETAG_DB  = 'nc_etag_db'
 
+function normEtag(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  return raw.trim().replace(/^W\//i, '').replace(/^"|"$/g, '')
+}
+
 function buildUrl(config: WebDAVConfig, filename: string): string {
   const base = config.url.replace(/\/$/, '')
   const user = encodeURIComponent((config.davUser || config.username).trim())
@@ -62,7 +67,7 @@ async function _fetchEtag(url: string, config: WebDAVConfig): Promise<string | n
   if (!res.ok) return null
   const xml = await res.text()
   const m = xml.match(/<[Dd](?:AV)?:getetag[^>]*>([^<]+)</)
-  return m ? m[1].trim().replace(/^"|"$/g, '') : null
+  return m ? normEtag(m[1]) : null
 }
 
 // PUT body to .tmp, check ETag against stored value, then MOVE atomically
@@ -77,7 +82,7 @@ async function _uploadAtomic(
   const putRes = await proxyPut(tmpUrl, config, body, contentType)
   if (!putRes.ok) throw new Error(`Upload fehlgeschlagen: HTTP ${putRes.status}`)
 
-  const storedEtag = localStorage.getItem(etagKey)?.replace(/^"|"$/g, '') ?? null
+  const storedEtag = normEtag(localStorage.getItem(etagKey))
   if (storedEtag) {
     const currentEtag = await _fetchEtag(finalUrl, config)
     // currentEtag null → file doesn't exist or PROPFIND failed → allow
@@ -103,7 +108,7 @@ export async function downloadAuto(config: WebDAVConfig): Promise<{ data: ArrayB
   const encUrl = buildUrl(config, 'tagebuch.db.enc')
   const encRes = await proxyGet(encUrl, config)
   if (encRes.ok) {
-    const etag = encRes.headers.get('ETag')
+    const etag = normEtag(encRes.headers.get('ETag'))
     if (etag) localStorage.setItem(LS_ETAG_ENC, etag)
     else localStorage.removeItem(LS_ETAG_ENC)
     return { data: await encRes.text(), isEnc: true }
@@ -112,7 +117,7 @@ export async function downloadAuto(config: WebDAVConfig): Promise<{ data: ArrayB
   const dbUrl = buildUrl(config, 'tagebuch.db')
   const dbRes = await proxyGet(dbUrl, config)
   if (dbRes.ok) {
-    const etag = dbRes.headers.get('ETag')
+    const etag = normEtag(dbRes.headers.get('ETag'))
     if (etag) localStorage.setItem(LS_ETAG_DB, etag)
     else localStorage.removeItem(LS_ETAG_DB)
     return { data: await dbRes.arrayBuffer(), isEnc: false }
