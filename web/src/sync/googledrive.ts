@@ -2,7 +2,7 @@ import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } fr
 import { ConflictError } from './errors'
 import { credGet, credSet, credRemove } from './credStorage'
 
-const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email'
+const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email'
 
 const LS = {
   ACCESS_TOKEN:  'gdrive_access_token',
@@ -52,7 +52,10 @@ export async function completeAuth(code: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, code_verifier: verifier, redirect_uri: REDIRECT_URI }),
   })
-  const tokens = await res.json()
+  const text = await res.text()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let tokens: any
+  try { tokens = JSON.parse(text) } catch { throw new Error(`Proxy-Fehler (${res.status}): ${text.slice(0, 200) || 'Keine Antwort vom Server'}`) }
   if (!res.ok || tokens.error) throw new Error(tokens.error_description ?? tokens.error ?? `HTTP ${res.status}`)
   credSet(LS.ACCESS_TOKEN, tokens.access_token)
   if (tokens.refresh_token) credSet(LS.REFRESH_TOKEN, tokens.refresh_token)
@@ -171,11 +174,15 @@ async function _upload(
     }
 
     const res = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,
+      `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media&fields=headRevisionId`,
       { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' }, body: buf }
     )
     if (res.status === 404) { localStorage.removeItem(fileIdKey); return _upload(content, filename, fileIdKey, revKey, token) }
     if (!res.ok) throw new Error(`Drive-Upload fehlgeschlagen: ${res.status}`)
+    const updated = await res.json().catch(() => null)
+    const newRev = updated?.headRevisionId as string | undefined
+    if (newRev) localStorage.setItem(revKey, newRev)
+    else localStorage.removeItem(revKey)
     return
   }
 

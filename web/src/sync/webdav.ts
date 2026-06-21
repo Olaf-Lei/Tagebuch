@@ -92,6 +92,10 @@ async function _uploadAtomic(
     await proxyDelete(tmpUrl, config)
     throw new Error(`Upload fehlgeschlagen (MOVE): HTTP ${moveRes.status}`)
   }
+  // ETag nach erfolgreichem Upload aktualisieren
+  const newEtag = await _fetchEtag(finalUrl, config)
+  if (newEtag) localStorage.setItem(etagKey, newEtag)
+  else localStorage.removeItem(etagKey)
 }
 
 // Versucht zuerst .db.enc, dann .db. Speichert ETag für Konflikt-Erkennung.
