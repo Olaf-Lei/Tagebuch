@@ -26,8 +26,12 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [ncSyncing, setNcSyncing] = useState(false)
   const [driveSyncing, setDriveSyncing] = useState(false)
-  const [ncLastSync, setNcLastSync] = useState<Date | null>(null)
-  const [driveLastSync, setDriveLastSync] = useState<Date | null>(null)
+  const [ncLastSync, setNcLastSync] = useState<Date | null>(() => {
+    const v = localStorage.getItem('nc_last_sync'); return v ? new Date(Number(v)) : null
+  })
+  const [driveLastSync, setDriveLastSync] = useState<Date | null>(() => {
+    const v = localStorage.getItem('drive_last_sync'); return v ? new Date(Number(v)) : null
+  })
   const [ncError, setNcError] = useState('')
   const [driveError, setDriveError] = useState('')
   const [pushing, setPushing] = useState(false)
@@ -42,6 +46,14 @@ export default function App() {
     document.documentElement.classList.toggle('light', !isDark)
     localStorage.setItem('tagebuch_theme', isDark ? 'dark' : 'light')
   }, [isDark])
+
+  useEffect(() => {
+    if (ncLastSync) localStorage.setItem('nc_last_sync', String(ncLastSync.getTime()))
+  }, [ncLastSync])
+
+  useEffect(() => {
+    if (driveLastSync) localStorage.setItem('drive_last_sync', String(driveLastSync.getTime()))
+  }, [driveLastSync])
 
   useEffect(() => {
     initSql().then(async () => {
