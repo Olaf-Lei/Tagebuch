@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { WebDAVConfig, Category, Tag, Qualifier } from './types'
 import { initSql, loadDatabase, exportDatabase, getCategories, getTags, getQualifiers, createEntry, updateEntry, deleteEntry } from './db/database'
 import { downloadAuto, uploadEncrypted, uploadPlain } from './sync/webdav'
+import { ConflictError } from './sync/errors'
 import { startAuth, completeAuth, isConnected as driveIsConnected, getConnectedEmail, downloadLatest as driveDownload, uploadLatest as driveUpload, signOut as driveSignOut } from './sync/googledrive'
 import { credGet } from './sync/credStorage'
 import { decryptDb, encryptDb } from './crypto'
@@ -50,6 +51,7 @@ export default function App() {
         try {
           await completeAuth(code)
           window.history.replaceState({}, '', window.location.pathname)
+          localStorage.setItem('gdrive_authed_redirect', '1')
         } catch (e) {
           setErrorMsg('Google-Anmeldung fehlgeschlagen: ' + String(e))
           return
@@ -139,10 +141,10 @@ export default function App() {
     }
 
     const results = await Promise.allSettled(jobs)
-    const failed = results
-      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map(r => String(r.reason))
-    if (failed.length) throw new Error(failed.join('\n'))
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    const conflict = rejected.find(r => r.reason instanceof ConflictError)
+    if (conflict) throw conflict.reason
+    if (rejected.length) throw new Error(rejected.map(r => String(r.reason)).join('\n'))
   }
 
   async function syncNC() {
@@ -199,11 +201,21 @@ export default function App() {
     categoryIds: number[], tagNames: string[], qualifierValues: Record<number, number>,
     latitude?: number | null, longitude?: number | null, locationName?: string | null
   ) {
-    setSaving(true)
-    try {
+    const applyChange = () => {
       if (entryId == null) createEntry(text, timestamp, categoryIds, tagNames, qualifierValues, latitude, longitude, locationName)
       else updateEntry(entryId, text, timestamp, categoryIds, tagNames, qualifierValues, latitude, longitude, locationName)
-      await _uploadDb()
+    }
+    setSaving(true)
+    try {
+      applyChange()
+      try {
+        await _uploadDb()
+      } catch (e) {
+        if (!(e instanceof ConflictError)) throw e
+        await syncAll()
+        applyChange()
+        await _uploadDb()
+      }
       if (config) setNcLastSync(new Date())
       if (driveIsConnected()) setDriveLastSync(new Date())
     } catch (e) {
@@ -217,7 +229,14 @@ export default function App() {
     setSaving(true)
     try {
       deleteEntry(id)
-      await _uploadDb()
+      try {
+        await _uploadDb()
+      } catch (e) {
+        if (!(e instanceof ConflictError)) throw e
+        await syncAll()
+        deleteEntry(id)
+        await _uploadDb()
+      }
       if (config) setNcLastSync(new Date())
       if (driveIsConnected()) setDriveLastSync(new Date())
     } catch (e) {
