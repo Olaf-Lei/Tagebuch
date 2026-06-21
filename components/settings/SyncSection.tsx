@@ -810,13 +810,13 @@ export function SyncSection({ encEnabled }: Props) {
             )}
             <View style={{ gap: 8, flexShrink: 0 }}>
               <Pressable
-                style={[styles.modalBtn, { padding: 18 }]}
+                style={{ backgroundColor: c.accent, borderRadius: 10, padding: 18, alignItems: 'center', justifyContent: 'center' }}
                 onPress={() => {
                   const cur = gdriveNavStack[gdriveNavStack.length - 1] ?? null;
                   handleGDriveFolderSelect(cur?.id ?? null, cur?.name ?? t.settings.gdriveFolderRoot);
                 }}
               >
-                <Text style={[styles.modalBtnText, { fontSize: 16 }]}>{t.settings.gdriveFolderSelectThis}</Text>
+                <Text style={{ color: '#0F1B2D', fontSize: 16, fontWeight: '700' }}>{t.settings.gdriveFolderSelectThis}</Text>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {gdriveNavStack.length > 0 && (
