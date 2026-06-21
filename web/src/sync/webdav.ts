@@ -1,5 +1,4 @@
 import type { WebDAVConfig } from '../types'
-import { ConflictError } from './errors'
 
 const LS_ETAG_ENC = 'nc_etag_enc'
 const LS_ETAG_DB  = 'nc_etag_db'
@@ -81,16 +80,6 @@ async function _uploadAtomic(
 ): Promise<void> {
   const putRes = await proxyPut(tmpUrl, config, body, contentType)
   if (!putRes.ok) throw new Error(`Upload fehlgeschlagen: HTTP ${putRes.status}`)
-
-  const storedEtag = normEtag(localStorage.getItem(etagKey))
-  if (storedEtag) {
-    const currentEtag = await _fetchEtag(finalUrl, config)
-    // currentEtag null → file doesn't exist or PROPFIND failed → allow
-    if (currentEtag !== null && currentEtag !== storedEtag) {
-      await proxyDelete(tmpUrl, config)
-      throw new ConflictError()
-    }
-  }
 
   const moveRes = await proxyMove(tmpUrl, finalUrl, config)
   if (!moveRes.ok) {

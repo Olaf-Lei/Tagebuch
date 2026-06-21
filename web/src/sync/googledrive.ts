@@ -1,5 +1,4 @@
 import { GDRIVE_CLIENT_ID as CLIENT_ID, GDRIVE_REDIRECT_URI as REDIRECT_URI } from './googledriveConfig'
-import { ConflictError } from './errors'
 import { credGet, credSet, credRemove } from './credStorage'
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email'
@@ -167,12 +166,6 @@ async function _upload(
   const existingId = localStorage.getItem(fileIdKey)
 
   if (existingId) {
-    const storedRev = localStorage.getItem(revKey)
-    if (storedRev) {
-      const currentRev = await _getHeadRevisionId(existingId, token)
-      if (currentRev !== null && currentRev !== storedRev) throw new ConflictError()
-    }
-
     const res = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media&fields=headRevisionId`,
       { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' }, body: buf }
