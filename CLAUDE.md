@@ -35,4 +35,4 @@ Ein Eintrag = Zeitstempel + Freitext + Kategorien + Tags + Qualifiers (1–5). S
 ## Details on Demand
 
 Per-Projekt Memory-Index lesen für: SQL-Schema, Screens, Sync-Logik, Verschlüsselungsformate, Web-Architektur, Backlog.
-`~/.claude/projects/-root-projects-Tagebuch/memory/MEMORY.md`
+`~/.claude/projects/-root-projects-privat-Tagebuch/memory/MEMORY.md`
