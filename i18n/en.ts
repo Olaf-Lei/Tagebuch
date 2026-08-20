@@ -82,8 +82,8 @@ export const en: Strings = {
     sectionSecurity: 'Security',
     sectionReminders: 'Reminders',
     sectionAppearance: 'Appearance',
-    sectionExport: 'Export',
-    sectionExperten: 'Advanced',
+    sectionExport: 'Import / Export',
+    sectionExperten: 'Web-Client',
     demoSeedBtn: 'Load demo data (Moby Dick)',
     demoSeedConfirmTitle: 'Load demo data?',
     demoSeedConfirmMsg: '20 sample entries from Moby Dick will be inserted. Existing data is kept.',
@@ -98,6 +98,7 @@ export const en: Strings = {
 
     subCategories: 'Categories',
     subTags: 'Tags',
+    tagsEmptyHint: 'Tags are created automatically when writing with #hashtag.',
     subQualifiers: 'Ratings',
     newCategoryPlaceholder: 'New category…',
     newQualifierPlaceholder: 'Name (e.g. Sleep)…',
@@ -281,7 +282,7 @@ export const en: Strings = {
     localBackupVersionsRestoreConfirmTitle: (date: string) => `Restore local backup from ${date}?`,
     importDbBtn: 'Import DB File',
     importDbConfirmTitle: 'Import database file?',
-    importDbConfirmMsg: 'The current database will be replaced by the selected file. For encrypted files (.db.enc) the enc key must already be imported.',
+    importDbConfirmMsg: 'The current database will be replaced by the selected file. For encrypted files (.db.enc) you will be asked for the key.',
   },
 
   sectionHelp: {
@@ -300,10 +301,10 @@ export const en: Strings = {
     darstellungTitle: 'Appearance',
     darstellungBody: 'Colour mode\nChoose between Light, Dark, or Automatic (follows system settings). Dark mode is the recommended default.\n\nLanguage\nThe app is available in German and English. The language applies to all UI text; entry content and tags are not translated.',
 
-    exportTitle: 'Export',
+    exportTitle: 'Import / Export',
     exportBody: 'JSON\nExports all entries with metadata (categories, tags, qualifiers, location, timestamps) as machine-readable JSON.\n\nCSV\nExports all entries as a table — suitable for Excel, LibreOffice or other spreadsheet applications. Qualifiers are added as separate columns.\n\nExported files can be saved or shared via the Android share menu.',
 
-    expertenTitle: 'Expert settings',
+    expertenTitle: 'Web-Client',
     expertenBody: 'Web frontend URL\nEnter the URL of your own web client (e.g. https://your-domain.com/diary/). This URL is used for relay-code login.\n\nWeb login QR code\nGenerates a QR code containing sync credentials (Nextcloud, Google Drive, encryption key). This lets you set up the web client instantly without manually entering your details. A 6-digit relay code (valid for 5 minutes) is also available.\n\nRemove demo data\nDeletes the demo entries created on first launch, along with their demo categories and tags.',
   },
 

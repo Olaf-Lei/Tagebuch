@@ -46,7 +46,13 @@ const QR_OPTIONS = { delayBetweenScanAttempts: 0, delayBetweenScanSuccess: 200 }
 
 export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, driveEmail, error }: Props) {
   const saved = loadSavedConfig()
-  const [view, setView] = useState<View>('main')
+  const [view, setView] = useState<View>(() => {
+    if (localStorage.getItem('gdrive_authed_redirect') === '1') {
+      localStorage.removeItem('gdrive_authed_redirect')
+      return 'manual'
+    }
+    return 'main'
+  })
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState('')
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
@@ -161,8 +167,13 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
   }, [scanning, cameraIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRelayConnect() {
-    const code = relayInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
-    if (code.length !== 6) { setRelayError('Bitte genau 6 Zeichen eingeben.'); return }
+    const raw = relayInput.trim()
+    const dashIdx = raw.indexOf('-')
+    const code = (dashIdx === 6 ? raw.slice(0, 6) : '').toUpperCase()
+    const hexKey = dashIdx === 6 ? raw.slice(7).toLowerCase() : ''
+    if (!/^[A-Z0-9]{6}$/.test(code) || !/^[0-9a-f]{64}$/.test(hexKey)) {
+      setRelayError('Bitte den vollständigen Code aus der App einfügen (CODE-Schlüssel).'); return
+    }
     setRelayError(''); setRelayLoading(true)
     try {
       const res = await fetch(`./proxy.php?action=fetch_code&code=${code}`)
@@ -178,7 +189,13 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
         return
       }
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`)
-      const payload = json as { v: number; nc?: { url: string; user: string; pass: string; path: string }; encKey?: string }
+      if (!json.ct) throw new Error('Kein verschlüsselter Payload.')
+      const kb = new Uint8Array(32)
+      for (let i = 0; i < 32; i++) kb[i] = parseInt(hexKey.slice(i * 2, i * 2 + 2), 16)
+      const key = await crypto.subtle.importKey('raw', kb, 'AES-GCM', false, ['decrypt'])
+      const combined = Uint8Array.from(atob(json.ct), c => c.charCodeAt(0))
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: combined.slice(0, 12) }, key, combined.slice(12))
+      const payload = JSON.parse(new TextDecoder().decode(decrypted)) as { v: number; nc?: { url: string; user: string; pass: string; path: string }; encKey?: string }
       if (payload.v !== 1) throw new Error('Ungültiges Format.')
       if (payload.encKey) credSet(KEY_GDRIVE_ENC, payload.encKey)
       if (payload.nc) {
@@ -269,14 +286,13 @@ export default function AuthScreen({ onConnect, onGoogleAuth, onConnectDrive, dr
             </button>
             {scanError && <p style={s.error}>{scanError}</p>}
             {error && <p style={s.error}>{error}</p>}
-            <div style={s.divider}><span style={s.dividerLabel}>oder 6-stelligen Code vom Smartphone eingeben</span></div>
+            <div style={s.divider}><span style={s.dividerLabel}>oder Code-Schlüssel vom Smartphone eingeben</span></div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
-                style={{ ...s.input, flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase' }}
-                placeholder="Code"
-                maxLength={6}
+                style={{ ...s.input, flex: 1, fontFamily: 'monospace', fontSize: 13 }}
+                placeholder="CODE-Schlüssel"
                 value={relayInput}
-                onChange={e => { setRelayInput(e.target.value.toUpperCase()); setRelayError('') }}
+                onChange={e => { setRelayInput(e.target.value); setRelayError('') }}
                 onKeyDown={e => e.key === 'Enter' && !relayLoading && relayCountdown === 0 && handleRelayConnect()}
               />
               <button style={{ ...s.button, marginTop: 0, padding: '0 18px', minWidth: 80, width: 'auto', flexShrink: 0 }} onClick={handleRelayConnect} disabled={relayLoading || relayCountdown > 0}>

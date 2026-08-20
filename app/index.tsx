@@ -22,7 +22,7 @@ import { deleteEntries } from '../db/entries';
 import { addSyncListener, loadConfig, syncNow as ncSyncNow, pushNow as ncPushNow, restoreNow as ncRestoreNow, getLastSync as ncGetLastSync, getLastSyncMs as ncGetLastSyncMs } from '../sync/webdav';
 import * as gdrive from '../sync/googledrive';
 import { getSyncErrors, addSyncStateListener } from '../sync/syncState';
-import { exportEncKey } from '../utils/crypto';
+import { exportEncKey, encryptRelay } from '../utils/crypto';
 
 const HELP_SHOWN_LEGACY_KEY = 'help_shown'; // Migration: alter Key
 
@@ -346,11 +346,13 @@ export default function IndexScreen() {
     try {
       const webFrontendUrl = (await SecureStore.getItemAsync('web_frontend_url'))?.trim() ?? '';
       if (!webFrontendUrl) return;
+      const payload = webLoginQR ? JSON.parse(webLoginQR) as Record<string, unknown> : {};
+      const { ct, hexKey } = await encryptRelay(payload);
       const res = await fetch(`${webFrontendUrl.replace(/\/$/, '')}/proxy.php?action=store_code`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: webLoginQR ?? '{}',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ct }),
       });
       const json = await res.json();
-      if (res.ok && json.code) setRelayCode(json.code);
+      if (res.ok && json.code) setRelayCode(`${json.code}-${hexKey}`);
     } catch {}
     finally { setRelayLoading(false); }
   };
@@ -660,7 +662,14 @@ export default function IndexScreen() {
             </View>
             {relayCode ? (
               <>
-                <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent }}>{relayCode}</Text>
+                <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent }}>
+                  {relayCode.includes('-') ? relayCode.slice(0, relayCode.indexOf('-')) : relayCode}
+                </Text>
+                {relayCode.includes('-') && (
+                  <Text selectable style={{ fontSize: 11, fontFamily: 'monospace', color: c.muted, textAlign: 'center', marginTop: 2 }}>
+                    {relayCode}
+                  </Text>
+                )}
                 <Text style={{ fontSize: 12, color: c.muted, textAlign: 'center' }}>{t.settings.webLoginRelayHint}</Text>
               </>
             ) : (

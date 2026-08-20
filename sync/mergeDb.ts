@@ -266,6 +266,17 @@ export async function mergeRemoteDb(
 
     await db.execAsync(`DETACH DATABASE remote`);
     attached = false;
+
+    const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
+    await db.execAsync(`
+      DELETE FROM deleted_entry_ids WHERE deleted_at < ${cutoff};
+      DELETE FROM deleted_category_names WHERE deleted_at < ${cutoff};
+      DELETE FROM deleted_tag_names WHERE deleted_at < ${cutoff};
+    `);
+    try {
+      await db.execAsync(`DELETE FROM deleted_category_qualifiers WHERE deleted_at < ${cutoff}`);
+    } catch {}
+
     await appendLog('info', `Merge: ${newCount} neue Einträge importiert.`);
     return newCount;
   } catch (e: any) {

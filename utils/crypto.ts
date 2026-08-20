@@ -9,6 +9,7 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import * as ExpoC from 'expo-crypto';
 import { AESEncryptionKey, AESSealedData, aesEncryptAsync, aesDecryptAsync } from 'expo-crypto';
+import { setConfig } from '../db/config';
 
 const STORE_ENC_ENABLED = 'enc_enabled';
 const STORE_ENC_KEY = 'enc_key';
@@ -19,7 +20,9 @@ export async function isEncryptionEnabled(): Promise<boolean> {
 }
 
 export async function setEncryptionEnabled(enabled: boolean): Promise<void> {
-  await SecureStore.setItemAsync(STORE_ENC_ENABLED, enabled ? 'true' : 'false');
+  const val = enabled ? 'true' : 'false';
+  await SecureStore.setItemAsync(STORE_ENC_ENABLED, val);
+  setConfig('enc_enabled', val).catch(() => {});
   if (enabled) await getOrCreateKey();
 }
 
@@ -29,6 +32,7 @@ export async function getOrCreateKey(): Promise<string> {
   const bytes = await ExpoC.getRandomBytesAsync(32);
   const key = Array.from(bytes as Uint8Array).map((b: number) => b.toString(16).padStart(2, '0')).join('');
   await SecureStore.setItemAsync(STORE_ENC_KEY, key);
+  setConfig('enc_key', key).catch(() => {});
   return key;
 }
 
@@ -36,6 +40,7 @@ export async function resetEncryptionKey(): Promise<void> {
   const bytes = await ExpoC.getRandomBytesAsync(32);
   const key = Array.from(bytes as Uint8Array).map((b: number) => b.toString(16).padStart(2, '0')).join('');
   await SecureStore.setItemAsync(STORE_ENC_KEY, key);
+  setConfig('enc_key', key).catch(() => {});
 }
 
 export async function exportEncKey(): Promise<string | null> {
@@ -46,8 +51,11 @@ export async function importEncKey(hexKey: string): Promise<void> {
   if (!/^[0-9a-fA-F]{64}$/.test(hexKey.trim())) {
     throw new Error('invalid_key');
   }
-  await SecureStore.setItemAsync(STORE_ENC_KEY, hexKey.trim().toLowerCase());
+  const key = hexKey.trim().toLowerCase();
+  await SecureStore.setItemAsync(STORE_ENC_KEY, key);
   await SecureStore.setItemAsync(STORE_ENC_ENABLED, 'true');
+  setConfig('enc_key', key).catch(() => {});
+  setConfig('enc_enabled', 'true').catch(() => {});
 }
 
 async function _importAesKey(hexKey: string): Promise<AESEncryptionKey> {
@@ -100,4 +108,18 @@ export async function encryptDbToTemp(dbPath: string): Promise<string> {
   const tempPath = cacheDirectory + 'tagebuch_upload.enc';
   await writeAsStringAsync(tempPath!, output, { encoding: EncodingType.UTF8 });
   return tempPath!;
+}
+
+// Encrypts a relay payload with a fresh AES-256-GCM key. Caller sends only ct to the server;
+// hexKey is shown to the user as the second part of the relay code (CODE-hexKey).
+export async function encryptRelay(payload: Record<string, unknown>): Promise<{ ct: string; hexKey: string }> {
+  const keyBytes = await ExpoC.getRandomBytesAsync(32) as Uint8Array;
+  const hexKey = Array.from(keyBytes).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  const key = await _importAesKey(hexKey);
+  const jsonStr = JSON.stringify(payload);
+  const encoded = new TextEncoder().encode(jsonStr);
+  let binary = '';
+  for (let i = 0; i < encoded.length; i++) binary += String.fromCharCode(encoded[i]);
+  const sealed = await aesEncryptAsync(btoa(binary), key, { nonce: { length: 12 }, tagLength: 16 });
+  return { ct: await sealed.combined('base64'), hexKey };
 }

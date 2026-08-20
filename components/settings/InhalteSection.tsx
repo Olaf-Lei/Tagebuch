@@ -226,10 +226,12 @@ export function InhalteSection() {
         </Pressable>
       </View>
 
-      {tags.length > 0 && (
-        <>
-          <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subTags}</Text>
-          {tags.map((tag) => (
+      <>
+        <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subTags}</Text>
+        {tags.length === 0 && (
+          <Text style={styles.mutedText}>{t.settings.tagsEmptyHint}</Text>
+        )}
+        {tags.map((tag) => (
             <View key={tag.id} style={styles.catRow}>
               {editingTagId === tag.id ? (
                 <>
@@ -246,8 +248,7 @@ export function InhalteSection() {
               )}
             </View>
           ))}
-        </>
-      )}
+      </>
 
       <Text style={[styles.subLabel, { marginTop: 10 }]}>{t.settings.subQualifiers}</Text>
       {qualifiers.map((q) =>

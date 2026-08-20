@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getEntries } from '../db/entries';
 import { getActiveQualifiers } from '../db/qualifiers';
-import { getDbPath } from '../db/schema';
+import { getDbPath, getDb } from '../db/schema';
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('de-DE', {
@@ -57,6 +57,8 @@ export async function exportCSV(): Promise<void> {
 }
 
 export async function exportDB(dialogTitle = 'Export database'): Promise<void> {
+  const db = await getDb();
+  await db.execAsync('PRAGMA wal_checkpoint(FULL)');
   const dbPath = await getDbPath();
   const src = dbPath.startsWith('file://') ? dbPath : `file://${dbPath}`;
   const dest = FileSystem.cacheDirectory + 'tagebuch_export.db';

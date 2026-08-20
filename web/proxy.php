@@ -33,8 +33,10 @@ if ($action === 'store_code') {
     header('Content-Type: application/json');
     $rawInput = file_get_contents('php://input');
     if (strlen($rawInput) > 4096) { http_response_code(413); echo json_encode(['error' => 'Payload zu groß']); exit; }
-    $payload = json_decode($rawInput, true);
-    if (!$payload) { http_response_code(400); echo json_encode(['error' => 'Ungültiger Body']); exit; }
+    $data = json_decode($rawInput, true);
+    if (!$data || !isset($data['ct']) || !is_string($data['ct']) || strlen($data['ct']) < 16) {
+        http_response_code(400); echo json_encode(['error' => 'Ungültiger Body']); exit;
+    }
     $tmp = sys_get_temp_dir();
 
     // Rate-Limit: max 5 store_code-Requests pro IP in 5 Minuten
@@ -57,7 +59,7 @@ if ($action === 'store_code') {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $code = '';
     for ($i = 0; $i < 6; $i++) $code .= $chars[random_int(0, strlen($chars) - 1)];
-    file_put_contents($tmp . '/tgb_relay_' . $code . '.json', json_encode(['ts' => $now, 'p' => $payload]));
+    file_put_contents($tmp . '/tgb_relay_' . $code . '.json', json_encode(['ts' => $now, 'ct' => $data['ct']]));
     echo json_encode(['code' => $code]);
     exit;
 }
@@ -108,7 +110,7 @@ if ($action === 'fetch_code') {
     }
     // Success: reset rate limit
     @unlink($rlFile);
-    echo json_encode($content['p']);
+    echo json_encode(['ct' => $content['ct']]);
     exit;
 }
 
@@ -136,9 +138,33 @@ if ($action === 'google_token' || $action === 'google_refresh') {
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
+    if ($response === false) {
+        http_response_code(502);
+        echo json_encode(['error' => 'gateway_error', 'error_description' => $curlErr ?: 'cURL-Fehler']);
+        exit;
+    }
     http_response_code($httpCode);
     echo $response;
+    exit;
+}
+
+if ($action === 'oauth_callback') {
+    $code  = $_GET['code']  ?? '';
+    $error = $_GET['error'] ?? '';
+    $base  = 'tagebuch://oauth2redirect';
+    if ($error !== '') {
+        $url = $base . '?error=' . rawurlencode($error);
+    } elseif ($code !== '') {
+        $url = $base . '?code=' . rawurlencode($code);
+    } else {
+        http_response_code(400);
+        echo 'Kein Code und kein Error-Parameter.';
+        exit;
+    }
+    header('Location: ' . $url);
+    http_response_code(302);
     exit;
 }
 

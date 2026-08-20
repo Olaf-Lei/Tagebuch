@@ -194,6 +194,9 @@ export function SicherheitSection({ encEnabled, onEncEnabledChange }: Props) {
           <Pressable style={styles.saveButton} onPress={handleShowExportKey}>
             <Text style={styles.saveText}>{t.settings.btnExportKey}</Text>
           </Pressable>
+          <Pressable style={styles.saveButton} onPress={() => { setImportKeyText(''); setImportKeyError(''); setEncKeyModal('import'); }}>
+            <Text style={styles.saveText}>{t.settings.btnImportKey}</Text>
+          </Pressable>
           <Pressable
             style={styles.resetBtn}
             onPress={() => Alert.alert(
@@ -209,9 +212,6 @@ export function SicherheitSection({ encEnabled, onEncEnabledChange }: Props) {
           </Pressable>
         </>
       )}
-      <Pressable style={styles.saveButton} onPress={() => { setImportKeyText(''); setImportKeyError(''); setEncKeyModal('import'); }}>
-        <Text style={styles.saveText}>{t.settings.btnImportKey}</Text>
-      </Pressable>
 
       {/* Passwort-Modal */}
       <Modal visible={pwModal !== null} transparent animationType="fade" onRequestClose={closePwModal}>

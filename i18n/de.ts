@@ -80,8 +80,8 @@ export const de = {
     sectionSecurity: 'Sicherheit',
     sectionReminders: 'Erinnerungen',
     sectionAppearance: 'Darstellung',
-    sectionExport: 'Export',
-    sectionExperten: 'Experten',
+    sectionExport: 'Import / Export',
+    sectionExperten: 'Web-Client',
     demoSeedBtn: 'Demo-Daten laden (Moby Dick)',
     demoSeedConfirmTitle: 'Demo-Daten laden?',
     demoSeedConfirmMsg: '20 Beispieleinträge aus Moby Dick werden eingefügt. Vorhandene Daten bleiben erhalten.',
@@ -96,6 +96,7 @@ export const de = {
 
     subCategories: 'Kategorien',
     subTags: 'Tags',
+    tagsEmptyHint: 'Tags entstehen automatisch beim Schreiben mit #hashtag.',
     subQualifiers: 'Bewertungen',
     newCategoryPlaceholder: 'Neue Kategorie…',
     newQualifierPlaceholder: 'Name (z. B. Schlaf)…',
@@ -279,7 +280,7 @@ export const de = {
     localBackupVersionsRestoreConfirmTitle: (date: string) => `Lokales Backup vom ${date} laden?`,
     importDbBtn: 'DB-Datei importieren',
     importDbConfirmTitle: 'Datenbankdatei importieren?',
-    importDbConfirmMsg: 'Die aktuelle Datenbank wird durch die ausgewählte Datei ersetzt. Bei verschlüsselten Dateien (.db.enc) muss der Enc-Schlüssel bereits importiert sein.',
+    importDbConfirmMsg: 'Die aktuelle Datenbank wird durch die ausgewählte Datei ersetzt. Bei verschlüsselten Dateien (.db.enc) wirst du nach dem Schlüssel gefragt.',
   },
 
   sectionHelp: {
@@ -298,10 +299,10 @@ export const de = {
     darstellungTitle: 'Darstellung',
     darstellungBody: 'Farbmodus\nWähle zwischen Hell, Dunkel oder Automatisch (folgt den Systemeinstellungen). Der Dunkelmodus ist der empfohlene Standard.\n\nSprache\nDie App ist auf Deutsch und Englisch verfügbar. Die Sprache gilt für alle UI-Texte; Eintragsinhalt und Tags werden nicht übersetzt.',
 
-    exportTitle: 'Export',
+    exportTitle: 'Import / Export',
     exportBody: 'JSON\nExportiert alle Einträge mit Metadaten (Kategorien, Tags, Bewertungen, Standortdaten, Timestamps) als maschinenlesbares JSON.\n\nCSV\nExportiert alle Einträge als Tabelle — geeignet für Excel, LibreOffice oder andere Tabellenkalkulationen. Qualifiers werden als separate Spalten angelegt.\n\nDie exportierten Dateien können über das Android-Teilen-Menü gespeichert oder weitergeleitet werden.',
 
-    expertenTitle: 'Experten',
+    expertenTitle: 'Web-Client',
     expertenBody: 'Web-Frontend URL\nTrage hier die URL deines eigenen Web-Clients ein (z.B. https://deine-domain.de/tagebuch/). Diese URL wird für den Relay-Code-Login verwendet.\n\nWeb-Login QR-Code\nErzeugt einen QR-Code mit den Sync-Zugangsdaten (Nextcloud, Google Drive, Verschlüsselungsschlüssel). Damit kannst du den Web-Client sofort einrichten, ohne die Daten manuell einzutippen. Alternativ wird ein 6-stelliger Relay-Code erzeugt, der 5 Minuten gültig ist.\n\nDemo-Daten entfernen\nLöscht die beim ersten App-Start angelegten Demo-Einträge mitsamt Demo-Kategorien und -Tags.',
   },
 

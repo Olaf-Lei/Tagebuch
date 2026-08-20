@@ -1,26 +1,23 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import * as SecureStore from 'expo-secure-store';
-import { setConfig } from '../db/config';
+import { getConfig, setConfig } from '../db/config';
 import { syncNow } from './webdav';
 import { syncNow as gdriveSyncNow } from './googledrive';
 
 export const SYNC_TASK = 'TAGEBUCH_BACKGROUND_SYNC';
-const STORE_INTERVAL = 'bg_sync_interval'; // minutes, 0 = disabled
 
 // Must be defined at module level
 TaskManager.defineTask(SYNC_TASK, async () => {
-  try {
-    await syncNow();
-    await gdriveSyncNow();
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch {
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
+  let ok = false;
+  try { await syncNow(); ok = true; } catch {}
+  try { await gdriveSyncNow(); ok = true; } catch {}
+  return ok
+    ? BackgroundFetch.BackgroundFetchResult.NewData
+    : BackgroundFetch.BackgroundFetchResult.Failed;
 });
 
 export async function getAutoSyncInterval(): Promise<number> {
-  const v = await SecureStore.getItemAsync(STORE_INTERVAL);
+  const v = await getConfig('bg_sync_interval');
   return v ? Number(v) : 0;
 }
 
@@ -38,8 +35,7 @@ export async function ensureBackgroundSyncRegistered(): Promise<void> {
 }
 
 export async function setAutoSyncInterval(minutes: number): Promise<void> {
-  await SecureStore.setItemAsync(STORE_INTERVAL, String(minutes));
-  setConfig('bg_sync_interval', String(minutes)).catch(() => {});
+  await setConfig('bg_sync_interval', String(minutes));
   const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK);
 
   if (minutes === 0) {

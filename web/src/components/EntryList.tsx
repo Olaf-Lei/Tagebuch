@@ -101,8 +101,13 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
   useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current) }, [])
 
   async function handleRelayConnect() {
-    const code = relayInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
-    if (code.length !== 6) { setRelayError('Bitte genau 6 Zeichen eingeben.'); return }
+    const raw = relayInput.trim()
+    const dashIdx = raw.indexOf('-')
+    const code = (dashIdx === 6 ? raw.slice(0, 6) : '').toUpperCase()
+    const hexKey = dashIdx === 6 ? raw.slice(7).toLowerCase() : ''
+    if (!/^[A-Z0-9]{6}$/.test(code) || !/^[0-9a-f]{64}$/.test(hexKey)) {
+      setRelayError('Bitte den vollständigen Code aus der App einfügen (CODE-Schlüssel).'); return
+    }
     setRelayError(''); setRelayLoading(true)
     try {
       const res = await fetch(`./proxy.php?action=fetch_code&code=${code}`)
@@ -118,9 +123,16 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
         return
       }
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`)
-      if (json.encKey) localStorage.setItem('gdrive_enc_key', json.encKey)
-      if (json.nc) {
-        const config = { url: json.nc.url, username: json.nc.user, davUser: '', password: json.nc.pass, dir: json.nc.path, encKey: json.encKey?.trim().toLowerCase() || undefined }
+      if (!json.ct) throw new Error('Kein verschlüsselter Payload vom Server.')
+      const kb = new Uint8Array(32)
+      for (let i = 0; i < 32; i++) kb[i] = parseInt(hexKey.slice(i * 2, i * 2 + 2), 16)
+      const key = await crypto.subtle.importKey('raw', kb, 'AES-GCM', false, ['decrypt'])
+      const combined = Uint8Array.from(atob(json.ct), c => c.charCodeAt(0))
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: combined.slice(0, 12) }, key, combined.slice(12))
+      const payload = JSON.parse(new TextDecoder().decode(decrypted))
+      if (payload.encKey) localStorage.setItem('gdrive_enc_key', payload.encKey)
+      if (payload.nc) {
+        const config = { url: payload.nc.url, username: payload.nc.user, davUser: '', password: payload.nc.pass, dir: payload.nc.path, encKey: payload.encKey?.trim().toLowerCase() || undefined }
         localStorage.setItem('tagebuch_webdav_config', JSON.stringify(config))
       }
       window.location.reload()
@@ -300,15 +312,14 @@ export default function EntryList({ categories, tags, qualifiers, onSave, onDele
           <div style={sm.box} onClick={e => e.stopPropagation()}>
             <h3 style={sm.title}>📱 Einmalcode eingeben</h3>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text2)' }}>
-              Code aus der Android-App: Einstellungen → Experten → Web-Tagebuch → Einmalcode erzeugen
+              Vollständigen Code aus der App einfügen: Einstellungen → Web-Client → Einmalcode erzeugen
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
-                style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 18, letterSpacing: 4, textTransform: 'uppercase', fontWeight: 700 }}
-                maxLength={6}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'monospace', fontWeight: 600 }}
                 value={relayInput}
-                placeholder="Code"
-                onChange={e => { setRelayInput(e.target.value.toUpperCase()); setRelayError('') }}
+                placeholder="CODE-Schlüssel"
+                onChange={e => { setRelayInput(e.target.value); setRelayError('') }}
                 onKeyDown={e => e.key === 'Enter' && !relayLoading && relayCountdown === 0 && handleRelayConnect()}
                 autoFocus
               />

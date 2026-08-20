@@ -7,13 +7,18 @@ import {
   FileSystemUploadType,
 } from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
-import { getDbPath, getDb } from '../db/schema';
-import { setConfig } from '../db/config';
-import { isEncryptionEnabled, encryptDbToTemp, exportEncKey } from '../utils/crypto';
+import { getDbPath } from '../db/schema';
+import { getConfig, setConfig } from '../db/config';
 import { appendLog } from './syncLog';
 import { mergeRemoteDb } from './mergeDb';
 import { acquireSyncLock, releaseSyncLock, setSyncError } from './syncState';
-import { applyRestore } from './restoreHelper';
+import {
+  checkIntegrityAndCheckpoint,
+  prepareUpload,
+  syncTimestamp,
+  checkEncKey,
+  applyRestoreWithCleanup,
+} from './syncPipeline';
 import {
   todayStr,
   cutoffStr,
@@ -38,8 +43,6 @@ const STORE_URL = 'webdav_url';
 const STORE_USER = 'webdav_user';
 const STORE_PASS = 'webdav_pass';
 const STORE_PATH = 'webdav_path';
-const STORE_LAST_SYNC = 'webdav_last_sync';
-const STORE_LAST_SYNC_MS = 'webdav_last_sync_ms';
 
 export interface WebDavConfig {
   url: string;
@@ -80,11 +83,11 @@ export async function saveConfig(config: WebDavConfig): Promise<void> {
 }
 
 export async function getLastSync(): Promise<string | null> {
-  return SecureStore.getItemAsync(STORE_LAST_SYNC);
+  return getConfig('webdav_last_sync');
 }
 
 export async function getLastSyncMs(): Promise<number | null> {
-  const v = await SecureStore.getItemAsync(STORE_LAST_SYNC_MS);
+  const v = await getConfig('webdav_last_sync_ms');
   return v ? Number(v) : null;
 }
 
@@ -205,58 +208,22 @@ async function _doSync(): Promise<void> {
     }
   }
 
-  await _uploadWebdav(rawDbPath, dbPath, credentials, buildUrl);
+  await _uploadWebdav(rawDbPath, credentials, buildUrl);
   await appendLog('info', 'Sync erfolgreich');
 }
 
 async function _uploadWebdav(
   rawDbPath: string,
-  dbPath: string,
   credentials: string,
   buildUrl: (filename: string) => string,
 ): Promise<void> {
-  const db = await getDb();
-  const localCheck = await db.getFirstAsync<{ integrity_check: string }>(`PRAGMA integrity_check`);
-  if (localCheck?.integrity_check !== 'ok') {
-    const details = localCheck?.integrity_check ?? 'unbekannt';
-    await appendLog('error', `Lokale DB beschädigt, Upload abgebrochen: ${details}`);
-    throw new Error(`local_corrupt: ${details}`);
-  }
+  await checkIntegrityAndCheckpoint();
 
-  // WAL vollständig in Hauptdatei schreiben; Ergebnis prüfen
-  const cp = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
-    `PRAGMA wal_checkpoint(FULL)`,
-  );
-  if (cp && cp.log !== cp.checkpointed) {
-    await appendLog('warn', `WAL-Checkpoint unvollständig (${cp.checkpointed}/${cp.log}), retry…`);
-    const cp2 = await db.getFirstAsync<{ busy: number; log: number; checkpointed: number }>(
-      `PRAGMA wal_checkpoint(FULL)`,
-    );
-    if (cp2 && cp2.log !== cp2.checkpointed) {
-      const msg = `WAL-Checkpoint fehlgeschlagen (${cp2.checkpointed}/${cp2.log}) — Upload abgebrochen`;
-      await appendLog('error', msg);
-      throw new Error(msg);
-    }
-  }
-
-  const encrypted = await isEncryptionEnabled();
-  const remoteFilename = encrypted ? 'tagebuch.db.enc' : 'tagebuch.db';
+  const { uploadPath: rawUpPath, filename: remoteFilename, encrypted, cleanup } = await prepareUpload(rawDbPath);
   const remoteTmpFilename = encrypted ? 'tagebuch.db.enc.tmp' : 'tagebuch.db.tmp';
   const tmpUrl = buildUrl(remoteTmpFilename);
   const finalUrl = buildUrl(remoteFilename);
-
-  let uploadPath = dbPath;
-  let tempUpPath: string | null = null;
-  if (encrypted) {
-    try {
-      tempUpPath = await encryptDbToTemp(rawDbPath);
-      uploadPath = tempUpPath.startsWith('file://') ? tempUpPath : `file://${tempUpPath}`;
-    } catch (e: any) {
-      const msg = `Verschlüsselung fehlgeschlagen: ${e?.message ?? String(e)}`;
-      await appendLog('error', msg);
-      throw new Error(msg);
-    }
-  }
+  const uploadPath = rawUpPath.startsWith('file://') ? rawUpPath : `file://${rawUpPath}`;
 
   const localInfo = await getInfoAsync(uploadPath);
   const localSize = localInfo.exists ? localInfo.size : 0;
@@ -273,13 +240,13 @@ async function _uploadWebdav(
       },
     });
   } catch (e: any) {
-    if (tempUpPath) await deleteAsync(`file://${tempUpPath}`, { idempotent: true }).catch(() => {});
+    await cleanup();
     const msg = `Netzwerkfehler: ${e?.message ?? String(e)}`;
     await appendLog('error', msg);
     throw new Error(msg);
   }
 
-  if (tempUpPath) await deleteAsync(`file://${tempUpPath}`, { idempotent: true }).catch(() => {});
+  await cleanup();
 
   if (result.status >= 400) {
     const msg =
@@ -315,15 +282,9 @@ async function _uploadWebdav(
     await appendLog('warn', `Backup-Rotation fehlgeschlagen: ${e?.message ?? String(e)}`);
   });
 
-  const now = new Date().toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  await SecureStore.setItemAsync(STORE_LAST_SYNC, now);
-  await SecureStore.setItemAsync(STORE_LAST_SYNC_MS, String(Date.now()));
+  const now = syncTimestamp();
+  await setConfig('webdav_last_sync', now);
+  await setConfig('webdav_last_sync_ms', String(Date.now()));
 }
 
 async function _rotateWebdavBackups(
@@ -369,7 +330,40 @@ async function _rotateWebdavBackups(
 }
 
 export async function listWebdavBackups(): Promise<BackupEntry[]> {
-  return getWebdavBackups();
+  const config = await loadConfig();
+  if (!config.url || !config.username || !config.password) return getWebdavBackups();
+
+  const credentials = btoa(`${config.username}:${config.password}`);
+  const base = config.url.replace(/\/$/, '');
+  const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
+  const dirUrl = buildWebDavUrl(base, dir, config.username, '');
+
+  try {
+    const resp = await fetch(dirUrl, {
+      method: 'PROPFIND',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        Depth: '1',
+        'Content-Type': 'application/xml',
+      },
+      body: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
+    });
+    if (!resp.ok) return getWebdavBackups();
+    const xml = await resp.text();
+    const entries: BackupEntry[] = [];
+    for (const hrefM of xml.matchAll(/<[^>]*href[^>]*>([^<]+)<\/[^>]*href>/gi)) {
+      const filename = decodeURIComponent(hrefM[1]).split('/').filter(Boolean).pop() ?? '';
+      const m = filename.match(/^tagebuch_(\d{4}-\d{2}-\d{2})\.(db\.enc|db)$/);
+      if (m) entries.push({ date: m[1], enc: m[2] === 'db.enc' });
+    }
+    if (entries.length > 0) {
+      entries.sort((a, b) => b.date.localeCompare(a.date));
+      return entries;
+    }
+    return getWebdavBackups();
+  } catch {
+    return getWebdavBackups();
+  }
 }
 
 export async function restoreFromVersionWebdav(entry: BackupEntry): Promise<void> {
@@ -377,15 +371,7 @@ export async function restoreFromVersionWebdav(entry: BackupEntry): Promise<void
   const config = await loadConfig();
   if (!config.url || !config.username || !config.password) throw new Error('Nextcloud nicht konfiguriert.');
 
-  if (entry.enc) {
-    const key = await exportEncKey();
-    if (!key) {
-      throw new Error(
-        'Backup ist verschlüsselt, aber kein Schlüssel vorhanden.\n\n' +
-          'Einstellungen → Sicherheit → Schlüssel exportieren (Gerät 1) → Schlüssel importieren (dieses Gerät).',
-      );
-    }
-  }
+  if (entry.enc) await checkEncKey();
 
   const credentials = btoa(`${config.username}:${config.password}`);
   const base = config.url.replace(/\/$/, '');
@@ -407,16 +393,7 @@ export async function restoreFromVersionWebdav(entry: BackupEntry): Promise<void
     throw new Error(dl.status === 401 ? 'Authentifizierung fehlgeschlagen.' : `HTTP ${dl.status}`);
   }
 
-  try {
-    await applyRestore(tempPath, entry.enc);
-  } catch (e: any) {
-    const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
-    await appendLog('error', msg);
-    throw new Error(msg);
-  } finally {
-    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
-  }
-
+  await applyRestoreWithCleanup(tempPath, entry.enc);
   await appendLog('info', `Restore Version ${entry.date} erfolgreich`);
 }
 
@@ -440,13 +417,12 @@ async function _doPush(): Promise<void> {
   }
 
   const rawDbPath = await getDbPath();
-  const dbPath = rawDbPath.startsWith('file://') ? rawDbPath : `file://${rawDbPath}`;
   const credentials = btoa(`${config.username}:${config.password}`);
   const base = config.url.replace(/\/$/, '');
   const dir = (config.path ?? '/Tagebuch/').replace(/\/$/, '');
   const buildUrl = (filename: string) => buildWebDavUrl(base, dir, config.username!, filename);
 
-  await _uploadWebdav(rawDbPath, dbPath, credentials, buildUrl);
+  await _uploadWebdav(rawDbPath, credentials, buildUrl);
   await appendLog('info', 'Push erfolgreich');
 }
 
@@ -517,28 +493,7 @@ export async function restoreNow(): Promise<void> {
     throw new Error(msg);
   }
 
-  if (isEncFile) {
-    const key = await exportEncKey();
-    if (!key) {
-      await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
-      const msg =
-        'Backup ist verschlüsselt, aber kein Schlüssel vorhanden.\n\n' +
-        'Einstellungen → Sicherheit → Schlüssel exportieren (Gerät 1) → Schlüssel importieren (dieses Gerät).';
-      await appendLog('error', msg);
-      throw new Error(msg);
-    }
-  }
-
   await appendLog('info', 'Ersetze Datei…');
-  try {
-    await applyRestore(tempPath, isEncFile);
-  } catch (e: any) {
-    const msg = `Fehler beim Ersetzen der DB: ${e?.message ?? String(e)}`;
-    await appendLog('error', msg);
-    throw new Error(msg);
-  } finally {
-    await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
-  }
-
+  await applyRestoreWithCleanup(tempPath, isEncFile);
   await appendLog('info', 'Restore erfolgreich');
 }

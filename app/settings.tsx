@@ -3,9 +3,11 @@ import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { copyAsync, deleteAsync, cacheDirectory } from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { useColors } from '../components/theme';
@@ -13,8 +15,10 @@ import { useTheme, type ThemePreference } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useT } from '../i18n';
 import { loadConfig } from '../sync/webdav';
-import { isEncryptionEnabled, exportEncKey } from '../utils/crypto';
+import { getConfig, setConfig } from '../db/config';
+import { isEncryptionEnabled, exportEncKey, encryptRelay, importEncKey } from '../utils/crypto';
 import { exportJSON, exportCSV, exportDB } from '../utils/export';
+import { applyRestore } from '../sync/restoreHelper';
 import { getReminderEnabled, getReminderTime, scheduleReminder, cancelReminder, requestPermission } from '../utils/notifications';
 import { InhalteSection } from '../components/settings/InhalteSection';
 import { SyncSection } from '../components/settings/SyncSection';
@@ -75,7 +79,12 @@ export default function SettingsScreen() {
   const [relayCode, setRelayCode] = useState<string | null>(null);
   const [relayLoading, setRelayLoading] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [sectionHelpKey, setSectionHelpKey] = useState<SectionKey | null>(null);
+  const [restoreKeyVisible, setRestoreKeyVisible] = useState(false);
+  const [restoreKeyInput, setRestoreKeyInput] = useState('');
+  const [restoreKeyError, setRestoreKeyError] = useState('');
+  const [pendingRestorePath, setPendingRestorePath] = useState<string | null>(null);
   useEffect(() => { hasDemoData().then(setDemoActive); }, []);
 
   const styles = useMemo(() => StyleSheet.create({
@@ -119,6 +128,11 @@ export default function SettingsScreen() {
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
     modalBox: { backgroundColor: c.surface, borderRadius: 16, padding: 24, gap: 12 },
     modalTitle: { fontSize: 17, fontWeight: '700', color: c.text },
+    modalInput: { backgroundColor: c.bg, borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.text },
+    modalError: { fontSize: 13, color: '#e05' },
+    modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    modalBtn: { flex: 1, backgroundColor: c.accent, borderRadius: 10, padding: 13, alignItems: 'center' },
+    modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     modalCancel: { flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 13, alignItems: 'center' },
     modalCancelText: { color: c.muted, fontSize: 15 },
     saveButton: { borderWidth: 1, borderColor: c.accent, borderRadius: 10, padding: 16, alignItems: 'center' },
@@ -131,7 +145,7 @@ export default function SettingsScreen() {
     isEncryptionEnabled().then(setEncEnabled);
     getReminderEnabled().then(setReminderEnabled);
     getReminderTime().then(({ hour, minute }) => { setReminderHour(hour); setReminderMinute(minute); });
-    SecureStore.getItemAsync('web_frontend_url').then(v => setWebFrontendUrl(v ?? ''));
+    getConfig('web_frontend_url').then(v => setWebFrontendUrl(v ?? ''));
   }, []);
 
   const handleReminderToggle = async (v: boolean) => {
@@ -181,12 +195,13 @@ export default function SettingsScreen() {
       if (cfg.url) payload.nc = { url: cfg.url, user: cfg.username, pass: cfg.password, path: cfg.path };
       if (encKey) payload.encKey = encKey;
       if (!payload.nc && !encKey) { Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginQRNoConfig); setRelayLoading(false); return; }
+      const { ct, hexKey } = await encryptRelay(payload);
       const res = await fetch(`${webFrontendUrl.replace(/\/$/, '')}/proxy.php?action=store_code`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ct }),
       });
       const json = await res.json();
       if (!res.ok || !json.code) throw new Error(json.error ?? t.common.error);
-      setRelayCode(json.code);
+      setRelayCode(`${json.code}-${hexKey}`);
     } catch {
       Alert.alert(t.settings.webLoginQRTitle, t.settings.webLoginRelayError);
     } finally {
@@ -202,6 +217,79 @@ export default function SettingsScreen() {
         onPress: () => seedDemoData(language).then(() => { setDemoActive(true); Alert.alert('', t.settings.demoSeedSuccess); }),
       },
     ]);
+  };
+
+  const handleImportDb = () => {
+    Alert.alert(t.settings.importDbConfirmTitle, t.settings.importDbConfirmMsg, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.settings.restoreBtn, style: 'destructive', onPress: async () => {
+          setImporting(true);
+          let tempPath: string | null = null;
+          try {
+            const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+            if (result.canceled) return;
+            const asset = result.assets[0];
+            const isEnc = asset.name.endsWith('.db.enc');
+            tempPath = `${cacheDirectory ?? ''}tagebuch_import.tmp`;
+            await copyAsync({ from: asset.uri, to: tempPath });
+            if (isEnc) {
+              setPendingRestorePath(tempPath);
+              setRestoreKeyInput('');
+              setRestoreKeyError('');
+              setRestoreKeyVisible(true);
+              tempPath = null;
+            } else {
+              await applyRestore(tempPath, false);
+              Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+                { text: t.common.ok, onPress: () => router.replace('/') },
+              ]);
+            }
+          } catch (e: any) {
+            Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+          } finally {
+            if (tempPath) await deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+            setImporting(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleConfirmRestoreWithKey = async () => {
+    if (!pendingRestorePath) return;
+    setRestoreKeyError('');
+    setImporting(true);
+    const path = pendingRestorePath;
+    try {
+      await importEncKey(restoreKeyInput);
+      await applyRestore(path, true);
+      await deleteAsync(path, { idempotent: true }).catch(() => {});
+      setPendingRestorePath(null);
+      setRestoreKeyVisible(false);
+      Alert.alert(t.settings.restoredTitle, t.settings.restoredMsg, [
+        { text: t.common.ok, onPress: () => router.replace('/') },
+      ]);
+    } catch (e: any) {
+      if (e.message === 'invalid_key') {
+        setRestoreKeyError(t.settings.importKeyError);
+      } else {
+        setRestoreKeyVisible(false);
+        await deleteAsync(path, { idempotent: true }).catch(() => {});
+        setPendingRestorePath(null);
+        Alert.alert(t.settings.restoreErrorTitle, e.message ?? t.settings.restoreErrorMsg);
+      }
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleCancelRestoreKey = async () => {
+    setRestoreKeyVisible(false);
+    if (pendingRestorePath) {
+      await deleteAsync(pendingRestorePath, { idempotent: true }).catch(() => {});
+      setPendingRestorePath(null);
+    }
   };
 
   const handleClearDemoData = () => {
@@ -224,22 +312,6 @@ export default function SettingsScreen() {
           {open.inhalte && (
             <View style={styles.sectionBody}>
               <InhalteSection />
-            </View>
-          )}
-
-          {/* ── Sync & Backup ── */}
-          <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} onHelp={() => setSectionHelpKey('sync')} styles={headerStyles} />
-          {open.sync && (
-            <View style={styles.sectionBody}>
-              <SyncSection encEnabled={encEnabled} />
-            </View>
-          )}
-
-          {/* ── Sicherheit ── */}
-          <SectionHeader title={t.settings.sectionSecurity} open={open.sicherheit} onToggle={() => toggle('sicherheit')} onHelp={() => setSectionHelpKey('sicherheit')} styles={headerStyles} />
-          {open.sicherheit && (
-            <View style={styles.sectionBody}>
-              <SicherheitSection encEnabled={encEnabled} onEncEnabledChange={setEncEnabled} />
             </View>
           )}
 
@@ -318,7 +390,15 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          {/* ── Export ── */}
+          {/* ── Sync & Backup ── */}
+          <SectionHeader title={t.settings.sectionSync} open={open.sync} onToggle={() => toggle('sync')} onHelp={() => setSectionHelpKey('sync')} styles={headerStyles} />
+          {open.sync && (
+            <View style={styles.sectionBody}>
+              <SyncSection encEnabled={encEnabled} />
+            </View>
+          )}
+
+          {/* ── Import / Export ── */}
           <SectionHeader title={t.settings.sectionExport} open={open.export} onToggle={() => toggle('export')} onHelp={() => setSectionHelpKey('export')} styles={headerStyles} />
           {open.export && (
             <View style={styles.sectionBody}>
@@ -333,10 +413,23 @@ export default function SettingsScreen() {
                   <Text style={styles.exportBtnText}>{t.settings.btnExportDb}</Text>
                 </Pressable>
               </View>
+              <Pressable style={styles.saveButton} onPress={handleImportDb} disabled={importing}>
+                {importing
+                  ? <ActivityIndicator color={c.accent} />
+                  : <Text style={styles.saveText}>{t.settings.importDbBtn}</Text>}
+              </Pressable>
             </View>
           )}
 
-          {/* ── Experten ── */}
+          {/* ── Sicherheit ── */}
+          <SectionHeader title={t.settings.sectionSecurity} open={open.sicherheit} onToggle={() => toggle('sicherheit')} onHelp={() => setSectionHelpKey('sicherheit')} styles={headerStyles} />
+          {open.sicherheit && (
+            <View style={styles.sectionBody}>
+              <SicherheitSection encEnabled={encEnabled} onEncEnabledChange={setEncEnabled} />
+            </View>
+          )}
+
+          {/* ── Web-Client ── */}
           <SectionHeader title={t.settings.sectionExperten} open={open.experten} onToggle={() => toggle('experten')} onHelp={() => setSectionHelpKey('experten')} styles={headerStyles} />
           {open.experten && (
             <View style={styles.sectionBody}>
@@ -346,7 +439,7 @@ export default function SettingsScreen() {
                 style={styles.field}
                 value={webFrontendUrl}
                 onChangeText={setWebFrontendUrl}
-                onBlur={() => SecureStore.setItemAsync('web_frontend_url', webFrontendUrl.trim())}
+                onBlur={() => setConfig('web_frontend_url', webFrontendUrl.trim())}
                 placeholder={t.settings.webFrontendUrlPlaceholder}
                 placeholderTextColor={c.muted}
                 autoCapitalize="none"
@@ -355,17 +448,6 @@ export default function SettingsScreen() {
               <Pressable style={[styles.syncButton, { marginTop: 4 }]} onPress={handleShowWebLoginQR}>
                 <Text style={styles.syncText}>{t.settings.webLoginQR}</Text>
               </Pressable>
-              <Text style={[styles.subLabel, { marginTop: 20 }]}>Demo</Text>
-              {!demoActive && (
-                <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleLoadDemoData}>
-                  <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.demoSeedBtn}</Text>
-                </Pressable>
-              )}
-              {demoActive && (
-                <Pressable style={[styles.saveButton, { marginTop: 4, borderColor: c.danger }]} onPress={handleClearDemoData}>
-                  <Text style={[styles.syncText, { color: c.danger }]}>{t.settings.demoClearBtn}</Text>
-                </Pressable>
-              )}
             </View>
           )}
 
@@ -390,6 +472,17 @@ export default function SettingsScreen() {
                   <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.restartTutorial}</Text>
                 </Pressable>
               </View>
+              <Text style={[styles.subLabel, { marginTop: 10 }]}>Demo</Text>
+              {!demoActive && (
+                <Pressable style={[styles.saveButton, { marginTop: 4 }]} onPress={handleLoadDemoData}>
+                  <Text style={[styles.syncText, { color: c.accent }]}>{t.settings.demoSeedBtn}</Text>
+                </Pressable>
+              )}
+              {demoActive && (
+                <Pressable style={[styles.saveButton, { marginTop: 4, borderColor: c.danger }]} onPress={handleClearDemoData}>
+                  <Text style={[styles.syncText, { color: c.danger }]}>{t.settings.demoClearBtn}</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -430,7 +523,14 @@ export default function SettingsScreen() {
               </View>
               {relayCode ? (
                 <>
-                  <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>{relayCode}</Text>
+                  <Text style={{ fontSize: 36, fontWeight: '800', letterSpacing: 8, color: c.accent, marginTop: 12 }}>
+                    {relayCode.includes('-') ? relayCode.slice(0, relayCode.indexOf('-')) : relayCode}
+                  </Text>
+                  {relayCode.includes('-') && (
+                    <Text selectable style={{ fontSize: 11, fontFamily: 'monospace', color: c.text, textAlign: 'center', marginTop: 4, paddingHorizontal: 8 }}>
+                      {relayCode}
+                    </Text>
+                  )}
                   <Text style={[{ fontSize: 11, fontWeight: '600', color: c.muted, textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center', marginTop: 6 }]}>{t.settings.webLoginRelayHint}</Text>
                 </>
               ) : webFrontendUrl ? (
@@ -446,6 +546,37 @@ export default function SettingsScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Key-Eingabe beim Import verschlüsselter DB */}
+      <Modal visible={restoreKeyVisible} transparent animationType="fade" onRequestClose={handleCancelRestoreKey}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={{ flex: 1 }} onPress={handleCancelRestoreKey} />
+          <View style={[styles.modalBox, { marginHorizontal: 24, marginBottom: 24 }]}>
+            <Text style={styles.modalTitle}>{t.settings.importKeyTitle}</Text>
+            <Text style={styles.warnText}>{t.settings.importKeyHint}</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={restoreKeyInput}
+              onChangeText={(v) => { setRestoreKeyInput(v); setRestoreKeyError(''); }}
+              placeholder={t.settings.importKeyPlaceholder}
+              placeholderTextColor={c.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+              numberOfLines={2}
+            />
+            {!!restoreKeyError && <Text style={styles.modalError}>{restoreKeyError}</Text>}
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancel} onPress={handleCancelRestoreKey}>
+                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtn} onPress={handleConfirmRestoreWithKey} disabled={importing}>
+                <Text style={styles.modalBtnText}>{importing ? '…' : t.settings.restoreBtn}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
