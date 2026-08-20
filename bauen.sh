@@ -28,7 +28,7 @@ if [ "$TEST_MODE" = "1" ]; then
   fi
 fi
 
-RELEASE_DIR="/media/Daten/KI/apps/tagebuch"
+RELEASE_DIR="/media/Daten/KI/projects/privat/Tagebuch"
 
 if [ "$BUNDLE" = "--bundle" ] || [ "$MODE" = "--bundle" ]; then
   cd android && ./gradlew bundleRelease
