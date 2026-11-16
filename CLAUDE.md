@@ -36,3 +36,6 @@ Ein Eintrag = Zeitstempel + Freitext + Kategorien + Tags + Qualifiers (1–5). S
 
 Per-Projekt Memory-Index lesen für: SQL-Schema, Screens, Sync-Logik, Verschlüsselungsformate, Web-Architektur, Backlog.
 `/root/claude/memory/projects/Tagebuch/MEMORY.md`
+
+## Offen (Übergabe)
+- **Manitu-FTP-Zugang wieder gültig seit 2026-11-16** (neuer Nutzer, Login lesend getestet). Von PHP unter dem alten Nutzer angelegte Dateien können für den neuen Nutzer gesperrt sein; Rechte beim ersten Schreiben prüfen. `UEBERGABE_manitu-ftp-zugang.md` nach dem ersten erfolgreichen Deploy löschen.
